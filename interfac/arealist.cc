@@ -1,3 +1,5 @@
+/* $Id: arealist.cc,v 1.11 2004/01/22 04:42:25 wmcbrine Exp $ */
+
 /*
  * MultiMail offline mail reader
  * area list
