@@ -1,6 +1,7 @@
 macro msource
-\topen download
+\topen upload.sourceforge.net
 \tbin
+\tcd /incoming
 \tlcd ~/websites/mmail-ftp
 \tput mmail-$1.$2.tar.gz mmsrc$1$2.zip
 \tput mmdos$1$2.zip mmxt$1$2.zip mmwin$1$2.zip mmos2$1$2.zip
