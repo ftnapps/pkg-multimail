@@ -99,3 +99,5 @@ Rationale:
 Aside from being redundant, it was causing segfaults. (Evidently 
 VioGetConfig() doesn't completely fill a VIOCONFIGINFO type, and it needs 
 to be zeroed out beforehand.)
+
+-- Version 0.45 released --
