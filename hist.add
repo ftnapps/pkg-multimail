@@ -1,87 +1,55 @@
-${h3}0.45 - 2003/06/08:${h3end}
+${h3}0.46 - 2003/12/31:${h3end}
 
 New features:${pul}
 
-${bullet}New temporary directory and file system: Instead of using tmpnam() --
-${indent}which frankly never worked properly outside of Unix, and is sometimes
-${indent}regarded as a security risk there -- MultiMail now generates temp
-${indent}directories of the form \"workNNNN\", where NNNN is a random number, under
-${indent}the directory specified by the new .mmailrc keyword \"TempDir\". By default,
-${indent}TempDir is set to the same value as mmHomeDir. NOTE THAT IF YOU'VE BEEN
-${indent}USING ENVIRONMENT VARAIBLES TO SPECIFY A TEMP DIR, IT WILL NO LONGER WORK.
-${indent}They aren't even used to set the default (as with EDITOR). In the XT port,
-${indent}TempDir also now specifies the location of the swap file, if that feature
-${indent}is enabled. And temporary files are now created as \"tmpNNNNN.txt\" under
-${indent}the workNNNN directory, where NNNNN is a serial number; so they no longer
-${indent}clutter the base temp directory, they have the \".txt\" extension some
-${indent}editors depend on, and there's no longer a problem with editor-created
-${indent}backup files being cleared out.
+${bullet}First, an apology: This version probably should've come out in July, when
+${indent}most of these changes were done... though there was a bug in one of the
+${indent}new features that didn't show up until Halloween.
 
-${bullet}Big improvements in the ANSI viewer under Unix: For those terminals (like
-${indent}the Linux console) that support the \"smpch\" terminfo capability, the IBM
-${indent}PC characters are passed through directly. For other terminals (like
-${indent}xterm), the use of the widely unimplemented ACS_BLOCK and ACS_BOARD has
-${indent}been replaced with an inverse space and ACS_CKBOARD, respectively. (In
-${indent}ncurses' curses.h, ACS_BLOCK and ACS_BOARD are identified as \"Teletype
-${indent}5410v1 symbols\", while ACS_CKBOARD is in the \"VT100 symbols\" group.
-${indent}Everything supports VT100, but few terminals support the other class.)
-${indent}Note that the use of the inverse space does present a problem when
-${indent}characters have the A_BOLD attribute, as it's interpreted differently by
-${indent}different terminals, so that some will make the cell \"bright\", and some
-${indent}won't; but this seems to look best on the greatest number of terminals.
-${indent}Also note that \"xterm -fn vga -tn linux\" is still the best way to view
-${indent}ANSI under X. ;-)
+${bullet}MultiMail now displays the appropriate screens (when it can determine
+${indent}them) on opening and closing a packet, instead of just adding them to the
+${indent}bulletin list. This is more like the way most other OLRs work (though not,
+${indent}e.g., Blue Wave). I hope you like it. :-) I had to adjust to it myself,
+${indent}but now I wouldn't go back.
 
-${bullet}A new method for setting mmHomeDir: If it's based on the environment
-${indent}variable \"HOME\", add \"mmail\" to the end, as before; but if it's based on
-${indent}\"MMAIL\" or the start directory, don't. Practically speaking, this should
-${indent}make it apply \"mmail\" under Unix and not under DOS-ish systems, in most
-${indent}cases. That means that if you create a directory like \"C:\MMAIL\" and run
-${indent}mm.exe from there, it will no longer create \"C:\MMAIL\MMAIL\DOWN\", etc.,
-${indent}but simply \"C:\MMAIL\DOWN\". Note that this (unlike the new temp system)
-${indent}applies only to new installations; upgrades will not alter existing
-${indent}MMAIL.RC pathnames.
+${bullet}The ANSI viewer now includes partial support for AVATAR (level 0) and
+${indent}BSAVE (.BSV; text-only). As with the parsing of AT codes, these can be
+${indent}toggled, via ^V and ^B respectively.
 
-${bullet}The name shown at the top of the screen is now \"MultiMail/Sysname vX.X\" --
-${indent}i.e., the same as would appear in a QWK reply tearline -- instead of
-${indent}\"MultiMail offline reader vX.X\". Shorter, yet more informative. :-)
+${bullet}The lower portion of the area list display has been redesigned. It now
+${indent}includes the name of the Door and BBS that created the packet, if
+${indent}available, and omits the duplicate description. The field formerly
+${indent}labelled \"BBS:\" is now \"Name:\"; \"BBS:\" is used for the software type
+${indent}instead. In the upper portion, there's a little more room for the
+${indent}descriptions. Door type in OPX mode is not entirely satisfactory; some SX
+${indent}doors seem to use the field for BBS version instead. Neither of the new
+${indent}fields is available in Blue Wave mode.
 ${ulend}
 Bug fixes and such:${pul}
 
-${bullet}Doing a ^X during a bulletin would cause a segfault.
+${bullet}With this version, I've added MIPS and AMD64 to my list of tested systems
+${indent}(no mods needed). However, I'm not including those binaries, because a)
+${indent}the MIPS binary I built is only for a Tivo, and doesn't display onscreen
+${indent}anyway, so you'd have to telnet in or use a serial console; and b) there's
+${indent}a small but annoying bug in the (beta) version of ncurses used on SF.net's
+${indent}AMD64 compile farm machine, such that the window borders all show up with
+${indent}the wrong color. (The problem is not actually 64-bit related. Also, please
+${indent}note that MultiMail itself has been 64-bit ready for a long time, since
+${indent}being ported to the Alpha processor.)
 
-${bullet}A malformed 'H' command (e.g., using \"0\" as a parameter) in ANSI could
-${indent}cause a segfault.
+${bullet}Fix for some incorrect CONTROL.DAT files -- a failed read (because a file
+${indent}was too short) was returning a dupe of the last line; now returns a blank.
 
-${bullet}The window title is explicitly set to \"MultiMail\" in the Win32 and XCurses
-${indent}ports. This eliminates the problem where \"UNZIP\" would remain in the title
-${indent}after unarchiving a packet under Win 9x.
+${bullet}Make reply endings in OPX conform better to what SX does -- CR/LF, and a
+${indent}trailing zero. (I noticed that the tearline was being eaten by the Wildcat
+${indent}SX door on Doc's Place, and there was _no_ final CR/LF... I don't think it
+${indent}used to do that, but anyway, this fixes it.)
 
-${bullet}Revived cursor mode save/restore routines for PDCurses (except for Win32,
-${indent}where it doesn't work); moved cursor restoration after endwin() call in
-${indent}mysystem() (this is why it didn't do the job before).
+${bullet}ANSI viewer: Allowed right arrow to exit even in lynxNav mode -- makes
+${indent}more sense with new Hello/Goodbye behavior; fewer false positives when
+${indent}interpreting AT codes; better handling of chars 0-31 and some others,
+${indent}under ncurses; no more overlapping of screens when a screen clear command
+${indent}is rendered.
 
-${bullet}Updated Makefiles for PDCurses 2.6, and GCC 3.2.1 (in the case of EMX). I
-${indent}strongly recommend upgrading to PDCurses 2.6, in most cases, as it already
-${indent}incorporates my patch for halfdelay(); however, there's a fatal bug in the
-${indent}OS/2 version. (Write me for a patch.) I also recommend ncurses 5.3 over
-${indent}5.2 -- for one thing, it fixes the problem with the bool declaration that
-${indent}broke searching and animation in some installations -- but I've left it as
-${indent}5.2 in the Makefile, for now, because I have too many systems to recompile
-${indent}it for. :-)
-
-${bullet}Remaining compilation warnings eliminated for most platforms: Got rid of
-${indent}tmpnam() (see above), moved \"%y\" strftime() strings outside the calls
-${indent}(copied this from Ingo Brueckl), and added \"-Wno-deprecated\" to the
-${indent}Makefile options for the latest versions of gcc.
-
-${bullet}Useless .mmailrc keyword \"homeDir\" removed. (It specified the base value
-${indent}for mmHomeDir, but in most cases that was already specified explicitly on
-${indent}the very next line.)
-
-${bullet}Stronger attempts to use backslash characters instead of slash where
-${indent}appropriate in MMAIL.RC (depending on the platform). But again, this is
-${indent}cosmetic.
-
-${bullet}Optimizations, comments, etc.
+${bullet}Some code simplification.
 ${ulend}

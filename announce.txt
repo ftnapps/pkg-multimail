@@ -13,28 +13,27 @@ Alternately, you can get it via FTP:
 Binaries for several platforms are available, along with the source code.
 
 
-What's New in version 0.45?
+What's New in version 0.46?
 ---------------------------
 
- * New temporary file system (see HISTORY); fixes many problems
- * ANSI viewer works much better in Unix
- * Fixed some ANSI bugs on all platforms
- * No more "extra" mmail directory
- * Various minor display improvements
- * Etc.
+ * New opening/closing behavior -- screens shown automatically
+ * AVATAR and BSAVE support in the ANSI viewer, plus some bug fixes
+ * Door and BBS info added to area list
+ * Fix for missing tear lines in OPX mode
+ * Code simplification, etc.
 
 
 Begin3
 Title:          MultiMail (source)
-Version:        0.45
-Entered-date:   08JUN03
+Version:        0.46
+Entered-date:   31DEC03
 Description:    MultiMail is a curses-based Blue Wave, QWK, OMEN and SOUP
                 offline mail reader for Unix and other systems.
 Keywords:       mail bluewave omen qwk soup bbs fido offline reader
 Author:         wmcbrine@users.sf.net (William McBrine) et al.
 Maintained-by:  wmcbrine@users.sf.net (William McBrine)
 Primary-site:   download.sourceforge.net /pub/sourceforge/multimail
-                221184  mmail-0.45.tar.gz
+                221184  mmail-0.46.tar.gz
 Alternate-site: sunsite.unc.edu /pub/Linux/system/bbs/mail
 Original-site:
 Platforms:      C++, curses and InfoZip or PKZIP. Tested on Linux, Solaris,

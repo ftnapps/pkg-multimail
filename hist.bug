@@ -1,36 +1,25 @@
-Doing a ^X during a bulletin would cause a segfault.
+With this version, I've added MIPS and AMD64 to my list of tested systems
+(no mods needed). However, I'm not including those binaries, because a)  
+the MIPS binary I built is only for a Tivo, and doesn't display onscreen
+anyway, so you'd have to telnet in or use a serial console; and b) there's
+a small but annoying bug in the (beta) version of ncurses used on SF.net's
+AMD64 compile farm machine, such that the window borders all show up with
+the wrong color. (The problem is not actually 64-bit related. Also, please
+note that MultiMail itself has been 64-bit ready for a long time, since
+being ported to the Alpha processor.)
 
-A malformed 'H' command (e.g., using "0" as a parameter) in ANSI could
-cause a segfault.
+Fix for some incorrect CONTROL.DAT files -- a failed read (because a file
+was too short) was returning a dupe of the last line; now returns a blank.
 
-The window title is explicitly set to "MultiMail" in the Win32 and XCurses
-ports. This eliminates the problem where "UNZIP" would remain in the title
-after unarchiving a packet under Win 9x.
+Make reply endings in OPX conform better to what SX does -- CR/LF, and a
+trailing zero. (I noticed that the tearline was being eaten by the Wildcat
+SX door on Doc's Place, and there was _no_ final CR/LF... I don't think it
+used to do that, but anyway, this fixes it.)
 
-Revived cursor mode save/restore routines for PDCurses (except for Win32,
-where it doesn't work); moved cursor restoration after endwin() call in
-mysystem() (this is why it didn't do the job before).
+ANSI viewer: Allowed right arrow to exit even in lynxNav mode -- makes
+more sense with new Hello/Goodbye behavior; fewer false positives when
+interpreting AT codes; better handling of chars 0-31 and some others,
+under ncurses; no more overlapping of screens when a screen clear command
+is rendered.
 
-Updated Makefiles for PDCurses 2.6, and GCC 3.2.1 (in the case of EMX). I
-strongly recommend upgrading to PDCurses 2.6, in most cases, as it already
-incorporates my patch for halfdelay(); however, there's a fatal bug in the
-OS/2 version. (Write me for a patch.) I also recommend ncurses 5.3 over
-5.2 -- for one thing, it fixes the problem with the bool declaration that
-broke searching and animation in some installations -- but I've left it as
-5.2 in the Makefile, for now, because I have too many systems to recompile
-it for. :-)
-
-Remaining compilation warnings eliminated for most platforms: Got rid of
-tmpnam() (see above), moved "%y" strftime() strings outside the calls
-(copied this from Ingo Brueckl), and added "-Wno-deprecated" to the
-Makefile options for the latest versions of gcc.
-
-Useless .mmailrc keyword "homeDir" removed. (It specified the base value 
-for mmHomeDir, but in most cases that was already specified explicitly on 
-the very next line.)
-
-Stronger attempts to use backslash characters instead of slash where
-appropriate in MMAIL.RC (depending on the platform). But again, this is
-cosmetic.
-
-Optimizations, comments, etc.
+Some code simplification.

@@ -240,6 +240,10 @@ if any are present.
 New in version 0.43 is support for the '@' color codes used by PCBoard and 
 Wildcat. This is on by default in the ANSI viewer, but it can be toggled 
 to strip the codes, or pass them through untranslated, by pressing '@'.
+
+As of version 0.46, the ANSI viewer also includes limited support for 
+AVATAR (level 0) and BSAVE (text only) screens. These can be toggled via 
+^V and ^B, respectively.
 .SH CHARACTER SETS
 MultiMail supports automatic translation between two character sets: the
 IBM PC set (Code Page 437), and Latin-1 (ISO 8859-1). Messages can be in

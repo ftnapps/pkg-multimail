@@ -60,7 +60,7 @@ personally used it on:
 
 Operating Systems:  Linux, Solaris, NetBSD, DOS, OS/2, Windows, BeOS,
 \040                   FreeBSD, AtheOS, MacOS X
-Processors:         i386, Sparc, m68k, Alpha, i86, PPC, ARM
+Processors:         i386, Sparc, m68k, Alpha, i86, PPC, ARM, MIPS, AMD64
 Compilers:          GCC (including DJGPP, EMX, and RSXNT), Compaq Alpha
 \040                   (w/ GNU make), Borland/Turbo C++, Sun C++ (w/ GNU make)
 Libraries:          ncurses, Solaris curses, PDCurses

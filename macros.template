@@ -5,9 +5,9 @@ macro msource
 \tlcd ~/websites/mmail-ftp
 \tput mmail-$1.$2.tar.gz mmsrc$1$2.zip
 \tput mmdos$1$2.zip mmxt$1$2.zip mmwin$1$2.zip mmos2$1$2.zip
-\tput mm-linux-alpha.gz mm-linux-i386elf.gz 
-\tput mm-linux-arm.gz mm-linux-sparc.gz mm-netbsd-m68k.gz
-\tput mm-solaris-i386.gz mmail-$1.$2.bin.1.tgz
+\tput mm-linux-alpha.gz mm-linux-i386elf.gz mm-qnx-i386.gz 
+\tput mm-freebsd-i386.gz mm-darwin-ppc.gz mm-netbsd-m68k.gz
+\tput mm-solaris-i386.gz mmail-$1.$2.bin.1.tgz mm-beos-r5-intel.gz
 \tclose
 end
 

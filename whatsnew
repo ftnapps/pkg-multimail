@@ -1,11 +1,9 @@
-New temporary file system (see HISTORY); fixes many problems
+New opening/closing behavior -- screens shown automatically
 
-ANSI viewer works much better in Unix
+AVATAR and BSAVE support in the ANSI viewer, plus some bug fixes
 
-Fixed some ANSI bugs on all platforms
+Door and BBS info added to area list
 
-No more "extra" mmail directory
+Fix for missing tear lines in OPX mode
 
-Various minor display improvements
-
-Etc.
+Code simplification, etc.
