@@ -69,3 +69,22 @@ AnsiWindow::statupdate(); similar.
 Rationale:
 
 I just learned about the '*' parameter for the printf() family. Doh!
+
+-- Moved to CVS, and Version 0.44 released --
+
+Patch 1074:
+
+To the dos/ dir in PDCurses; hacked out all code related to changing the 
+video mode.
+
+Rationale:
+
+I never _intentionally_ change the mode within MultiMail; and as it was, 
+the DOS and XT ports messed up the display when shelling in some cases 
+where nonstandard screen sizes were used. (This works better in _most_ 
+cases, but not always when the mode is changed from within the shelled 
+program itself -- hopefully rare!)
+
+I'm noting this here because, since it's not a change to MultiMail proper, 
+there's no place to note it in CVS. But the use of this file will be very 
+sparse from now on.
