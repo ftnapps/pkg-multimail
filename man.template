@@ -329,10 +329,10 @@ It's used to specify the pathnames to MultiMail's other files, and the
 command lines for external programs (the editor and the archivers).
 
 By default, the other permanent files are placed in the MultiMail home
-directory (\$HOME/mmail or \$MMAIL/mmail). For temporary directories and
-files, MultiMail uses the tmpnam() function (the location is
-system-dependent). Directories specified in the .mmailrc are created
-automatically; the default values are shown here:
+directory (\$HOME/mmail or \$MMAIL/mmail). For temporary directories,
+MultiMail uses the tmpnam() function (the location is system-dependent).
+Directories specified in the .mmailrc are created automatically; the
+default values are shown here:
 
 .TP
 .B ~/mmail
