@@ -1,4 +1,0 @@
-Added the pipe character, '|', as an alternative to '^' for invoking the
-filter function. It turns out that '^' is a poor choice for many non-U.S.
-keyboards; sorry. The pipe character is also somewhat more consistent with
-other programs with similar functions. Problem reported by Peter Karlsson.
