@@ -88,3 +88,14 @@ program itself -- hopefully rare!)
 I'm noting this here because, since it's not a change to MultiMail proper, 
 there's no place to note it in CVS. But the use of this file will be very 
 sparse from now on.
+
+Patch 1075:
+
+To PDC_query_adapter_type() in os2/pdcgetsc.c (in PDCurses); removed 
+pointless copy.
+
+Rationale:
+
+Aside from being redundant, it was causing segfaults. (Evidently 
+VioGetConfig() doesn't completely fill a VIOCONFIGINFO type, and it needs 
+to be zeroed out beforehand.)
