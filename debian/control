@@ -1,0 +1,15 @@
+Source: multimail
+Section: mail
+Priority: optional
+Maintainer: Per Lundberg <plundis@debian.org>
+Standards-Version: 2.5.1
+
+Package: multimail
+Architecture: any
+Depends: ${shlibs:Depends}
+Suggests: uqwk
+Description: Offline reader for Blue Wave, QWK, OMEN and SOUP
+ MultiMail is an offline mail packet reader for Unix and
+ other systems. It currently supports the Blue Wave, QWK,
+ OMEN and SOUP formats. It has a full screen, color user
+ interface, built with the curses library.

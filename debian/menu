@@ -1,0 +1,2 @@
+?package(mmail):needs=text section=Apps/Net\
+  title="MultiMail" command="/usr/bin/mmail"

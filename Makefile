@@ -12,10 +12,13 @@ include version
 # Optimized, no debug:
 OPTS = -O2 -Wall -pedantic
 
+# Edited for Debian
+DESTDIR =
+
 # PREFIX is the base directory under which to install the binary and man 
 # page; generally either /usr/local or /usr (or perhaps /opt...):
 
-PREFIX = /usr/local
+PREFIX = $(DESTDIR)/usr
 
 # Delete command ("rm" or "del", as appropriate):
 
@@ -108,7 +111,8 @@ LIBS = -lncurses
 #--------------------------------------------------------------
 #--------------------------------------------------------------
 
-HELPDIR = $(PREFIX)/man/man1
+HELPDIR = $(PREFIX)/share/man/man1
+DOCDIR = $(PREFIX)/share/doc/multimail
 
 all:	mm
 
@@ -135,7 +139,13 @@ clean:
 	$(RM) mm
 
 install:
+	install -d $(PREFIX)/bin $(HELPDIR) $(DOCDIR)
 	install -c -s mm $(PREFIX)/bin
 	install -c -m 644 mm.1 $(HELPDIR)
 	$(RM) $(HELPDIR)/mmail.1
-	ln $(HELPDIR)/mm.1 $(HELPDIR)/mmail.1
+#	ln $(HELPDIR)/mm.1 $(HELPDIR)/mmail.1
+	install -m 644 README $(DOCDIR)
+	install -m 644 TODO $(DOCDIR)
+	install -m 644 mm_faq.txt $(DOCDIR)
+	install -d $(DOCDIR)/colors
+	cp -a colors/* $(DOCDIR)/colors

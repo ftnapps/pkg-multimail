@@ -1,0 +1,20 @@
+This package was debianized by peter karlsson <peter@softwolves.pp.se> on
+Tue, 19 Oct 1999 20:22:16 +0200.
+
+It was downloaded from http://www.clark.net/~wmcbrine/multimail.html
+
+Upstream Author(s): William McBrine <wmcbrine@clark.net>
+
+Copyright:
+
+MultiMail was originally developed under Linux by Kolossvary Tamas and
+Toth Istvan. John Zero was the maintainer for versions 0.2 through 0.6;
+since version 0.7, the maintainer is William McBrine <wmcbrine@clark.net>.
+
+Additional code has been contribued by Peter Karlsson, Mark D. Rejhon,
+Ingo Brueckl, and Robert Vukovic.
+
+You are free to distribute this software under the terms of the GNU
+General Public License.
+On Debian systems, the complete text of the GNU General Public License
+can be found in the /usr/share/common-licenses/GPL file.
