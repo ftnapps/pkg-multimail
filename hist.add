@@ -1,0 +1,44 @@
+${h3}0.44 - 2003/05/07:${h3end}
+
+New features:${pul}
+
+${bullet}Added the pipe character, '|', as an alternative to '^' for invoking the
+${indent}filter function. It turns out that '^' is a poor choice for many non-U.S.
+${indent}keyboards; sorry. The pipe character is also somewhat more consistent with
+${indent}other programs with similar functions. Problem reported by Peter Karlsson.
+${ulend}
+Bug fixes and such:${pul}
+
+${bullet}Changed the way that the length of QWK replies is calculated. This is a
+${indent}speculative fix for a reported problem with corrupt replies that I
+${indent}couldn't reproduce; but from what was described, this _should_ do it. At
+${indent}any rate, the new code is simpler and cleaner. Reported by Jimmy Day et
+${indent}al.
+
+${bullet}Pressing the \"END\" key in string input fields now works corrrectly, taking
+${indent}the cursor to the end of the field instead of ending the edit. Reported by
+${indent}Touko Rajala.
+
+${bullet}Bogus/unintentional '@' color code sequences could cause segfaults in the
+${indent}ANSI viewer. Reported by Neall Mercado.
+
+${bullet}In the Win32 version, under NT (though not 9x), the temporary directories
+${indent}were not being deleted.
+
+${bullet}The filter was not working correctly in the LittleAreaListWindow.
+
+${bullet}Junk could appear in the LetterList on a resort if some messages were
+${indent}read.
+
+${bullet}Narrowed the width of some windows as a workaround for display bugs in
+${indent}xterm.
+
+${bullet}Added \"-inul\" to the default command lines for RAR to supress the output.
+
+${bullet}Minor internal changes to allow compilation and remove warnings under
+${indent}Sun's SUNWspro C++ compiler. This also entailed the elimination of the
+${indent}sillier of the \"set_Letter_Params()\" functions, which was long overdue.
+${indent}:-)
+
+${bullet}Miscellaneous small changes for efficiency.
+${ulend}
