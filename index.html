@@ -112,7 +112,7 @@ Please direct all correspondence about MultiMail to William McBrine
 
 You can get the MultiMail v${VER} source code in .tar.gz format 
 (${KsizeMM}k)
-<b><a href=\"${DOWNHTTP}/mmail-${VER}.tar.gz\">via 
+<b><a href=\"${DOWNHTTP}/mmail-${VER}.tar.gz${DOWNSUFFIX}\">via 
 http here</a></b>, or by anonymous FTP from:
 <p>
 <ul>
@@ -134,7 +134,7 @@ sunsite.unc.edu</a></b>
 <b>Additional source code formats:</b>
 <p>
 <ul>
-<li><b><a href=\"${DOWNHTTP}/mmsrc${SHORTVER}.zip\">Pure .ZIP
+<li><b><a href=\"${DOWNHTTP}/mmsrc${SHORTVER}.zip${DOWNSUFFIX}\">Pure .ZIP
 (${KsizePureZip}k)</a></b> -
 If you don't want to mess with .tar.gz. :-) This file may not survive
 intact on some BBSes (they'll remove the directories). If you're using
@@ -161,49 +161,57 @@ binaries for other platforms, please
 I don't actually recommend that you use these. Most of them are statically
 linked with ncurses, but dynamically linked otherwise; so you might do
 better compiling your own. Note that if you want the documentation, you'll
-also need <a href=\"${DOWNHTTP}/mmail-${VER}.tar.gz\">the source
-archive</a>; these are only the binaries.
+also need <a href=\"${DOWNHTTP}/mmail-${VER}.tar.gz${DOWNSUFFIX}\">the
+source archive</a>; these are only the binaries.
 
 <p>To use any of these, simply gunzip (NOT untar -- these are not tar
 files), make executable (e.g., \"chmod 700 mm-linux-i386elf\"), and run.
 
 <p>
 <ul>
-<li><b><a href=\"${DOWNHTTP}/mm-linux-i386elf.gz\">mm-linux-i386elf.gz
+<li><b><a
+href=\"${DOWNHTTP}/mm-linux-i386elf.gz${DOWNSUFFIX}\">mm-linux-i386elf.gz
 (${KsizeLinux}k)</a></b> - Linux/i386 ELF, now statically linked.  
 Previously I provided a binary that was dependent on libc5, but this one
 isn't. Compiled on a 486 running kernel 2.0.36, and tested on an Athlon
 running 2.5.7.
 
-<li><b><a href=\"${DOWNHTTP}/mm-netbsd-m68k.gz\">mm-netbsd-m68k.gz
+<li><b><a
+href=\"${DOWNHTTP}/mm-netbsd-m68k.gz${DOWNSUFFIX}\">mm-netbsd-m68k.gz
 (${KsizeNetBSD}k)</a></b> - NetBSD/m68k, compiled on 1.3.
 
-<li><b><a href=\"${DOWNHTTP}/mm-qnx-i386.gz\">mm-qnx-i386.gz
+<li><b><a href=\"${DOWNHTTP}/mm-qnx-i386.gz${DOWNSUFFIX}\">mm-qnx-i386.gz
 (${KsizeQNX}k)</a></b> - QNX/i386, compiled on RTP 6.0.
 
-<li><b><a href=\"${DOWNHTTP}/mm-solaris-i386.gz\">mm-solaris-i386.gz
+<li><b><a
+href=\"${DOWNHTTP}/mm-solaris-i386.gz${DOWNSUFFIX}\">mm-solaris-i386.gz
 (${KsizeSolaris}k)</a></b> - Solaris/i386, compiled on 8.
 
 <li>From the SourceForge compile farm -- most of these are dynamically
 linked with ncurses:
 
 <ul>
-<li><b><a href=\"${DOWNHTTP}/mm-darwin-ppc.gz\">mm-darwin-ppc.gz
+<li><b><a
+href=\"${DOWNHTTP}/mm-darwin-ppc.gz${DOWNSUFFIX}\">mm-darwin-ppc.gz
 (${KsizeDarwin}k)</a></b> - Darwin/PPC, aka Mac OS X. Yes, finally a Mac
 port! (Sort of.)
 
-<li><b><a href=\"${DOWNHTTP}/mm-linux-alpha.gz\">mm-linux-alpha.gz
+<li><b><a
+href=\"${DOWNHTTP}/mm-linux-alpha.gz${DOWNSUFFIX}\">mm-linux-alpha.gz
 (${KsizeAlpha}k)</a></b> - Linux/Alpha, compiled on Debian 3.0.
 
-<li><b><a href=\"${DOWNHTTP}/mm-linux-arm.gz\">mm-linux-arm.gz
+<li><b><a
+href=\"${DOWNHTTP}/mm-linux-arm.gz${DOWNSUFFIX}\">mm-linux-arm.gz
 (${KsizeARM}k)</a></b> - Linux/ARM, compiled on Debian 3.0. From a
 "CerfCube" StrongARM system -- I don't know whether it will work on a PDA
 or not.
 
-<li><b><a href=\"${DOWNHTTP}/mm-linux-sparc.gz\">mm-linux-sparc.gz
+<li><b><a
+href=\"${DOWNHTTP}/mm-linux-sparc.gz${DOWNSUFFIX}\">mm-linux-sparc.gz
 (${KsizeSparc}k)</a></b> - Linux/Sparc, compiled on Debian 3.0.
 
-<li><b><a href=\"${DOWNHTTP}/mm-solaris-sparc.gz\">mm-solaris-sparc.gz
+<li><b><a
+href=\"${DOWNHTTP}/mm-solaris-sparc.gz${DOWNSUFFIX}\">mm-solaris-sparc.gz
 (${KsizeSolaris2}k)</a></b> - Solaris/Sparc, compiled on 8. This one is
 statically linked with ncurses.
 </ul>
@@ -214,7 +222,8 @@ statically linked with ncurses.
 <h4>BeOS</h4>
 
 <ul>
-<li><b><a href=\"${DOWNHTTP}/mm-beos-r5-intel.gz\">mm-beos-r5-intel.gz
+<li><b><a
+href=\"${DOWNHTTP}/mm-beos-r5-intel.gz${DOWNSUFFIX}\">mm-beos-r5-intel.gz
 (${KsizeBeOS}k)</a></b> - For R5 Intel. This is a straight Unix-like
 compile, taking advantage of BeOS' POSIX environment, with no mods for
 BeOS. (I almost put it in the section above.) This is only the binary; no
@@ -228,17 +237,20 @@ default UTF-8.
 
 <h4>MS-DOS</h4>
 <ul>
-<li><b><a href=\"${DOWNHTTP}/mmdos${SHORTVER}.zip\">mmdos${SHORTVER}.zip
+<li><b><a 
+href=\"${DOWNHTTP}/mmdos${SHORTVER}.zip${DOWNSUFFIX}\">mmdos${SHORTVER}.zip
 (${KsizeDOS}k)</a></b> - 32-bit version. This also includes documentation.
 Needs at least a 386 to run. Also works under Windows 9x, etc.
 
-<li><b><a href=\"${DOWNHTTP}/mmxt${SHORTVER}.zip\">mmxt${SHORTVER}.zip
+<li><b><a 
+href=\"${DOWNHTTP}/mmxt${SHORTVER}.zip${DOWNSUFFIX}\">mmxt${SHORTVER}.zip
 (${KsizeXT}k)</a></b> - 16-bit version. This also includes documentation.
 </ul>
 
 <h4>OS/2</h4>
 <ul>
-<li><b><a href=\"${DOWNHTTP}/mmos2${SHORTVER}.zip\">mmos2${SHORTVER}.zip
+<li><b><a 
+href=\"${DOWNHTTP}/mmos2${SHORTVER}.zip${DOWNSUFFIX}\">mmos2${SHORTVER}.zip
 (${KsizeOS2}k)</a></b> - This also includes documentation. Needs at least
 OS/2 2.0 and <a
 href=\"http://archiv.leo.org/pub/comp/os/os2/leo/gnu/emx+gcc/\">the EMX
@@ -247,7 +259,8 @@ runtime library</a>.
 
 <h4>Win32</h4>
 <ul>
-<li><b><a href=\"${DOWNHTTP}/mmwin${SHORTVER}.zip\">mmwin${SHORTVER}.zip
+<li><b><a 
+href=\"${DOWNHTTP}/mmwin${SHORTVER}.zip${DOWNSUFFIX}\">mmwin${SHORTVER}.zip
 (${KsizeBCC}k)</a></b> - Borland C++ version. This also includes
 documentation. Needs Windows 9x, ME, NT, 2000 or XP (<i>recommended</i>
 for NT, 2000 or XP). Note that this is a console (text-mode) application.
@@ -256,16 +269,16 @@ for NT, 2000 or XP). Note that this is a console (text-mode) application.
 <h4>AtheOS</h4>
 <ul>
 <li><b><a
-href=\"${DOWNHTTP}/mmail-${VER}.bin.1.tgz\">mmail-${VER}.bin.1.tgz
+href=\"${DOWNHTTP}/mmail-${VER}.bin.1.tgz${DOWNSUFFIX}\">mmail-${VER}.bin.1.tgz
 (${KsizeAtheOS}k)</a></b> - For <a
 href=\"http://www.atheos.cx/\">AtheOS</a>, in its standard package format.
 (Only the binary and man page are included.)  You'll also want to install
 unzip, which is available in the \"Optional packages\" section of the
 AtheOS site, and zip, which I'm making available as a package <a
-href=\"${DOWNHTTP}/zip-2.3.bin.1.tgz\">here (65k)</a>. (You'll also need
-an editor -- the standard AtheOS mc package works nicely, and provides a
-link to \"vi\", which is MultiMail's default.)  As with the BeOS port,
-this is a straight POSIX compile.
+href=\"${DOWNHTTP}/zip-2.3.bin.1.tgz${DOWNSUFFIX}\">here (65k)</a>. 
+(You'll also need an editor -- the standard AtheOS mc package works
+nicely, and provides a link to \"vi\", which is MultiMail's default.)  As
+with the BeOS port, this is a straight POSIX compile.
 </ul>
 
 
@@ -275,37 +288,6 @@ I haven't tested these myself, unless so noted, and I can't provide
 support for them.
 <p>
 <ul>
-
-<li><b><a
-href=\"${DOWNHTTP}/mmail-${VER}-1.i386.rpm\">mmail-${VER}-1.i386.rpm
-(164k)</a></b> - Red Hat 7.1 i386 RPM. Includes docs. Submitted by <a
-href=\"mailto:greg@techno.co.za\">Greg Wildman</a>.
-
-<li><b><a
-href=\"${DOWNHTTP}/mmail-${VER}-1.src.rpm\">mmail-${VER}-1.src.rpm
-(200k)</a></b> - Source RPM, built on Red Hat 7.1. Submitted by <a
-href=\"mailto:greg@techno.co.za\">Greg Wildman</a>.
-
-<li><b><a
-href=\"${DOWNHTTP}/mmail-${VER}-MDK7.0.i686.rpm\">mmail-${VER}-MDK7.0.i686.rpm
-(168k)</a></b> - Mandrake 7.0 i686 RPM. Includes docs. Submitted by <a
-href=\"mailto:tsummerfelt1@home.com\">Tony Summerfelt</a>. (Note that this
-uses /usr/local/bin, where previous contrib Mandrake RPMs used /usr/bin.)
-
-<li><b><a
-href=\"${DOWNHTTP}/mmail-${VER}-MDK7.0.src.rpm\">mmail-${VER}-MDK7.0.src.rpm
-(200k)</a></b> - Source RPM, built on Mandrake 7.0. Submitted by <a
-href=\"mailto:tsummerfelt1@home.com\">Tony Summerfelt</a>.
-
-<li><b><a
-href=\"${DOWNHTTP}/mmail-${VER}-SuSE6.4.i386.rpm\">mmail-${VER}-SuSE6.4.i386.rpm
-(164k)</a></b> - SuSE Linux i386 RPM. Includes docs. Submitted by <a
-href=\"mailto:tsummerfelt1@home.com\">Tony Summerfelt</a>.
-
-<li><b><a
-href=\"${DOWNHTTP}/mmail-${VER}-SuSE6.4.src.rpm\">mmail-${VER}-SuSE6.4.src.rpm
-(198k)</a></b> - Source RPM, built on SuSE Linux 6.4. Submitted by <a
-href=\"mailto:tsummerfelt1@home.com\">Tony Summerfelt</a>.
 
 </ul>
 -->
@@ -338,14 +320,14 @@ for OS/2 and Win32:
 <p>
 <ul>
 
-<li><b><a href=\"${DOWNHTTP}/unzos2.zip\">OS/2 (42k)</a></b> - Needs at
-least OS/2 2.0 and <a
+<li><b><a href=\"${DOWNHTTP}/unzos2.zip${DOWNSUFFIX}\">OS/2 (42k)</a></b> 
+- Needs at least OS/2 2.0 and <a
 href=\"http://archiv.leo.org/pub/comp/os/os2/leo/gnu/emx+gcc/\">the EMX
 runtime library</a>.
 
-<li><b><a href=\"${DOWNHTTP}/unzwin.zip\">Win32 (87k)</a></b> - Needs
-Windows 9x, ME, NT, 2000 or XP. Note that this is a console (text-mode)
-application.
+<li><b><a href=\"${DOWNHTTP}/unzwin.zip${DOWNSUFFIX}\">Win32 (87k)</a></b> 
+- Needs Windows 9x, ME, NT, 2000 or XP. Note that this is a console 
+(text-mode) application.
 
 </ul>
 
@@ -364,11 +346,12 @@ discussion list</a>.
 
 <li><b>Format specifications:</b>
 <ul>
-<li><a href=\"${DOWNHTTP}/bwdev300.tar.gz\">Blue Wave (51k)</a>
-<li><a href=\"${DOWNHTTP}/qwkspecs.tar.gz\">QWK (26k)</a> -
+<li><a href=\"${DOWNHTTP}/bwdev300.tar.gz${DOWNSUFFIX}\">Blue Wave 
+(51k)</a>
+<li><a href=\"${DOWNHTTP}/qwkspecs.tar.gz${DOWNSUFFIX}\">QWK (26k)</a> -
 including QWKE
-<li><a href=\"${DOWNHTTP}/omen-i.txt.gz\">OMEN (6k)</a>
-<li><a href=\"${DOWNHTTP}/soup12.txt.gz\">SOUP (14k)</a>
+<li><a href=\"${DOWNHTTP}/omen-i.txt.gz${DOWNSUFFIX}\">OMEN (6k)</a>
+<li><a href=\"${DOWNHTTP}/soup12.txt.gz${DOWNSUFFIX}\">SOUP (14k)</a>
 </ul>
 <li><b><a href=\"http://www.kannoncom.com/~jhanoian/readers/\">Offline
 readers</a></b>
