@@ -1,0 +1,42 @@
+The type 'm' (Unix mailbox) parser in the SOUP module was missing some
+valid "From " separators, so I incorporated code based on the VALID macro
+from the C-Client library by Mark Crispin. I've read conflicting claims
+about whether its "free-fork" license is GPL-compatible, but since I don't
+see a better way to do this, I've chosen to assume that it is, at least for
+now. Anyway, this may in fact be the _only_ valid (no pun intended) way to
+parse a Unix mailbox without false positives or negatives.
+
+The ANSI viewer was not displaying the headers of SOUP messages when
+animating them, or thereafter. This was really a problem with multiblock
+messages (otherwise not noticeable except in the XT version, and then only
+with a message over 64K). Also, the ANSI viewer now acknowledges "expert"  
+mode (i.e., it omits the "F1 or ? - Help" message from the lower right).
+
+The address book and tagline windows now show the number of items, like
+the other lists.
+
+In an xterm, when the tagline window was active, bits of the scroll bar
+and the screen border were being replaced with blanks. I've fixed this in
+an ad hoc way, but I'm not quite sure what caused it.
+
+An empty file list in the packet window caused problems. Normally you
+wouldn't see this, because there's always at least a ".." entry for the
+parent directory. But the filesystem on a Windows CE device apparently
+lacks them, as I found when running MultiMail/XT under PocketDOS.
+
+Setting the "UseColors" keyword to "No" now forces the use of the default
+colors (or rather, the monochrome version of them), as the .mmailrc
+comment had already claimed it did, instead of the monochrome version of
+the colors specified by "ColorFile".
+
+The "Reverse" attribute will no longer be stripped from a color file
+that's rewritten by a PDCurses (DOSish) port.
+
+If the tagline file existed, but was completely empty, a segfault would
+occur on selecting the (nonexistent) tagline when composing a message.
+Reported by Touko Rajala.
+
+Some really basic stuff added to the man page -- it always should've been
+there. Further revision is needed.
+
+Minor speedups.

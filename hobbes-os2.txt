@@ -1,0 +1,30 @@
+\040                         Upload Information Template for Hobbes.nmsu.edu
+\040                         ===============================================
+
+\040       Archive Filename: mmos2${SHORTVER}.zip
+\040      Short Description: MultiMail offline reader, v${VER}
+\040       Long Description: MultiMail offline reader for OS/2, v${VER} -
+\040                         Reads Blue Wave, QWK, OMEN and SOUP packets. This
+\040                         is a 32-bit OS/2 executable. Freeware, GPL'ed.
+\040                         C++ source is available in mmsrc${SHORTVER}.zip.
+
+\040     Proposed directory
+\040          for placement: /pub/os2/apps/comm/offline
+
+\040              Your name: William McBrine
+\040          Email address: ${EMAIL}
+\040   Program contact name: (same)
+\040  Program contact email: (same)
+\040            Program URL: http://multimail.sourceforge.net/
+
+\040     Would you like the
+\040  contact email address
+\040   included in listings? yes
+
+Operating System/Version: OS/2 2.0+
+\040Additional requirements: EMX runtime (0.9d), InfoZip
+
+\040               Replaces: mmos2${OLDSHORT}.zip
+
+
+

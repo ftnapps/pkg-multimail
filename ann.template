@@ -1,0 +1,22 @@
+MultiMail is a free, open source (GPL) offline mail packet reader for
+Unix, DOS, OS/2, Win32, BeOS and AtheOS. It currently supports the Blue
+Wave, QWK, OMEN and SOUP formats. It uses a simple curses-based interface.
+
+The MultiMail home page is:
+
+\040http://multimail.sourceforge.net/
+
+Alternately, you can get it via FTP:
+
+\040ftp://download.sourceforge.net/pub/sourceforge/multimail/
+
+Binaries for several platforms are available, along with the source code.
+
+
+What's New in version ${VER}?
+---------------------------
+
+`makebull supress <mmail-extra/whatsnew | subst`
+
+
+`subst <mmail-extra/mmail.lsm | untab`

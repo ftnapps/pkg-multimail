@@ -1,0 +1,6 @@
+MultiMail offline reader source, v${VER} -
+Reads Blue Wave, QWK, OMEN & SOUP packets.
+This is the C++ source code. Freeware,
+GPL'ed. For Unix, DOS, OS/2, Win32, etc.;
+curses; PKZIP or InfoZip. William McBrine
+<${EMAIL}>

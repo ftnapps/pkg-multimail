@@ -1,0 +1,71 @@
+Description of MultiMail patches
+
+-- Version 0.43 released --
+
+Patch 1067:
+
+To ListWindow::KeyHandle() in basic.cc; added '|' as equivalent for '^'.
+To class help; same.
+
+Rationale:
+
+'^' is a poor choice on some European keyboards. Reported by Peter Karlsson.
+'|' copied from blueMail. (I did have '*', but '|' makes more sense.)
+
+Patch 1068:
+
+To ListWindow::KeyHandle(); moved main filter routine here. To derived
+classes; added setFilter(), removed filter setting from extrakeys().
+
+Rationale:
+
+Eliminate redundant code.
+
+Patch 1069:
+
+To LittleAreaListWindow::setFilter(); added call to init().
+
+Rationale:
+
+The filter was not working correctly here (even in 0.43).
+
+Patch 1070:
+
+To myreaddir() and mystat::init() in mysystem.cc; added calls to findclose(),
+ifdef'd for Win32.
+
+Rationale:
+
+In the Win32 version, under NT (though not 9x), the temporary directories
+were not being deleted. To Do: Overhaul the temp dir system?
+
+Patch 1071:
+
+To addrbook.cc, tagline.cc, and lettpost.cc; changed ShadowedWin inits with
+COLS - 2 to COLS - 4.
+
+Rationale:
+
+See patch 1062. I still need to sort this out properly.
+
+Patch 1072:
+
+To DEFRAR and DEFUNRAR in resource.cc; added "-inul".
+
+Rationale:
+
+To supress output, for consistency with the Zip lines. I noticed the output
+because I finally encountered an actual RARed packet -- seemingly now the
+default (?) for Sursum Corda. (Or if not the default, at any rate, my
+archiver setting was somehow changed to RAR there.)
+
+Patch 1073:
+
+To LetterListWindow::setFormat(); simplified assignment of topformat. To
+::MakeActiveCore(); eliminated topformat. To LetterWindow::UpdateHeader();
+eliminated format[] and sformat[] strings. To ::DrawStat(); etc. To
+AnsiWindow::statupdate(); similar.
+
+Rationale:
+
+I just learned about the '*' parameter for the printf() family. Doh!

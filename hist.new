@@ -1,0 +1,35 @@
+A big one: Filter feature in all list windows, invoked by pressing '^'
+(shift-6). See the "FILTERING" section of the man page for details. This
+was inspired by similar features in the Pan and BNR newsreaders.
+
+Clock in the upper right corner of the letter window. (I would've added it
+to the others, but they lack an obvious place to put it. I figured that
+one spends most of one's time in the letter window anyway.) It can show
+time of day, time since startup, or be disabled, as controlled by the new
+keyword "ClockMode". Note that this required changes to the keyboard
+routines (now using halfdelay() instead of a blocking call), which in turn
+affected the ability of MultiMail to give up CPU time when idling. Most
+ports still use little CPU, but the XT version pegs it high, except under
+DOSEmu. (Old versions of DOSEmu, ironically, instead show high CPU usage
+with the new DOS (DPMI) version, which doesn't have that problem under
+Windows or OS/2.) Also, I had to fix PDCurses to make this work -- write
+to me if you want the patch.
+
+"AT code" parser for the ANSI viewer, for PCBoard and Wildcat '@' color
+codes. (I've only seen these used in the sample packets that came with a
+few readers -- do they exist in the wild?) Also, "ANSI music", though
+still not played, is now filtered out, so at least it doesn't clutter the
+image.
+
+The "UseColors" keyword is now available in the PDCurses (DOSish) ports.  
+That means a monochrome mode, which should help on some displays.
+
+The packet name is now displayed when in the letter list, letter window or
+ANSI viewer. No more having to back out to check. :-) The placement of the
+packet name in the area list window has been changed for consistency.
+
+The tagline window can now be sorted, optionally.
+
+An "Opening..." notice is now displayed when entering an area, as when
+opening a packet. (This operation can be slow, so it's good to have a hint
+that MultiMail got the message.)

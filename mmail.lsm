@@ -1,0 +1,17 @@
+Begin3
+Title:\t\tMultiMail (source)
+Version:\t${VER}
+Entered-date:\t`date +%d%b%y|tr a-z A-Z`
+Description:\tMultiMail is a curses-based Blue Wave, QWK, OMEN and SOUP
+\t\toffline mail reader for Unix and other systems.
+Keywords:\tmail bluewave omen qwk soup bbs fido offline reader
+Author:\t\t${EMAIL} (William McBrine) et al.
+Maintained-by:\t${EMAIL} (William McBrine)
+Primary-site:\tdownload.sourceforge.net /pub/sourceforge/multimail
+\t\t`du -b ${MMFILE}`
+Alternate-site: sunsite.unc.edu /pub/Linux/system/bbs/mail
+Original-site:
+Platforms:\tC++, curses and InfoZip or PKZIP. Tested on Linux, Solaris,
+\t\tNetBSD, MS-DOS, OS/2, Win32, BeOS, AtheOS, FreeBSD, MacOS X, QNX
+Copying-policy: GPL 2.0
+End

@@ -1,0 +1,424 @@
+<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 3.2//EN\">
+<html>
+<head>
+<meta http-equiv=\"Content-Type\" content=\"text/html; charset=iso-8859-1\">
+<meta name=\"Author\" content=\"William McBrine\">
+<meta name=\"Description\" content=\"MultiMail is a Blue Wave, QWK,
+OMEN and SOUP offline packet reader for Unix, DOS, OS/2 and Win32\">
+<title>MultiMail Offline Reader</title>
+</head>
+<body bgcolor=\"#FFFFFF\" text=\"#000000\" link=\"#0000FF\" vlink=\"#00007F\"
+background=\"mm/marble01.jpg\">
+
+<table border=\"2\" cellpadding=\"10\">
+
+<tr>
+<td colspan=\"2\">
+
+<font face=\"arial,geneva,helvetica,veranda,sans-serif\">
+
+<center><h2><img src=\"mm/mm_name8.gif\" alt=\"MultiMail Offline Packet Reader\"
+width=456 height=68></h2></center>
+
+</font>
+</td>
+</tr>
+
+<tr>
+<td valign=\"top\">
+
+<font face=\"arial,geneva,helvetica,veranda,sans-serif\" size=\"-1\">
+<b>
+
+
+<center>
+Hosted by<br>
+<img src=\"http://sourceforge.net/sflogo.php?group_id=6508&amp;type=1\"
+width=88 height=31 alt=\"SourceForge\"><p>
+</center>
+
+<hr>
+
+Download<p>
+- <a href=\"#binaries\">Binaries</a><p>
+- <a href=\"#source\">Source</a><p>
+<a href=\"snaps.html\">Screen shots</a><p>
+<a href=\"install.html\">Installation</a><p>
+<a href=\"faq.html\">FAQ</a><p>
+<a href=\"history.html\">History</a><p>
+<a href=\"#mlists\">Mailing lists</a><p>
+<a href=\"#links\">Links</a><p>
+<a href=\"http://sourceforge.net/projects/multimail/\">
+SourceForge<br>project page</a><p>
+
+<hr>
+
+</b>
+</font>
+
+</td>
+<td>
+<font face=\"arial,geneva,helvetica,veranda,sans-serif\">
+
+<h3>What's new?</h3>
+
+<h4>Version ${VER}</h4>
+
+<ul>
+`makebull supress <mmail-extra/whatsnew | subst`
+</ul>
+
+<p>
+See the <b><a href=\"history.html\">history</a></b> file for other
+changes.
+<hr>
+
+<h3>What is MultiMail?</h3>
+MultiMail is an offline mail packet reader for Unix and other systems.
+(This version also compiles under MSDOS, with
+<a href=\"http://www.delorie.com/djgpp/\">DJGPP</a> or Turbo C++; OS/2,
+with
+<a href=\"http://archiv.leo.org/pub/comp/os/os2/leo/gnu/emx+gcc/\">EMX</a>;
+Win32, with
+<a href=\"http://www.mathematik.uni-bielefeld.de/~rainer/\">RSXNT</a> or
+<a href=\"http://www.borland.com/bcppbuilder/freecompiler/\">Borland
+C++</a>; <a href=\"http://www.be.com/products/freebeos/\">BeOS</a>; and
+<a href=\"http://www.atheos.cx/\">AtheOS</a>.)
+It currently supports the Blue Wave, QWK, OMEN and SOUP formats. It
+has a full screen, color user interface, built with the curses library.
+<p>
+MultiMail is free, \"open source\" software, distributed under the GNU
+General Public License (q.v.).
+<p>
+Please direct all correspondence about MultiMail to William McBrine
+(<b><a href=\"mailto:${EMAIL}\">${EMAIL}</a></b>).
+
+<h4>Features</h4>
+
+<ul>
+<li>auto-decompression of packets with external compress program
+<li>user-friendly menus to select packet, area, letter, etc.
+<li>save whole area or one letter in a text file
+<li>enter mail in any area (using external editor)
+<li>insert tagline from a tagline file
+<li>reply mail with quote
+<li>write netmail
+<li>netmail addressbook
+</ul>
+
+<hr>
+
+
+<h3><a name=\"source\">Source code</a></h3>
+
+You can get the MultiMail v${VER} source code in .tar.gz format 
+(${KsizeMM}k)
+<b><a href=\"${DOWNHTTP}/mmail-${VER}.tar.gz\">via 
+http here</a></b>, or by anonymous FTP from:
+<p>
+<ul>
+
+<li><b><a
+href=\"${DOWNFTP}/mmail-${VER}.tar.gz\">
+${DOWNFTP2}</a></b>
+<li><b><a
+href=\"ftp://sunsite.unc.edu/pub/Linux/Incoming/mmail-${VER}.tar.gz\">
+sunsite.unc.edu</a></b>
+<!--
+<li><b><a
+href=\"ftp://sunsite.unc.edu/pub/Linux/system/bbs/mail/mmail-${VER}.tar.gz\">
+sunsite.unc.edu</a></b>
+-->
+
+</ul>
+<p>
+<b>Additional source code formats:</b>
+<p>
+<ul>
+<li><b><a href=\"${DOWNHTTP}/mmsrc${SHORTVER}.zip\">Pure .ZIP
+(${KsizePureZip}k)</a></b> -
+If you don't want to mess with .tar.gz. :-) This file may not survive
+intact on some BBSes (they'll remove the directories). If you're using
+PKZIP, extract it with the \"-d\" option.
+</ul>
+
+<h4>Requirements for compiling</h4>
+
+<ul>
+<li>Unix-compatible (POSIX) API, or Borland/Turbo C++
+<li>curses -- tested with ncurses 1.9.3+, Solaris curses, and PDCurses
+<li>GNU make <i>may</i> be required on some systems
+</ul>
+
+<hr>
+
+
+<h3><a name=\"binaries\">Binaries</a></h3>
+Precompiled executables of v${VER} for various systems. If you can submit
+binaries for other platforms, please
+<a href=\"mailto:${EMAIL}\">email me.</a>
+
+<h4>Unix</h4>
+I don't actually recommend that you use these. They're statically linked
+with ncurses, but dynamically linked otherwise; so you might do better
+compiling your own. Note that if you want the documentation, you'll also
+need <a href=\"${DOWNHTTP}/mmail-${VER}.tar.gz\">the source
+archive</a>;
+these are only the binaries.
+<p>
+To use any of these, simply gunzip (NOT untar -- these are not tar files),
+make executable (e.g., \"chmod 700 mm-linux-i386elf\"), and run.
+<p>
+<ul>
+<li><b><a
+href=\"${DOWNHTTP}/mm-darwin-ppc.gz\">mm-darwin-ppc.gz
+(${KsizeDarwin}k)</a></b> - Darwin/PPC, aka Mac OS X. Yes, finally a Mac 
+port! (Sort of.)
+
+<li><b><a
+href=\"${DOWNHTTP}/mm-linux-i386elf.gz\">mm-linux-i386elf.gz
+(${KsizeLinux}k)</a></b> - Linux/i386 ELF, compiled on a modified
+Slackware 3.0. Needs libc5.
+
+<li><b><a
+href=\"${DOWNHTTP}/mm-netbsd-m68k.gz\">mm-netbsd-m68k.gz
+(${KsizeNetBSD}k)</a></b> - NetBSD/m68k, compiled on 1.3.
+
+<li><b><a
+href=\"${DOWNHTTP}/mm-qnx-i386.gz\">mm-qnx-i386.gz
+(${KsizeQNX}k)</a></b> - QNX/i386, compiled on RTP 6.0.
+
+<li><b><a
+href=\"${DOWNHTTP}/mm-solaris-i386.gz\">mm-solaris-i386.gz
+(${KsizeSolaris}k)</a></b> - Solaris/i386, compiled on 8.
+
+<li><b><a
+href=\"${DOWNHTTP}/mm-solaris-sparc.gz\">mm-solaris-sparc.gz
+(${KsizeSolaris2}k)</a></b> - Solaris/Sparc, compiled on 8.
+
+<li>From the SourceForge compile farm -- these are dynamically linked with
+ncurses:
+
+<ul>
+<li><b><a
+href=\"${DOWNHTTP}/mm-freebsd-i386.gz\">mm-freebsd-i386.gz
+(${KsizeFreeBSD}k)</a></b> - FreeBSD, compiled on 4.2-stable.
+
+<li><b><a
+href=\"${DOWNHTTP}/mm-linux-alpha.gz\">mm-linux-alpha.gz
+(${KsizeAlpha}k)</a></b> - Linux/Alpha, compiled on Red Hat 7.0.
+
+<li><b><a
+href=\"${DOWNHTTP}/mm-linux-ppc.gz\">mm-linux-ppc.gz
+(${KsizePPC}k)</a></b> - Linux/PPC, compiled on Debian 2.2.
+
+<li><b><a
+href=\"${DOWNHTTP}/mm-linux-sparc.gz\">mm-linux-sparc.gz
+(${KsizeSparc}k)</a></b> - Linux/Sparc, compiled on Debian 2.2.
+</ul>
+
+
+</ul>
+
+<h4>BeOS</h4>
+
+<ul>
+<li><b><a
+href=\"${DOWNHTTP}/mm-beos-r5-intel.gz\">mm-beos-r5-intel.gz
+(${KsizeBeOS}k)</a></b> -
+For R5 Intel. This is a straight Unix-like compile, taking advantage of
+BeOS' POSIX environment, with no mods for BeOS. (I almost put it in the
+section above.) This is only the binary; no docs. As with the Unix 
+binaries, gunzip it and make it executable.
+
+</ul>
+
+<h4>MS-DOS</h4>
+<ul>
+<li><b><a
+href=\"${DOWNHTTP}/mmdos${SHORTVER}.zip\">mmdos${SHORTVER}.zip
+(${KsizeDOS}k)</a></b> - 32-bit version. This also includes documentation.
+Needs at least a 386 to run. Also works under Windows 9x, etc.
+
+<li><b><a
+href=\"${DOWNHTTP}/mmxt${SHORTVER}.zip\">mmxt${SHORTVER}.zip
+(${KsizeXT}k)</a></b> - 16-bit version. This also includes documentation.
+</ul>
+
+<h4>OS/2</h4>
+<ul>
+<li><b><a
+href=\"${DOWNHTTP}/mmos2${SHORTVER}.zip\">mmos2${SHORTVER}.zip
+(${KsizeOS2}k)</a></b> - This also includes documentation. Needs at least
+OS/2 2.0 and <a
+href=\"http://archiv.leo.org/pub/comp/os/os2/leo/gnu/emx+gcc/\">the
+EMX runtime library</a>.
+</ul>
+
+<h4>Win32</h4>
+<ul>
+
+<li><b><a
+href=\"${DOWNHTTP}/mmwin${SHORTVER}.zip\">mmwin${SHORTVER}.zip
+(${KsizeBCC}k)</a></b> - Borland C++ version. This also includes
+documentation. Needs Windows 9x, ME, NT, 2000 or XP (<i>recommended</i> for
+NT, 2000 or XP). Note that this is a console (text-mode) application.
+
+<!--
+<li><b><a
+href=\"${DOWNHTTP}/mmrsx${SHORTVER}.zip\">mmrsx${SHORTVER}.zip
+(${KsizeRSX}k)</a></b> - Original Win32 version, compiled with RSX/NT.
+(The compiler is the only difference.)
+-->
+
+</ul>
+
+<h4>AtheOS</h4>
+<ul>
+
+<li><b><a
+href=\"${DOWNHTTP}/mmail-${VER}.bin.1.tgz\">mmail-${VER}.bin.1.tgz
+(${KsizeAtheOS}k)</a></b> - For <a href=\"http://www.atheos.cx/\">AtheOS</a>,
+in its standard package format. (Only the binary and man page are included.) 
+You'll also want to install unzip, which is available in the \"Optional 
+packages\" section of the AtheOS site, and zip, which I'm making available 
+as a package <a href=\"${DOWNHTTP}/zip-2.3.bin.1.tgz\">here
+(65k)</a>. (You'll also need an editor -- the standard AtheOS mc package 
+works nicely, and provides a link to \"vi\", which is MultiMail's default.) 
+As with the BeOS port, this is a straight POSIX compile.
+
+</ul>
+
+
+<!--
+<h4>User-contributed binaries</h4>
+I haven't tested these myself, unless so noted, and I can't provide
+support for them.
+<p>
+<ul>
+
+<li><b><a
+href=\"${DOWNHTTP}/mmail-${VER}-1.i386.rpm\">mmail-${VER}-1.i386.rpm
+(164k)</a></b> - Red Hat 7.1 i386 RPM. Includes docs. Submitted by
+<a href=\"mailto:greg@techno.co.za\">Greg Wildman</a>.
+
+<li><b><a
+href=\"${DOWNHTTP}/mmail-${VER}-1.src.rpm\">mmail-${VER}-1.src.rpm
+(200k)</a></b> - Source RPM, built on Red Hat 7.1. Submitted by
+<a href=\"mailto:greg@techno.co.za\">Greg Wildman</a>.
+
+<li><b><a
+href=\"${DOWNHTTP}/mmail-${VER}-MDK7.0.i686.rpm\">mmail-${VER}-MDK7.0.i686.rpm
+(168k)</a></b> - Mandrake 7.0 i686 RPM. Includes docs. Submitted by
+<a href=\"mailto:tsummerfelt1@home.com\">Tony Summerfelt</a>. (Note that
+this uses /usr/local/bin, where previous contrib Mandrake RPMs used
+/usr/bin.)
+
+<li><b><a
+href=\"${DOWNHTTP}/mmail-${VER}-MDK7.0.src.rpm\">mmail-${VER}-MDK7.0.src.rpm
+(200k)</a></b> - Source RPM, built on Mandrake 7.0. Submitted by
+<a href=\"mailto:tsummerfelt1@home.com\">Tony Summerfelt</a>.
+
+<li><b><a
+href=\"${DOWNHTTP}/mmail-${VER}-SuSE6.4.i386.rpm\">mmail-${VER}-SuSE6.4.i386.rpm
+(164k)</a></b> - SuSE Linux i386 RPM. Includes docs. Submitted by
+<a href=\"mailto:tsummerfelt1@home.com\">Tony Summerfelt</a>.
+
+<li><b><a
+href=\"${DOWNHTTP}/mmail-${VER}-SuSE6.4.src.rpm\">mmail-${VER}-SuSE6.4.src.rpm
+(198k)</a></b> - Source RPM, built on SuSE Linux 6.4. Submitted by
+<a href=\"mailto:tsummerfelt1@home.com\">Tony Summerfelt</a>.
+
+</ul>
+-->
+
+<h4>Additional port status</h4>
+
+As an alternative to the Win32 versions, the 32-bit MSDOS version supports
+long file names when run under Windows 9x and ME (but not NT). In fact, on
+those platforms, I recommend it over the native Win32 port. But for NT,
+2000 or XP, you should use the native Win32 version.
+
+<p>
+Other ports that might be interesting:
+<p>
+<ul>
+<li>Amiga OS
+<li>Atari MiNT
+<li>Mac OS -- possible?
+</ul>
+
+
+<h4>Unzip, with unshrinking</h4>
+Archives produced by PKZIP 1.1 (reportedly still used on some BBSes!) can
+contain files compressed with the \"shrinking\" method, which is based on
+the now-infamous LZW algorithm. Because of the patent problems associated
+with LZW, the binaries distributed by the InfoZip group have unshrinking
+disabled, but it's still included in the source code. For your
+convenience, here are binaries of Unzip 5.41 with unshrinking included,
+for OS/2 and Win32:
+<p>
+<ul>
+<li><b><a href=\"${DOWNHTTP}/unzos2.zip\">OS/2 (42k)</a></b>
+- Needs at least OS/2 2.0 and
+<a href=\"http://archiv.leo.org/pub/comp/os/os2/leo/gnu/emx+gcc/\">the EMX
+runtime library</a>.
+<li><b><a href=\"${DOWNHTTP}/unzwin.zip\">Win32 (87k)</a></b>
+- Needs Windows 9x, ME, NT, 2000 or XP. Note that this is a console (text-mode)
+application.
+</ul>
+
+<hr>
+<h3><a name=\"mlists\">Mailing lists</a></h3>
+
+Join the MultiMail <a
+href=\"http://lists.sourceforge.net/lists/listinfo/multimail-announce\">
+announce list</a> and/or the <a
+href=\"http://lists.sourceforge.net/lists/listinfo/multimail-user\">
+discussion list</a>.
+
+<hr>
+<h3><a name=\"links\">Other links</a></h3>
+<ul>
+
+<li><b>Old MultiMail pages:</b>
+<ul>
+<li><a href=\"http://www.vma.bme.hu/~stoty/README.html\">
+T&oacute;th Istv&aacute;n's</A>
+
+</ul>
+<li><b>Format specifications:</b>
+<ul>
+<li><a href=\"${DOWNHTTP}/bwdev300.tar.gz\">Blue Wave (51k)</a>
+<li><a href=\"${DOWNHTTP}/qwkspecs.tar.gz\">QWK (26k)</a> -
+including QWKE
+<li><a href=\"${DOWNHTTP}/omen-i.txt.gz\">OMEN (6k)</a>
+<li><a href=\"${DOWNHTTP}/soup12.txt.gz\">SOUP (14k)</a>
+</ul>
+<li><b><a href=\"http://www.kannoncom.com/~jhanoian/readers/\">Offline
+readers</a></b>
+</ul>
+
+<hr>
+<h3>Credits</h3>
+
+MultiMail was originally developed under Linux by
+Kolossv&aacute;ry Tam&aacute;s and T&oacute;th Istv&aacute;n.
+John Zero was the maintainer for versions 0.2 through 0.6; since version
+0.7, the maintainer is <a href=\"mailto:${EMAIL}\">William McBrine</a>.
+<p>
+Additional code has been contributed by Peter Karlsson, Mark D. Rejhon,
+Ingo Brueckl, Robert Vukovic and Mark Crispin.
+<p>
+Bug reports and suggestions are noted in the
+<b><a href=\"history.html\">history</a></b> file.
+<br clear=all>
+<hr>
+<address>Page by <a href=\"mailto:${EMAIL}\">William McBrine</a>. Last
+updated: ${TODAY2}</address>
+
+</font>
+</td></tr></table>
+
+</body>
+</html>
