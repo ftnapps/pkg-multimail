@@ -1,42 +1,32 @@
-The type 'm' (Unix mailbox) parser in the SOUP module was missing some
-valid "From " separators, so I incorporated code based on the VALID macro
-from the C-Client library by Mark Crispin. I've read conflicting claims
-about whether its "free-fork" license is GPL-compatible, but since I don't
-see a better way to do this, I've chosen to assume that it is, at least for
-now. Anyway, this may in fact be the _only_ valid (no pun intended) way to
-parse a Unix mailbox without false positives or negatives.
+Changed the way that the length of QWK replies is calculated. This is a
+speculative fix for a reported problem with corrupt replies that I
+couldn't reproduce; but from what was described, this _should_ do it. At
+any rate, the new code is simpler and cleaner. Reported by Jimmy Day et
+al.
 
-The ANSI viewer was not displaying the headers of SOUP messages when
-animating them, or thereafter. This was really a problem with multiblock
-messages (otherwise not noticeable except in the XT version, and then only
-with a message over 64K). Also, the ANSI viewer now acknowledges "expert"  
-mode (i.e., it omits the "F1 or ? - Help" message from the lower right).
+Pressing the "END" key in string input fields now works corrrectly, taking
+the cursor to the end of the field instead of ending the edit. Reported by
+Touko Rajala.
 
-The address book and tagline windows now show the number of items, like
-the other lists.
+Bogus/unintentional '@' color code sequences could cause segfaults in the
+ANSI viewer. Reported by Neall Mercado.
 
-In an xterm, when the tagline window was active, bits of the scroll bar
-and the screen border were being replaced with blanks. I've fixed this in
-an ad hoc way, but I'm not quite sure what caused it.
+In the Win32 version, under NT (though not 9x), the temporary directories
+were not being deleted.
 
-An empty file list in the packet window caused problems. Normally you
-wouldn't see this, because there's always at least a ".." entry for the
-parent directory. But the filesystem on a Windows CE device apparently
-lacks them, as I found when running MultiMail/XT under PocketDOS.
+The filter was not working correctly in the LittleAreaListWindow.
 
-Setting the "UseColors" keyword to "No" now forces the use of the default
-colors (or rather, the monochrome version of them), as the .mmailrc
-comment had already claimed it did, instead of the monochrome version of
-the colors specified by "ColorFile".
+Junk could appear in the LetterList on a resort if some messages were
+read.
 
-The "Reverse" attribute will no longer be stripped from a color file
-that's rewritten by a PDCurses (DOSish) port.
+Narrowed the width of some windows as a workaround for display bugs in
+xterm.
 
-If the tagline file existed, but was completely empty, a segfault would
-occur on selecting the (nonexistent) tagline when composing a message.
-Reported by Touko Rajala.
+Added "-inul" to the default command lines for RAR to supress the output.
 
-Some really basic stuff added to the man page -- it always should've been
-there. Further revision is needed.
+Minor internal changes to allow compilation and remove warnings under
+Sun's SUNWspro C++ compiler. This also entailed the elimination of the
+sillier of the "set_Letter_Params()" functions, which was long overdue.
+:-)
 
-Minor speedups.
+Miscellaneous small changes for efficiency.

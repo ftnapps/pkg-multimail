@@ -1,13 +1,9 @@
-Filter function for all lists
+Speculative fix for corrupt QWK reply problem
 
-Clock in letter window
+New key for filter function, other filter fixes
 
-"AT code" parser in ANSI viewer for PCBoard/Wildcat
+Fixes for END key in input, segfaults in ANSI, display bugs
 
-Monochrome option in XT, DOS, Win32 and OS/2
+Compiles under Sun C++
 
-Better SOUP mail parsing
-
-Packet name always visible
-
-Much more
+Etc.
