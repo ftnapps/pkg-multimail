@@ -1,9 +1,11 @@
-Speculative fix for corrupt QWK reply problem
+New temporary file system (see HISTORY); fixes many problems
 
-New key for filter function, other filter fixes
+ANSI viewer works much better in Unix
 
-Fixes for END key in input, segfaults in ANSI, display bugs
+Fixed some ANSI bugs on all platforms
 
-Compiles under Sun C++
+No more "extra" mmail directory
+
+Various minor display improvements
 
 Etc.

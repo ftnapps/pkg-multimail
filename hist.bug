@@ -1,32 +1,36 @@
-Changed the way that the length of QWK replies is calculated. This is a
-speculative fix for a reported problem with corrupt replies that I
-couldn't reproduce; but from what was described, this _should_ do it. At
-any rate, the new code is simpler and cleaner. Reported by Jimmy Day et
-al.
+Doing a ^X during a bulletin would cause a segfault.
 
-Pressing the "END" key in string input fields now works corrrectly, taking
-the cursor to the end of the field instead of ending the edit. Reported by
-Touko Rajala.
+A malformed 'H' command (e.g., using "0" as a parameter) in ANSI could
+cause a segfault.
 
-Bogus/unintentional '@' color code sequences could cause segfaults in the
-ANSI viewer. Reported by Neall Mercado.
+The window title is explicitly set to "MultiMail" in the Win32 and XCurses
+ports. This eliminates the problem where "UNZIP" would remain in the title
+after unarchiving a packet under Win 9x.
 
-In the Win32 version, under NT (though not 9x), the temporary directories
-were not being deleted.
+Revived cursor mode save/restore routines for PDCurses (except for Win32,
+where it doesn't work); moved cursor restoration after endwin() call in
+mysystem() (this is why it didn't do the job before).
 
-The filter was not working correctly in the LittleAreaListWindow.
+Updated Makefiles for PDCurses 2.6, and GCC 3.2.1 (in the case of EMX). I
+strongly recommend upgrading to PDCurses 2.6, in most cases, as it already
+incorporates my patch for halfdelay(); however, there's a fatal bug in the
+OS/2 version. (Write me for a patch.) I also recommend ncurses 5.3 over
+5.2 -- for one thing, it fixes the problem with the bool declaration that
+broke searching and animation in some installations -- but I've left it as
+5.2 in the Makefile, for now, because I have too many systems to recompile
+it for. :-)
 
-Junk could appear in the LetterList on a resort if some messages were
-read.
+Remaining compilation warnings eliminated for most platforms: Got rid of
+tmpnam() (see above), moved "%y" strftime() strings outside the calls
+(copied this from Ingo Brueckl), and added "-Wno-deprecated" to the
+Makefile options for the latest versions of gcc.
 
-Narrowed the width of some windows as a workaround for display bugs in
-xterm.
+Useless .mmailrc keyword "homeDir" removed. (It specified the base value 
+for mmHomeDir, but in most cases that was already specified explicitly on 
+the very next line.)
 
-Added "-inul" to the default command lines for RAR to supress the output.
+Stronger attempts to use backslash characters instead of slash where
+appropriate in MMAIL.RC (depending on the platform). But again, this is
+cosmetic.
 
-Minor internal changes to allow compilation and remove warnings under
-Sun's SUNWspro C++ compiler. This also entailed the elimination of the
-sillier of the "set_Letter_Params()" functions, which was long overdue.
-:-)
-
-Miscellaneous small changes for efficiency.
+Optimizations, comments, etc.
