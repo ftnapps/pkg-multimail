@@ -2,7 +2,7 @@
  * MultiMail offline mail reader
  * OPX
 
- Copyright (c) 2001 William McBrine <wmcbrine@users.sourceforge.net>
+ Copyright (c) 2003 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -14,12 +14,8 @@
 // The OPX methods
 // -----------------------------------------------------------------
 
-opxpack::opxpack(mmail *mmA)
+opxpack::opxpack(mmail *mmA) : pktbase(mmA)
 {
-	mm = mmA;
-	ID = 0;
-	bodyString = 0;
-
 	readBrdinfoDat();
 
 	infile = mm->workList->ftryopen("mail.dat");
@@ -39,8 +35,7 @@ area_header *opxpack::getNextArea()
 	int cMsgNum = areas[ID].nummsgs;
 	bool x = (areas[ID].num == - 1);
 
-	area_header *tmp = new area_header(mm,
-		ID + mm->driverList->getOffset(this),
+	area_header *tmp = new area_header(mm, ID + 1,
 		areas[ID].numA, areas[ID].name,
 		(x ? "Letters addressed to you" : areas[ID].name),
 		(x ? "OPX personal" : "OPX"),
@@ -261,7 +256,7 @@ void opxpack::readBrdinfoDat()
 	brdHeader header;
 	brdRec boardrec;
 	ocfgRec offrec;
-	char *p;
+	char *p, *q, tmp[80];
 	int brdCount, extCount;
 	bool hasExtra;
 
@@ -283,29 +278,38 @@ void opxpack::readBrdinfoDat()
 	strcpy(packetBaseName, p);
 	delete[] p;
 
-	p = pstrget(&header.bbsname);
-	mm->resourceObject->set_noalloc(BBSName, p);
+	BBSName = pstrget(&header.bbsname);
+	SysOpName = pstrget(&header.sysopname);
+	BBSProg = pstrget(&header.bbstype);
 
-	p = pstrget(&header.sysopname);
-	mm->resourceObject->set_noalloc(SysOpName, p);
+	p = pstrget(&header.doorid);
+	q = pstrget(&header.doorver);
+	sprintf(tmp, "%s %s", p, q);
+	DoorProg = strdupplus(tmp);
+	delete[] q;
+	delete[] p;
 
-	p = pstrget(&header.username);
-	mm->resourceObject->set(LoginName, p);
-	mm->resourceObject->set_noalloc(AliasName, p);
+	LoginName = pstrget(&header.username);
+	AliasName = strdupplus(LoginName);
 
-	char *bulls = new char[header.readerfiles * 13];
+	bulletins = header.readerfiles ?
+		new char[header.readerfiles * 13] : 0;
 
 	int c;
 	for (c = 0; c < header.readerfiles; c++) {
 		pstring(readerf,12);
 
 		fread(&readerf, 13, 1, brdinfoFile);
-		strncpy(bulls + c * 13, (char *) readerf + 1, *readerf);
-		bulls[c * 13 + *readerf] = '\0';
+		strncpy(bulletins + c * 13, (char *) readerf + 1, *readerf);
+		bulletins[c * 13 + *readerf] = '\0';
 	}
 
-	listBulletins((const char (*)[13]) bulls,
-		header.readerfiles, 1);
+	if (header.readerfiles > 1) {
+		listBulletins((const char (*)[13]) (bulletins + 13),
+			header.readerfiles - 1, 1);
+		hello = strdupplus(bulletins);
+	} else
+		listBulletins(0, 0, 1);
 
 	// Skip old numofareas byte:
 	fseek(brdinfoFile, 1, SEEK_CUR);
@@ -507,19 +511,6 @@ bool opxpack::saveOldFlags()
 	return true;
 }
 
-const char *opxpack::getTear(int)
-{
-	// All this, just to add a space to the end of the tear line.
-	// (Some versions of the SX door eat the last character.)
-
-	static char tear[80];
-
-	sprintf(tear, "--- %.9s/%.58s v%1d.%2d ", MM_NAME, sysname(),
-		MM_MAJOR, MM_MINOR);
-
-	return tear;
-}
-
 // -----------------------------------------------------------------
 // The OPX reply methods
 // -----------------------------------------------------------------
@@ -535,20 +526,13 @@ opxreply::upl_opx::~upl_opx()
 	delete[] msgid;
 }
 
-opxreply::opxreply(mmail *mmA, specific_driver *baseClassA)
+opxreply::opxreply(mmail *mmA, specific_driver *baseClassA) :
+	pktreply(mmA, baseClassA)
 {
-	mm = mmA;
-	baseClass = (pktbase *) baseClassA;
-
-	replyText = 0;
-	uplListHead = 0;
-
-	replyExists = false;
 }
 
 opxreply::~opxreply()
 {
-	cleanup();
 }
 
 int opxreply::getArea(const char *fname)
@@ -629,7 +613,7 @@ bool opxreply::getRep1(const char *orgname, upl_opx *l)
 				}
 				c = '\r';
 			}
-			if (c != '\r') {
+			if (c && (c != '\r')) {
 				fputc(c, destfile);
 				count++;
 			}
@@ -703,6 +687,10 @@ letter_header *opxreply::getNextLetter()
 void opxreply::enterLetter(letter_header &newLetter,
 			const char *newLetterFileName, long length)
 {
+	// Specify the format separately from strftime() to supress
+	// GGC's Y2K warning:
+	const char *datefmt_opx = "%d %b %y  %H:%M:%S";
+
 	upl_opx *newList = new upl_opx(newLetterFileName);
 
 	int attrib = newLetter.getPrivate() ? OPX_PRIVATE : 0;
@@ -722,8 +710,7 @@ void opxreply::enterLetter(letter_header &newLetter,
 	putshort(newList->rhead.reply, newLetter.getReplyTo());
 
 	time_t now = time(0);
-	strftime(newList->rhead.date, 20, "%d %b %y  %H:%M:%S",
-		localtime(&now));
+	strftime(newList->rhead.date, 20, datefmt_opx, localtime(&now));
 	unsigned long dostime = mkdostime(localtime(&now));
 	putlong(newList->rhead.date_written, dostime);
 	putlong(newList->rhead.date_arrived, dostime);
@@ -808,8 +795,7 @@ void opxreply::addRep1(FILE *, upl_base *node, int)
 
 			if (!skipPID)
 				fprintf(destfile, "\001PID: " MM_NAME
-					"/%s v%d.%d\r\n", sysname(),
-						MM_MAJOR, MM_MINOR);
+					"/%s v" MM_VERNUM "\r\n", sysname());
 
 			int c, count = 0, lastsp = 0;
 			while ((c = fgetc(orgfile)) != EOF) {
@@ -830,6 +816,10 @@ void opxreply::addRep1(FILE *, upl_base *node, int)
 						lastsp = count;
 				}
 			}
+
+			fprintf(destfile, "\r\n");
+			fputc(0, destfile);
+
 			fclose(destfile);
 		}
 		fclose(orgfile);

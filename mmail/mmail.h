@@ -3,7 +3,7 @@
  * mmail class
 
  Copyright (c) 1996 Toth Istvan <stoty@vma.bme.hu>
- Copyright (c) 2002 William McBrine <wmcbrine@users.sourceforge.net>
+ Copyright (c) 2003 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -101,15 +101,14 @@ class mmail
 	driver_list *driverList;
 	area_list *areaList;
 	letter_list *letterList;
-
+	specific_driver *packet;
+	reply_driver *reply;
+	
 	mmail();
 	~mmail();
 	pktstatus selectPacket(const char *);
 	void Delete();
 	bool saveRead();
-	file_header *getFileList();
-	file_header **getBulletins();
-	bool isLatin();
 	bool checkForReplies();
 	bool makeReply();
 	void deleteReplies();
@@ -143,9 +142,6 @@ class file_list
 
 	void cleanup();
 	void relist();
-
-	friend int fnamecomp(const void *, const void *);
-	friend int ftimecomp(const void *, const void *);
 
 	void sort();
 	file_header *base() const;
@@ -349,7 +345,6 @@ class letter_header
 	net_address &getNetAddr();
 	long getReplyTo() const;
 	bool getPrivate() const;
-	inline specific_driver *getDriver() const;
 	inline letter_body *getBody();
 	int getLetterID() const;
 	int getAreaID() const;
@@ -384,8 +379,6 @@ class letter_list
 
 	void init();
 	void cleanup();
-	friend int lettercomp(const void *, const void *);
-	friend int lmsgncomp(const void *, const void *);
 	void sort();
  public:
 	letter_list(mmail *, int, unsigned long);
@@ -440,10 +433,9 @@ class driver_list
 	struct driver_struct {
 		specific_driver *driver;
 		read_class *read;
-		int offset;
 	} driverList[2];
 
-	int noOfDrivers, attributes;
+	int noOfDrivers;
  public:
 	driver_list(mmail *);
 	~driver_list();
@@ -453,7 +445,6 @@ class driver_list
 	reply_driver *getReplyDriver();
 	read_class *getReadObject(specific_driver *);
 	int getOffset(specific_driver *);
-	bool hasPersonal() const;
 };
 
 class read_class
@@ -510,11 +501,12 @@ class specific_driver
 {
  public:
 	virtual ~specific_driver();
-	virtual bool hasPersArea();
-	virtual bool isLatin();
-	virtual const char *oldFlagsName();
-	virtual bool readOldFlags();
-	virtual bool saveOldFlags();
+	virtual bool hasPersArea() = 0;
+	virtual bool hasPersonal() = 0;
+	virtual bool isLatin() = 0;
+	virtual const char *oldFlagsName() = 0;
+	virtual bool readOldFlags() = 0;
+	virtual bool saveOldFlags() = 0;
 	virtual int getNoOfAreas() = 0;
 	virtual area_header *getNextArea() = 0;
 	virtual void selectArea(int) = 0;
@@ -522,6 +514,14 @@ class specific_driver
 	virtual void resetLetters() = 0;
 	virtual letter_header *getNextLetter() = 0;
 	virtual letter_body *getBody(letter_header &) = 0;
+	virtual const char *getLoginName() = 0;
+	virtual const char *getAliasName() = 0;
+	virtual const char *getBBSName() = 0;
+	virtual const char *getSysOpName() = 0;
+	virtual const char *getBBSProg() = 0;
+	virtual const char *getDoorProg() = 0;
+	virtual file_header *getHello() = 0;
+	virtual file_header *getGoodbye() = 0;
 	virtual file_header *getFileList() = 0;
 	virtual file_header **getBulletins() = 0;
 	virtual const char *getTear(int) = 0;

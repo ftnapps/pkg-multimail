@@ -3,7 +3,7 @@
  * QWK
 
  Copyright (c) 1997 John Zero <john@graphisoft.hu>
- Copyright (c) 2001 William McBrine <wmcbrine@users.sourceforge.net>
+ Copyright (c) 2003 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -14,6 +14,9 @@
 #include "pktbase.h"
 
 #define ndxRecLen 5
+
+// Offset of the "chunks" field, so it can be written separately
+#define CHUNK_OFFSET 116
 
 #define getQfield(d, s, l) { strncpy(d, s, l); d[l] = '\0'; }
 
@@ -46,11 +49,12 @@ class qheader {
 	bool init(FILE *);
 	bool init_short(FILE *);
 	void output(FILE *);
+	void set_length(FILE *, long, long);
 };
 
 class qwkpack : public pktbase
 {
-	char textfiles[3][13];
+	char newsfile[1][13];
 	char controlname[26];
 	bool qwke;
 
@@ -86,7 +90,6 @@ class qwkreply : public pktreply
 
 	bool getRep1(FILE *, upl_qwk *);
 	void getReplies(FILE *);
-	int monthval(const char *);
 	void addRep1(FILE *, upl_base *, int);
 	void addHeader(FILE *);
 	void repFileName();

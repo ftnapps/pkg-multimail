@@ -4,7 +4,7 @@
 
  Copyright (c) 1996 Kolossvary Tamas <thomas@tvnet.hu>
  Copyright (c) 1997 John Zero <john@graphisoft.hu>
- Copyright (c) 2002 William McBrine <wmcbrine@users.sourceforge.net>
+ Copyright (c) 2003 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -43,10 +43,6 @@ extern "C" {
 # endif
 #endif
 
-#ifdef XCURSES
-# define NOREVERSE
-#endif
-
 #include "mmcolor.h"
 #include "isoconv.h"
 
@@ -59,7 +55,6 @@ extern "C" {
 # define MINHIEXPERT 17
 #endif
 
-enum direction {UP, DOWN, PGUP, PGDN, HOME, END};
 enum statetype {nostate, packetlist, arealist, letterlist, letter,
 		letter_help, littlearealist, address, tagwin, ansiwin,
 		ansi_help};
@@ -69,8 +64,8 @@ enum lineattr {Hidden, Origin, Tearline, Tagline, Sigline, Quoted,
 
 enum {s_fulltext = 1, s_headers, s_arealist, s_pktlist};
 
-#if defined (SIGWINCH) && !defined (XCURSES) && !defined(NCURSES_SIGWINCH)
-void sigwinchHandler(int);
+#if defined(SIGWINCH) && !defined(XCURSES) && !defined(NCURSES_SIGWINCH)
+extern "C" void sigwinchHandler(int);
 #endif
 
 #define TAGLINE_LENGTH 76
@@ -162,7 +157,7 @@ class Win
 	int put(int, int, const char *, int = -1);
 	void attrib(chtype);
 	void attrib(coltype);
-	void horizline(int, int);
+	void horizline(int);
 	void update();
 	void delay_update();
 	void wtouch();
@@ -238,10 +233,11 @@ class ListWindow
 	virtual void oneLine(int) = 0;
 	virtual searchret oneSearch(int, const char *, int) = 0;
 	virtual bool extrakeys(int) = 0;
+	virtual void setFilter(const char *) = 0;
  public:
  	ListWindow();
 	virtual ~ListWindow();
-	void Move(direction);		//scrolloz
+	void Move(int);		//scrolloz
 	void setActive(int);
 	int getActive();
 	searchret search(const char *, int);
@@ -263,36 +259,35 @@ class Welcome
 
 #endif
 
+class Person
+{
+ public:
+ 	Person *next;
+	char *name;
+	net_address netmail_addr;
+	bool killed;
+
+	Person(const char * = 0, const char * = 0);
+	Person(const char *, net_address &);
+	~Person();
+
+	void setname(const char *);
+	void dump(FILE *);
+};
+
 class AddressBook : public ListWindow
 {
-	class Person
-	{
-	 public:
-	 	Person *next;
- 		char *name;
- 		net_address netmail_addr;
-		bool killed;
-
-		Person(const char * = 0, const char * = 0);
-		Person(const char *, net_address &);
-		~Person();
-
-		void setname(const char *);
-		void dump(FILE *);
-	};
-
 	Person head, *curr, *highlighted, **people, **living;
 	const char *addfname;
 	char *filter;
 	int NumOfPersons, NumOfActive;
 	bool NoEnter, inletter;
 
-	friend int perscomp(const void *, const void *);
-
   	int NumOfItems();
 	void oneLine(int);
 	searchret oneSearch(int, const char *, int);
 	bool extrakeys(int);
+	void setFilter(const char *);
 
 	void Add(const char *, net_address &);
 	void GetAddress();
@@ -315,31 +310,27 @@ public:
 	void Init();
 };
 
+class tagline
+{
+ public:
+	tagline(const char * = 0);
+	tagline *next;
+	char text[TAGLINE_LENGTH + 1];
+	bool killed;
+};
 
 class TaglineWindow : public ListWindow
 {
-	class tagline
-	{
-	 public:
-		tagline(const char * = 0);
-		tagline *next;
-		char text[TAGLINE_LENGTH + 1];
-		bool killed;
-	};
-
-	char format[20];
-
 	tagline head, *curr, *highlighted, **taglist, **tagactive;
 	const char *tagname;
 	char *filter;
   	int NumOfTaglines, NumOfActive;
 	bool nodraw, sorted;
 
-	friend int tnamecmp(const void *, const void *);
-
 	void oneLine(int);
 	searchret oneSearch(int, const char *, int);
 	bool extrakeys(int);
+	void setFilter(const char *);
 
 	void kill();
 	bool ReadFile();
@@ -367,6 +358,7 @@ class LittleAreaListWindow : public ListWindow
 	void oneLine(int);
 	searchret oneSearch(int, const char *, int);
 	bool extrakeys(int);
+	void setFilter(const char *);
 	void Select();
  public:
 	void init();
@@ -404,6 +396,7 @@ class PacketListWindow : public ListWindow
 	void oneLine(int);
 	searchret oneSearch(int, const char *, int);
 	bool extrakeys(int);
+	void setFilter(const char *);
 
 	void newList();
 	bool newDir(const char *);
@@ -424,13 +417,14 @@ class PacketListWindow : public ListWindow
 
 class AreaListWindow : public ListWindow
 {
-	char format[40], format2[40];
-	bool mode, hasSys;
+	char format[40];
+	bool hasPers, hasSys;
 
  	int NumOfItems();
 	void oneLine(int);
 	searchret oneSearch(int, const char *, int);
 	bool extrakeys(int);
+	void setFilter(const char *);
 
  public:
 	void ResetActive();
@@ -451,6 +445,7 @@ class LetterListWindow : public ListWindow
 	void oneLine(int);
 	searchret oneSearch(int, const char *, int);
 	bool extrakeys(int);
+	void setFilter(const char *);
 
 	void listSave();
 	void setFormat();
@@ -482,12 +477,12 @@ class LetterWindow
 
 	Win *headbar, *header, *text, *statbar;
 	Line **linelist;
-	char key, tagline1[TAGLINE_LENGTH + 1], *To;
-	int letter_in_chain;	//0 = no letter in chain
+	char tagline1[TAGLINE_LENGTH + 1], *To;
+	int letter_in_chain;	//-1 = no letter in chain
 	int position;		//which row is the first in the text window
 	int NumOfLines;
 	int y;			//height of the window, set by MakeActive
-	int replyto_area, beepPers;
+	int beepPers;
 	bool rot13, hidden, lynxNav;
 	net_address NM;
 	time_t lasttime;
@@ -500,7 +495,7 @@ class LetterWindow
 	int EnterHeader(char *, char *, char *, bool &);
 	void QuoteText(FILE *);
 	void DestroyChain();
-	void setToFrom(char *, char *);
+	void setToFrom(char, char *, char *);
 	void forward_header(FILE *, const char *, const char *,
 		const char *, int, bool);
 	void EditLetter(bool);
@@ -530,10 +525,9 @@ class LetterWindow
  	void Draw(bool = false);
 	void ReDraw();
 	bool Save(int);
-	void EnterLetter();
+	void EnterLetter(int, char);
 	void StatToggle(int);
 	net_address &PickNetAddr();
-	void set_Letter_Params(int, char);
 	void set_Letter_Params(net_address &, const char *);
 	void setPos(int);
 	int getPos();
@@ -585,7 +579,7 @@ class AnsiWindow
 		AnsiLine *prev, *next;
 		union {
 			chtype *text;
-			char *atext;
+			unsigned char *atext;
 		};
 		unsigned length;
 		chtype att;
@@ -603,6 +597,7 @@ class AnsiWindow
 		void remapzero(chtype newatt);
 	};
 
+	static const int ansi_colortable[], pc_colortable[];
 	bool colorsused[64];
 	char escparm[256];	//temp copy of ESC sequence parameters
 	const char *title;
@@ -620,8 +615,11 @@ class AnsiWindow
 	int baseline;		//base for positions in non-anim mode
 	bool anim;		//animate mode?
 	bool ansiAbort;
+#ifdef NCURSES_VERSION
+	bool useAltCharset;
+#endif
 	chtype *chtmp, attrib;	//current attribute
-	bool isLatin;
+	bool isLatin, avtparse, bsvparse, isbsv;
 	int atparse;
 	
 	void oneLine(int);
@@ -630,10 +628,16 @@ class AnsiWindow
 	int getparm();
 	void cls();
 	void colreset();
-	void colorcore();
+	chtype colorcore();
 	void colorset();
+	void pc_colorset(unsigned char);
 	void athandle();
+	void cpylow();
+	void cpyhigh();
+	void cpxhigh();
+	void cpxlow();
 	void escfig();
+	void avatar();
 	void posreset();
 	void checkpos();
 	void update(unsigned char);
@@ -644,6 +648,7 @@ class AnsiWindow
 	void statupdate(const char * = 0);
 	void Save();
  public:
+	void Init();
 	void set(letter_body *, const char *, bool);
 	void set(file_header *, const char *, bool);
 	void MakeActive();
@@ -668,7 +673,7 @@ class Interface
 	ListWindow *currList;
  	statetype state, prevstate, searchstate;
 	const char *searchItem, *cmdpktname;
-	file_header *newFiles, **bulletins;
+	file_header *goodbye;
 	int Key, searchmode, s_oldpos, width_min, height_min;
 	bool unsaved_reply, any_read, addrparm, commandline, abortNow,
 		dontSetAsRead, lynxNav;

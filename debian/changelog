@@ -1,3 +1,31 @@
+multimail (0.46-1) unstable; urgency=low
+
+  * New upstream release (see upstream ChangeLog for further details):
+   - Displays hello and goodbye screens from packages properly.
+   - ANSI viewer now has basic AVATAR level 0 and BSAVE support.
+   - Lower portion of the ara list display has been redesigned.
+   - Various bugfixes.
+
+ -- Peter Karlsson <peterk@debian.org>  Fri,  9 Jan 2004 22:00:00 +0100
+
+multimail (0.45-1) unstable; urgency=low
+
+  * New upstream release (see upstream ChangeLog for further details):
+   - New temporary file system; fixes many problems.
+   - ANSI viewer works much better in Unix.
+
+ -- Peter Karlsson <peterk@debian.org>  Sun,  8 Jun 2003 18:00:00 +0100
+
+multimail (0.44-1) unstable; urgency=low
+
+  * New upstream release (see upstream ChangeLog for further details):
+   - Speculative fix for corrupt QWK reply problem.
+   - New key for filter function, other filter fixes.
+   - Fixes for END key in input, segfaults in ANSI, display bugs.
+  * Updated to policy 3.5.10.
+
+ -- Peter Karlsson <peterk@debian.org>  Mon, 26 May 2003 18:00:00 +0100
+
 multimail (0.43-1) unstable; urgency=low
 
   * New upstream release (see upstream ChangeLog for further details):

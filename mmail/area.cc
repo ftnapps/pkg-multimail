@@ -3,7 +3,7 @@
  * area_header and area_list
 
  Copyright (c) 1996 Toth Istvan <stoty@vma.bme.hu>
- Copyright (c) 2002 William McBrine <wmcbrine@users.sourceforge.net>
+ Copyright (c) 2003 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -202,20 +202,14 @@ void area_header::killReply()
 
 area_list::area_list(mmail *mmA) : mm(mmA)
 {
-	no = 0;
+	no = mm->packet->getNoOfAreas() + 1;
 	filter = 0;
-
-	int c = 0;
-	do {
-		no += mm->driverList->getDriver(no)->getNoOfAreas();
-		c++;
-	} while (c < mm->driverList->getNoOfDrivers());
 
 	activeHeader = new int[no];
 	areaHeader = new area_header *[no];
 
 	specific_driver *actDriver;
-	for (c = 0; c < no; c++) {
+	for (int c = 0; c < no; c++) {
 		actDriver = mm->driverList->getDriver(c);
 		areaHeader[c] = actDriver->getNextArea();
 	}
@@ -298,9 +292,7 @@ void area_list::updatePers()
 	// are valid as the program is currently written, but that are not
 	// made elsewhere in this class.
 
-	specific_driver *actDriver =
-		mm->driverList->getDriver(REPLY_AREA + 1);
-	if (actDriver->hasPersArea()) {
+	if (mm->packet->hasPersArea()) {
 		int c = current;
 		current = REPLY_AREA + 1;
 		if (isCollection() && !isReplyArea()) {
@@ -440,16 +432,14 @@ void area_list::enterLetter(int areaNo, const char *from, const char *to,
 			net_address &netAddress, const char *filename,
 			long length)
 {
-	reply_driver *replyDriver = mm->driverList->getReplyDriver();
-
 	gotoArea(areaNo);
 	areaHeader[current]->addReply();
 
 	letter_header newLetter(mm, subject, to, from, "", replyID,
-		replyTo, 0, 0, areaNo, privat, 0, replyDriver,
+		replyTo, 0, 0, areaNo, privat, 0, mm->reply,
 		netAddress, isLatin(), newsgrp);
 
-	replyDriver->enterLetter(newLetter, filename, length);
+	mm->reply->enterLetter(newLetter, filename, length);
 
 	refreshArea();
 }
@@ -457,7 +447,7 @@ void area_list::enterLetter(int areaNo, const char *from, const char *to,
 void area_list::killLetter(int areaNo, long letterNo)
 {
 	areaHeader[areaNo]->killReply();
-	mm->driverList->getReplyDriver()->killLetter((int) letterNo);
+	mm->reply->killLetter((int) letterNo);
 	refreshArea();
 }
 
@@ -465,8 +455,7 @@ void area_list::refreshArea()
 {
 	delete areaHeader[REPLY_AREA];
 
-	areaHeader[REPLY_AREA] =
-		mm->driverList->getReplyDriver()->refreshArea();
+	areaHeader[REPLY_AREA] = mm->reply->refreshArea();
 	if (current == REPLY_AREA)
 		mm->letterList->rrefresh();
 }

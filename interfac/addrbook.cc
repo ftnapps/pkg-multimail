@@ -3,14 +3,20 @@
  * address book
 
  Copyright (c) 1996 Kolossvary Tamas <thomas@vma.bme.hu>
- Copyright (c) 2000 William McBrine <wmcbrine@users.sourceforge.net>
+ Copyright (c) 2003 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
 
 #include "interfac.h"
 
-AddressBook::Person::Person(const char *sname, const char *saddr)
+extern "C" int perscomp(const void *a, const void *b)
+{
+	return strcasecmp((*((Person **) a))->name,
+		(*((Person **) b))->name);
+}
+
+Person::Person(const char *sname, const char *saddr)
 {
 	if (saddr && (*saddr == 'I'))
 		saddr++;
@@ -20,7 +26,7 @@ AddressBook::Person::Person(const char *sname, const char *saddr)
 	next = 0;
 }
 
-AddressBook::Person::Person(const char *sname, net_address &naddr)
+Person::Person(const char *sname, net_address &naddr)
 {
 	netmail_addr = naddr;
 	setname(sname);
@@ -28,17 +34,17 @@ AddressBook::Person::Person(const char *sname, net_address &naddr)
 	next = 0;
 }
 
-AddressBook::Person::~Person()
+Person::~Person()
 {
 	delete[] name;
 }
 
-void AddressBook::Person::setname(const char *sname)
+void Person::setname(const char *sname)
 {
 	name = strdupplus(sname);
 }
 
-void AddressBook::Person::dump(FILE *fd)
+void Person::dump(FILE *fd)
 {
 	fprintf(fd, (netmail_addr.isInternet ? "%s\nI%s\n\n" :
 		"%s\n%s\n\n"), name, (const char *) netmail_addr);
@@ -91,7 +97,7 @@ void AddressBook::MakeActive(bool NoEnterA)
 		int x = xwidth / 3 + 1;
 		int y = list_max_y + 2;
 
-		list->horizline(y, list_max_x);
+		list->horizline(y);
 
 		list->put(++y, 3, ": Quit addressbook");
 		list->put(y, x + 3, ": Add new address");
@@ -140,27 +146,20 @@ bool AddressBook::extrakeys(int key)
 		break;
 	case 'L':
 		GetAddress();
-		break;
-	case '^':
-		{
-			char item[80];
-			*item = '\0';
-
-			if (ui->savePrompt("Filter on:", item)) {
-				delete[] filter;
-				filter = strdupplus(item);
-				MakeChain();
-				if (!NumOfActive) {
-					delete[] filter;
-					filter = 0;
-					MakeChain();
-				}
-			}
-		}
-		Delete();
-		MakeActive(NoEnter);
 	}
 	return false;
+}
+
+void AddressBook::setFilter(const char *item)
+{
+	delete[] filter;
+	filter = strdupplus(item);
+	MakeChain();
+	if (!NumOfActive) {
+		delete[] filter;
+		filter = 0;
+		MakeChain();
+	}
 }
 
 void AddressBook::WriteFile()
@@ -256,7 +255,7 @@ int AddressBook::Edit(Person &p)
 	} else
 		NAME[0] = NETADD[0] = '\0';
 
-	ShadowedWin add_edit(4, COLS - 2, (LINES >> 1) - 2, C_LETEXT);
+	ShadowedWin add_edit(4, COLS - 4, (LINES >> 1) - 2, C_LETEXT);
 
 	add_edit.put(1, 2, "Name:");
 	add_edit.put(2, 2, "Addr:");
@@ -351,12 +350,6 @@ searchret AddressBook::oneSearch(int x, const char *item, int)
 int AddressBook::NumOfItems()
 {
 	return NumOfActive;
-}
-
-int perscomp(const void *a, const void *b)
-{
-	return strcasecmp((*((AddressBook::Person **) a))->name,
-		(*((AddressBook::Person **) b))->name);
 }
 
 void AddressBook::ReadFile()

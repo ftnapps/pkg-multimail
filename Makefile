@@ -12,9 +12,26 @@ include version
 # Optimized, no debug:
 #OPTS = -O2 -Wall -pedantic
 
-# Optimized for egcs -- since MultiMail does not (yet) use exceptions, we
-# can save a little space in the executable:
-OPTS = -O2 -Wall -pedantic -fno-exceptions -fno-rtti -fconserve-space
+# Optimized for recent versions of gcc:
+# OPTS = -O2 -Wall -pedantic -fno-exceptions -fno-rtti -fconserve-space \
+# -Wno-deprecated
+
+# Edited for Debian - build with debugging symbols; make it possible to
+# build without optimization
+OPTS = -g -Wall -pedantic -fno-exceptions -fno-rtti -fconserve-space \
+-Wno-deprecated
+ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
+OPTS += -O0
+else
+OPTS += -O2
+endif
+
+# Edited for Debian - make it possible to install unstripped binaries
+ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
+INSTALL_OPTS = -s
+else
+INSTALL_OPTS =
+endif
 
 # Edited for Debian
 DESTDIR =
@@ -68,9 +85,10 @@ LIBS = -lcurses
 #CURS_LIB = /usr/local/lib
 #LIBS = -lncurses
 
-# For static linking:
+# For static linking (examples):
 
 #LIBS = /usr/lib/libncurses.a
+#LIBS = /opt/sfw/lib/libncurses.a
 
 #--------------------------------------------------------------
 # With ncurses installed in the user's home directory:
@@ -82,13 +100,15 @@ LIBS = -lcurses
 #LIBS = -lncurses
 
 #--------------------------------------------------------------
-# With XCurses (PDCurses 2.5) in my home directory:
+# With XCurses (PDCurses 2.6) in my home directory:
 
-#CURS_INC = \\\"/home/wmcbrine/PDCurses-2.5/curses.h\\\"
+#CURS_INC = \\\"/home/wmcbrine/PDCurses-2.6/curses.h\\\"
 # Sneak some extra defines in through the back door:
-#CURS_DIR = /home/wmcbrine/PDCurses-2.5 -DXCURSES -DHAVE_PROTO
-#CURS_LIB = /home/wmcbrine/PDCurses-2.5/pdcurses
-#LIBS = -L/usr/X11R6/lib -lXCurses -lXaw -lXmu -lXt -lX11 -lSM -lICE -lXext
+#CURS_DIR = /home/wmcbrine/PDCurses-2.6 -DXCURSES -DHAVE_PROTO
+#CURS_LIB = /home/wmcbrine/PDCurses-2.6/pdcurses
+#LIBS = -L/usr/X11R6/lib \
+#/home/wmcbrine/PDCurses-2.6/pdcurses/libXCurses.a \
+#-lXaw -lXmu -lXt -lX11 -lSM -lICE -lXext
 
 #--------------------------------------------------------------
 #--------------------------------------------------------------
@@ -125,7 +145,7 @@ modclean:
 
 install:
 	install -d $(PREFIX)/bin $(HELPDIR) $(DOCDIR)
-	install -c -s mm $(PREFIX)/bin
+	install -c $(INSTALL_OPTS) mm $(PREFIX)/bin
 	install -c -m 644 mm.1 $(HELPDIR)
 	$(RM) $(HELPDIR)/mmail.1
 #	ln $(HELPDIR)/mm.1 $(HELPDIR)/mmail.1

@@ -2,7 +2,7 @@
  * MultiMail offline mail reader
  * Packet base class -- common methods
 
- Copyright (c) 2001 William McBrine <wmcbrine@users.sourceforge.net>
+ Copyright (c) 2003 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -20,11 +20,38 @@
 // The packet methods
 // -----------------------------------------------------------------
 
+pktbase::pktbase(mmail *mmA)
+{
+	mm = mmA;
+	ID = 0;
+	bodyString = 0;
+	bulletins = 0;
+	infile = 0;
+	LoginName = AliasName = BBSName = SysOpName = BBSProg = DoorProg = 0;
+	hello = goodbye = 0;
+}
+
+pktbase::~pktbase()
+{
+	if (infile)
+		fclose(infile);
+
+	delete[] body;
+	delete bodyString;
+	delete[] bulletins;
+	delete[] goodbye;
+	delete[] hello;
+	delete[] DoorProg;
+	delete[] BBSProg;
+	delete[] SysOpName;
+	delete[] BBSName;
+	delete[] AliasName;
+	delete[] LoginName;
+}
+
 // Clean up for the QWK-like packets
 void pktbase::cleanup()
 {
-	delete[] bulletins;
-
 	if (!hasPers) {
 		areas--;
 		maxConf++;
@@ -33,11 +60,7 @@ void pktbase::cleanup()
 		delete[] body[maxConf];
 		delete[] areas[maxConf].name;
 	}
-	delete[] body;
 	delete[] areas;
-	delete bodyString;
-
-	fclose(infile);
 }
 
 // Final index build for QWK-like packets
@@ -135,6 +158,31 @@ bool pktbase::hasPersArea()
 	return hasPers;
 }
 
+bool pktbase::hasPersonal()
+{
+	return false;
+}
+
+bool pktbase::isLatin()
+{
+	return false;
+}
+
+const char *pktbase::oldFlagsName()
+{
+	return 0;
+}
+
+bool pktbase::readOldFlags()
+{
+	return false;
+}
+
+bool pktbase::saveOldFlags()
+{
+	return false;
+}
+
 int pktbase::getNoOfAreas()
 {
 	return maxConf;
@@ -158,7 +206,7 @@ letter_body *pktbase::getBody(letter_header &mhead)
 	long length, offset;
 	letter_body head(0, 0), *currblk = &head;
 
-	AreaID = mhead.getAreaID() - mm->driverList->getOffset(this);
+	AreaID = mhead.getAreaID() - 1;
 	LetterID = mhead.getLetterID();
 
 	delete bodyString;
@@ -322,8 +370,18 @@ void pktbase::listBulletins(const char x[][13], int d, int generic)
 	bulletins = new file_header *[wl->getNoOfFiles() + 1];
 
 	for (int c = 0; c < d; c++)
-		if (x[c][0])
-			wl->addItem(bulletins, x[c], filecount);
+		if (x[c][0]) {
+			if (!hello && (!strncasecmp("hello", x[c], 5) ||
+			    !strncasecmp("welcome", x[c], 7)))
+				hello = strdupplus(x[c]);
+			else
+				if (!goodbye && !strncasecmp("goodbye",
+				    x[c], 7))
+					goodbye = strdupplus(x[c]);
+				else
+					wl->addItem(bulletins, x[c],
+						filecount);
+		}
 
 	if (generic) {
 		wl->addItem(bulletins, "blt", filecount);
@@ -337,6 +395,48 @@ void pktbase::listBulletins(const char x[][13], int d, int generic)
 		delete[] bulletins;
 		bulletins = 0;
 	}
+}
+
+const char *pktbase::getLoginName()
+{
+	return LoginName;
+}
+
+const char *pktbase::getAliasName()
+{
+	return AliasName;
+}
+
+const char *pktbase::getBBSName()
+{
+	return BBSName;
+}
+
+const char *pktbase::getSysOpName()
+{
+	return SysOpName;
+}
+
+const char *pktbase::getBBSProg()
+{
+	return BBSProg;
+}
+
+const char *pktbase::getDoorProg()
+{
+	return DoorProg;
+}
+
+file_header *pktbase::getHello()
+{
+	return (hello && *hello) ?
+		mm->workList->existsF(hello) : 0;
+}
+
+file_header *pktbase::getGoodbye()
+{
+	return (goodbye && *goodbye) ?
+		mm->workList->existsF(goodbye) : 0;
 }
 
 file_header *pktbase::getFileList()
@@ -353,8 +453,7 @@ const char *pktbase::getTear(int)
 {
 	static char tear[80];
 
-	sprintf(tear, "--- %.9s/%.58s v%1d.%2d", MM_NAME, sysname(),
-		MM_MAJOR, MM_MINOR);
+	sprintf(tear, "--- " MM_NAME "/%.58s v" MM_VERNUM, sysname());
 
 	return tear;
 }
@@ -369,9 +468,12 @@ char *pktbase::nextLine()
 	static char line[128];
 
 	char *end = myfgets(line, sizeof line, infile);
-	if (end)
+	if (end) {
 		while ((*end == '\n') || (*end == '\r'))
 			*end-- = '\0';
+	} else
+		line[0] = '\0';
+
 	return line;
 }
 
@@ -395,7 +497,16 @@ pktreply::upl_base::~upl_base()
 	delete[] fname;
 }
 
-void pktreply::cleanup()
+pktreply::pktreply(mmail *mmA, specific_driver *baseClassA)
+{
+	mm = mmA;
+	baseClass = (pktbase *) baseClassA;
+	replyText = 0;
+	uplListHead = 0;
+	replyExists = false;
+}
+
+pktreply::~pktreply()
 {
 	if (replyExists) {
 		upl_base *next, *curr = uplListHead;
@@ -533,6 +644,76 @@ letter_body *pktreply::getBody(letter_header &mhead)
 	head.next = 0;
 
 	return replyText;
+}
+
+bool pktreply::hasPersArea()
+{
+	return false;
+}
+
+bool pktreply::hasPersonal()
+{
+	return false;
+}
+
+bool pktreply::isLatin()
+{
+	return false;
+}
+
+const char *pktreply::oldFlagsName()
+{
+	return 0;
+}
+
+bool pktreply::readOldFlags()
+{
+	return false;
+}
+
+bool pktreply::saveOldFlags()
+{
+	return false;
+}
+
+const char *pktreply::getLoginName()
+{
+	return 0;
+}
+
+const char *pktreply::getAliasName()
+{
+	return 0;
+}
+
+const char *pktreply::getBBSName()
+{
+	return 0;
+}
+
+const char *pktreply::getSysOpName()
+{
+	return 0;
+}
+
+const char *pktreply::getBBSProg()
+{
+	return 0;
+}
+
+const char *pktreply::getDoorProg()
+{
+	return 0;
+}
+
+file_header *pktreply::getHello()
+{
+	return 0;
+}
+
+file_header *pktreply::getGoodbye()
+{
+	return 0;
 }
 
 file_header *pktreply::getFileList()

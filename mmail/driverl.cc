@@ -3,7 +3,7 @@
  * driver_list
 
  Copyright (c) 1996 Toth Istvan <stoty@vma.bme.hu>
- Copyright (c) 2000 William McBrine <wmcbrine@users.sourceforge.net>,
+ Copyright (c) 2003 William McBrine <wmcbrine@users.sf.net>,
                     Robert Vukovic <vrobert@uns.ns.ac.yu>
 
  Distributed under the GNU General Public License.
@@ -31,39 +31,12 @@
 
 enum pktype {PKT_QWK, PKT_BW, PKT_OMEN, PKT_SOUP, PKT_OPX, PKT_UNDEF};
 
-enum {PERSONAL = 1};
-
 // ------------------------------------------------
 // Virtual specific_driver and reply_driver methods
 // ------------------------------------------------
 
 specific_driver::~specific_driver()
 {
-}
-
-bool specific_driver::hasPersArea()
-{
-	return false;
-}
-
-bool specific_driver::isLatin()
-{
-	return false;
-}
-
-const char *specific_driver::oldFlagsName()
-{
-	return 0;
-}
-
-bool specific_driver::readOldFlags()
-{
-	return false;
-}
-
-bool specific_driver::saveOldFlags()
-{
-	return false;
 }
 
 reply_driver::~reply_driver()
@@ -78,8 +51,6 @@ driver_list::driver_list(mmail *mm)
 {
 	pktype mode;
 	file_list *wl = mm->workList;
-
-	attributes = 0;
 
 	// This is the new way to set the packet type
 #ifdef USE_QWK
@@ -113,7 +84,6 @@ driver_list::driver_list(mmail *mm)
 #ifdef USE_BW
 	case PKT_BW:
 		driverList[1].driver = new bluewave(mm);
-		attributes = PERSONAL;
 		driverList[0].driver = new bwreply(mm, driverList[1].driver);
 		break;
 #endif
@@ -145,9 +115,6 @@ driver_list::driver_list(mmail *mm)
 		driverList[1].driver = 0;
 		driverList[0].driver = 0;
 	}
-
-	driverList[0].offset = REPLY_AREA;
-	driverList[1].offset = REPLY_AREA + 1;
 
 	noOfDrivers = (mode != PKT_UNDEF) ? 2 : 0;
 
@@ -202,11 +169,5 @@ read_class *driver_list::getReadObject(specific_driver *driver)
 
 int driver_list::getOffset(specific_driver *driver)
 {
-	int c = (driver == driverList[1].driver);
-	return driverList[c].offset;
-}
-
-bool driver_list::hasPersonal() const
-{
-	return !(!(attributes & PERSONAL));
+	return (driver == driverList[1].driver);
 }

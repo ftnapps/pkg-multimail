@@ -4,7 +4,7 @@
 
  Copyright (c) 1996 Kolossvary Tamas <thomas@vma.bme.hu>
  Copyright (c) 1997 John Zero <john@graphisoft.hu>
- Copyright (c) 2002 William McBrine <wmcbrine@users.sourceforge.net>
+ Copyright (c) 2003 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -22,7 +22,7 @@ void Welcome::MakeActive()
 	//window->put(2, 13, "http://multimail.sf.net/");
 	window->attrib(C_WELCOME2);
 	window->put(3, 2,
-		"Copyright (c) 2002 William McBrine, Kolossvary"); 
+		"Copyright (c) 2003 William McBrine, Kolossvary"); 
 	window->put(4, 7,
 		"Tamas, Toth Istvan, John Zero, et al.");
 	window->touch();
@@ -154,9 +154,7 @@ void PacketListWindow::MakeActiveCore()
 		if (flen > fmax)
 			flen = fmax;
 
-		char fmt[12];
-		sprintf(fmt, " | %%.%ds", flen);
-		sprintf(tmp + newend, fmt, filter);
+		sprintf(tmp + newend, " | %.*s", flen, filter);
 	}
 
 	list = new InfoWin(list_max_y + 3, list_max_x + 2, stline, borderCol,
@@ -205,55 +203,47 @@ void PacketListWindow::oneLine(int i)
 	int absPos = position + i;
 	time_t tmpt;
 
-	if (absPos < NumOfItems()) {
-		packetList->gotoFile(absPos);
+	packetList->gotoFile(absPos);
 
-		if (absPos < noDirs) {
-			absPos = sprintf(tmp, "  <%.28s",
-				packetList->getName());
-			char *tmp2 = tmp + absPos;
-			*tmp2++ = '>';
+	if (absPos < noDirs) {
+		absPos = sprintf(tmp, "  <%.28s",
+			packetList->getName());
+		char *tmp2 = tmp + absPos;
+		*tmp2++ = '>';
 
-			absPos = 32 - absPos;
-			while (--absPos > 0)
-				*tmp2++ = ' ';
-		} else {
-			const char *tmp2 = packetList->getName();
+		absPos = 32 - absPos;
+		while (--absPos > 0)
+			*tmp2++ = ' ';
+	} else {
+		const char *tmp2 = packetList->getName();
 
-			strcpy(tmp, "          ");
+		strcpy(tmp, "          ");
 
-			if (*tmp2 == '.')
-				sprintf(&tmp[2], "%-20.20s", tmp2);
-			else {
-				for (int j = 2; *tmp2 && (*tmp2 != '.') &&
-					(j < 10); j++)
-						tmp[j] = *tmp2++;
+		if (*tmp2 == '.')
+			sprintf(&tmp[2], "%-20.20s", tmp2);
+		else {
+			for (int j = 2; *tmp2 && (*tmp2 != '.') &&
+				(j < 10); j++)
+					tmp[j] = *tmp2++;
 
-				sprintf(&tmp[10], "%-10.10s", tmp2);
-			}
-
-			sprintf(&tmp[20], "%12lu",
-				(unsigned long) packetList->getSize());
+			sprintf(&tmp[10], "%-10.10s", tmp2);
 		}
 
-		tmpt = packetList->getDate();
+		sprintf(&tmp[20], "%12lu",
+			(unsigned long) packetList->getSize());
+	}
+
+	tmpt = packetList->getDate();
 
 #ifdef TIMEKLUDGE
-		if (!tmpt)
-			tmpt = currTime;
+	if (!tmpt)
+		tmpt = currTime;
 #endif
-		long dtime = currTime - tmpt;
+	long dtime = currTime - tmpt;
 
-		// 15000000 secs = approx six months (use year if older):
-		strftime(&tmp[32], 17, ((dtime < 0 || dtime > 15000000L) ?
-			"  %b %d  %Y  " : "  %b %d %H:%M  "),
-				localtime(&tmpt));
-	} else {
-		char fmt[12];
-
-		sprintf(fmt, "%%-%d.%ds", list_max_x, list_max_x);
-		sprintf(tmp, fmt, " ");
-	}
+	// 15000000 secs = approx six months (use year if older):
+	strftime(&tmp[32], 17, ((dtime < 0 || dtime > 15000000L) ?
+		"  %b %d  %Y  " : "  %b %d %H:%M  "), localtime(&tmpt));
 
 	DrawOne(i, C_PLINES);
 }
@@ -346,20 +336,6 @@ bool PacketListWindow::extrakeys(int key)
 		delete list;
 		MakeActiveCore();
 		break;
-	case '^':
-		{
-			char item[80];
-			*item = '\0';
-
-			if (ui->savePrompt("Filter on:", item)) {
-				packetList->setFilter(item);
-
-				noDirs = packetList->getNoOfDirs();
-				noFiles = packetList->getNoOfFiles();
-			}
-		}
-		ui->redraw();
-		break;
 	case 'G':
 		gotoDir();
 		break;
@@ -382,6 +358,14 @@ bool PacketListWindow::extrakeys(int key)
 		ui->redraw();
 	}
 	return end;
+}
+
+void PacketListWindow::setFilter(const char *item)
+{
+	packetList->setFilter(item);
+
+	noDirs = packetList->getNoOfDirs();
+	noFiles = packetList->getNoOfFiles();
 }
 
 bool PacketListWindow::newDir(const char *dname)

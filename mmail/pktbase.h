@@ -2,7 +2,7 @@
  * MultiMail offline mail reader
  * Packet base class
 
- Copyright (c) 2001 William McBrine <wmcbrine@users.sourceforge.net>
+ Copyright (c) 2003 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -39,6 +39,8 @@ class pktbase : public specific_driver
 
 	FILE *infile;
 	char packetBaseName[9];
+	char *LoginName, *AliasName, *BBSName, *SysOpName, *DoorProg, *BBSProg;
+	char *hello, *goodbye;
 	int maxConf, numMsgs, ID, currentArea, currentLetter;
 	unsigned long hasOffConfig;
 	bool hasPers;
@@ -46,7 +48,6 @@ class pktbase : public specific_driver
 	void cleanup();
 	void initBody(ndx_fake *, int);
 	int getYNum(int, unsigned long);
-	bool hasPersArea();
 	void checkLatin(letter_header &);
 	const char *getHidden(const char *, char *&);
 	void fidocheck(letter_header &);
@@ -59,12 +60,28 @@ class pktbase : public specific_driver
 	virtual void postfirstblk(unsigned char *&, letter_header &);
 	virtual void endproc(letter_header &);
  public:
+	pktbase(mmail *);
+	~pktbase();
 	int getXNum(int);
 	int getNoOfAreas();
 	virtual int getNoOfLetters();
 	void selectArea(int);
 	void resetLetters();
+	bool hasPersArea();
+	virtual bool hasPersonal();
+	virtual bool isLatin();
+	virtual const char *oldFlagsName();
+	virtual bool readOldFlags();
+	virtual bool saveOldFlags();
 	virtual letter_body *getBody(letter_header &);
+	const char *getLoginName();
+	const char *getAliasName();
+	const char *getBBSName();
+	const char *getSysOpName();
+	const char *getBBSProg();
+	const char *getDoorProg();
+	file_header *getHello();
+	file_header *getGoodbye();
 	virtual file_header *getFileList();
 	file_header **getBulletins();
 	virtual const char *getTear(int);
@@ -93,7 +110,6 @@ class pktreply : public reply_driver
 	int currentLetter, noOfLetters;
 	bool replyExists;
 
-	void cleanup();
 	void uncompress();
 	virtual void getReplies(FILE *) = 0;
 	void readRep();
@@ -103,6 +119,8 @@ class pktreply : public reply_driver
 	virtual void addHeader(FILE *) = 0;
 	virtual const char *repTemplate(bool) = 0;
  public:
+	pktreply(mmail *, specific_driver *);
+	~pktreply();
 	bool checkForReplies();
 	void init();
 	int getNoOfAreas();
@@ -110,6 +128,20 @@ class pktreply : public reply_driver
 	int getNoOfLetters();
 	void resetLetters();
 	letter_body *getBody(letter_header &);
+	bool hasPersArea();
+	bool hasPersonal();
+	bool isLatin();
+	const char *oldFlagsName();
+	bool readOldFlags();
+	bool saveOldFlags();
+	const char *getLoginName();
+	const char *getAliasName();
+	const char *getBBSName();
+	const char *getSysOpName();
+	const char *getBBSProg();
+	const char *getDoorProg();
+	file_header *getHello();
+	file_header *getGoodbye();
 	file_header *getFileList();
 	file_header **getBulletins();
 	const char *getTear(int);

@@ -3,7 +3,7 @@
  * area list
 
  Copyright (c) 1996 Kolossvary Tamas <thomas@vma.bme.hu>
- Copyright (c) 2002 William McBrine <wmcbrine@users.sourceforge.net>
+ Copyright (c) 2003 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -111,18 +111,14 @@ bool LittleAreaListWindow::extrakeys(int key)
 			active = mm.areaList->getActive() - disp;
 		}
 		ui->redraw();
-		break;
-	case '^':
-		{
-			char item[80];
-			*item = '\0';
-
-			if (ui->savePrompt("Filter on:", item))
-				mm.areaList->setFilter(item);
-		}
-		ui->redraw();
 	}
 	return false;
+}
+
+void LittleAreaListWindow::setFilter(const char *item)
+{
+	mm.areaList->setFilter(item);
+	init();
 }
 
 //*************         AreaListWindow          ******************
@@ -137,7 +133,7 @@ void AreaListWindow::FirstUnread()
 	for (i = 0; i < NumOfItems(); i++) {
 		mm.areaList->gotoActive(i);
 		if (!mm.areaList->getNoOfUnread())
-			Move(DOWN);
+			Move(KEY_DOWN);
 		else
 			break;
 	}
@@ -146,7 +142,7 @@ void AreaListWindow::FirstUnread()
 		for (i = 0; i < NumOfItems(); i++) {
 			mm.areaList->gotoActive(i);
 			if (!mm.areaList->getNoOfLetters())
-				Move(DOWN);
+				Move(KEY_DOWN);
 			else
 				break;
 		}
@@ -195,10 +191,6 @@ void AreaListWindow::oneLine(int i)
 		list->attrib(C_ALINFOTEXT2);
 		list->put(list_max_y + 3 + hasSys, 8, p);
 
-		sprintf(p, format2, mm.areaList->getDescription());
-		areaconv_in(p);
-		list->put(list_max_y + 4 + hasSys, 20, p);
-
 		list->delay_update();
 	}
 	p += sprintf(p, format, ((attrib & ADDED) ? '+' :
@@ -208,21 +200,21 @@ void AreaListWindow::oneLine(int i)
 		mm.areaList->getShortName(), mm.areaList->getDescription());
 
 	if (mm.areaList->getNoOfLetters())
-		p += sprintf(p, "  %5d  ", mm.areaList->getNoOfLetters());
+		p += sprintf(p, " %6d  ", mm.areaList->getNoOfLetters());
 	else
 		p += sprintf(p, "      .  ");
 
 	if (mm.areaList->getNoOfUnread())
-		p += sprintf(p, "  %5d   ", mm.areaList->getNoOfUnread());
+		p += sprintf(p, "%6d  ", mm.areaList->getNoOfUnread());
 	else
-		p += sprintf(p, "      .   ");
+		p += sprintf(p, "     .  ");
 
-	if (mode)
+	if (hasPers)
 		if (mm.areaList->getNoOfPersonal())
-			sprintf(p, "   %5d   ",
+			sprintf(p, "%6d  ",
 				mm.areaList->getNoOfPersonal());
 		else
-			sprintf(p, "       .   ");
+			sprintf(p, "     .  ");
 
 	coltype ch = ((attrib & (REPLYAREA | ADDED | DROPPED)) ||
 		((attrib & HASREPLY) && !(attrib & ACTIVE))) ?
@@ -274,18 +266,22 @@ void AreaListWindow::MakeActive()
 	int padding, middle;
 	char tmp[80], tpad[7];
 
-	mode = mm.driverList->hasPersonal();
+	hasPers = mm.packet->hasPersonal();
 	mm.areaList->updatePers();
 
 	mm.areaList->setMode(mm.areaList->getMode() - 1);
 	mm.areaList->relist();
 
-	const char *bb = mm.resourceObject->get(BBSName);
-	const char *sy = mm.resourceObject->get(SysOpName);
-	hasSys = ((bb && *bb) || (sy && *sy));
+	const char *bb = mm.packet->getBBSName();
+	const char *sy = mm.packet->getSysOpName();
+	const char *bp = mm.packet->getBBSProg();
+	const char *dp = mm.packet->getDoorProg();
+
+	hasSys = bb && *bb;
+	bool hasProg = (bp && *bp) || (dp && *dp);
 
 	list_max_y = LINES - (mm.resourceObject->getInt(ExpertMode) ?
-			11 : 15) + !hasSys;
+			11 : 15) + !hasSys + !hasProg;
 	list_max_x = COLS - 6;
 	top_offset = 2;
 
@@ -305,52 +301,73 @@ void AreaListWindow::MakeActive()
 
 	borderCol = C_ALBORDER;
 
-	list = new InfoWin(list_max_y + 6 + hasSys, list_max_x + 2, 2, 
-		borderCol, tmp, C_ALBTEXT, 6 + hasSys);
+	list = new InfoWin(list_max_y + 5 + hasSys + hasProg,
+		list_max_x + 2, 2,  borderCol, tmp, C_ALBTEXT,
+		5 + hasSys + hasProg);
 
 	list->attrib(C_ALHEADTEXT);
 	list->put(1, 3, "Area#  Description");
-	int newloc = list_max_x - 15;
-	if (mode)
-		newloc -= 11;
+	int newloc = list_max_x - 14;
+	if (hasPers)
+		newloc -= 8;
 	list->put(1, newloc, "Total   Unread");
-	if (mode)
-		list->put(1, list_max_x - 9, "Personal");
+	if (hasPers)
+		list->put(1, list_max_x - 5, "Pers");
 
-	list->horizline(list_max_y + 2, list_max_x);
+	list->horizline(list_max_y + 2);
 
-	padding = list_max_x - 28;
-	if (mode)
-		padding -= 11;
+	padding = list_max_x - 26;
+	if (hasPers)
+		padding -= 8;
 	sprintf(format, "%%c%%6s  %%-%d.%ds", padding, padding);
 
 	middle = (list_max_x - 2) >> 1;
+	padding = list_max_x - 8;
 
 	list->attrib(C_ALINFOTEXT);
-	if (hasSys) {
-		list->put(list_max_y + 3, 3, "BBS:");
-		list->put(list_max_y + 3, middle, " Sysop:");
-	}
-	list->put(list_max_y + 3 + hasSys, 2, "Type:");
-	list->put(list_max_y + 4 + hasSys, 2, "Area description:");
+	if (hasSys)
+		list->put(list_max_y + 3, 2, "Name:");
 
+	if (sy && *sy)
+		list->put(list_max_y + 3 + hasSys, middle, " Sysop:");
+
+	list->put(list_max_y + 3 + hasSys, 2, "Type:");
+
+	if (dp && *dp)
+		list->put(list_max_y + 4 + hasSys, 2, "Door:");
+
+	if (bp && *bp)
+		list->put(list_max_y + 4 + hasSys, middle, "   BBS:");
+	
 	sprintf(tpad, "%%.%ds", (middle < 87) ? middle - 8 : 79);
 	middle += 8;
 
 	list->attrib(C_ALINFOTEXT2);
 
 	if (hasSys) {
-		sprintf(tmp, tpad, (bb && *bb) ? bb : "(unknown)");
-		charconv_in(tmp);
-		list->put(list_max_y + 3, 8, tmp);
-
-		sprintf(tmp, tpad, (sy && *sy) ? sy : "(unknown)");
-		charconv_in(tmp);
-		list->put(list_max_y + 3, middle, tmp);
+		p = list->lineBuf;
+		sprintf(p, "%-*.*s", padding, padding, bb);
+		charconv_in(p);
+		list->put(list_max_y + 3, 8, p);
 	}
 
-	padding = list_max_x - 20;
-	sprintf(format2, "%%-%d.%ds", padding, padding);
+	if (sy && *sy) {
+		sprintf(tmp, tpad, sy);
+		charconv_in(tmp);
+		list->put(list_max_y + 3 + hasSys, middle, tmp);
+	}
+
+	if (dp && *dp) {
+		sprintf(tmp, tpad, dp);
+		charconv_in(tmp);
+		list->put(list_max_y + 4 + hasSys, 8, tmp);
+	}
+
+	if (bp && *bp) {
+		sprintf(tmp, tpad, bp);
+		charconv_in(tmp);
+		list->put(list_max_y + 4 + hasSys, middle, tmp);
+	}
 
 	DrawAll();
 	Select();
@@ -364,7 +381,7 @@ void AreaListWindow::Delete()
 void AreaListWindow::Prev()
 {
 	do {
-		Move(UP);
+		Move(KEY_UP);
 		Select();
 	} while (!mm.areaList->getNoOfLetters() &&
 		 (mm.areaList->getActive() > 0));
@@ -373,7 +390,7 @@ void AreaListWindow::Prev()
 void AreaListWindow::Next()
 {
 	do {
-		Move(DOWN);
+		Move(KEY_DOWN);
 		Select();
 	} while (!mm.areaList->getNoOfLetters() &&
 		 (mm.areaList->getActive() <
@@ -393,9 +410,8 @@ bool AreaListWindow::extrakeys(int key)
 				ui->addressbook();
 				Select();
 			}
-			ui->letterwindow.set_Letter_Params(
+			ui->letterwindow.EnterLetter(
 				mm.areaList->getAreaNo(), 'E');
-			ui->letterwindow.EnterLetter();
 		} else
 			ui->nonFatalError("Cannot reply there");
 		break;
@@ -415,16 +431,6 @@ bool AreaListWindow::extrakeys(int key)
 		ResetActive();
 		ui->redraw();
 		break;
-	case '^':
-		{
-			char item[80];
-			*item = '\0';
-
-			if (ui->savePrompt("Filter on:", item))
-				mm.areaList->setFilter(item);
-		}
-		ui->redraw();
-		break;
 	case 'S':
 	case MM_INS:
 	case 'U':
@@ -439,11 +445,16 @@ bool AreaListWindow::extrakeys(int key)
 				mm.areaList->Drop();
 			}
 			ui->setUnsavedNoAuto();
-			Move(DOWN);
+			Move(KEY_DOWN);
 			Draw();
 		} else
 			ui->nonFatalError(
 				"Offline config is unavailable");
 	}
 	return end;
+}
+
+void AreaListWindow::setFilter(const char *item)
+{
+	mm.areaList->setFilter(item);
 }

@@ -3,7 +3,7 @@
  * resource class
 
  Copyright (c) 1996 Toth Istvan <stoty@vma.bme.hu>
- Copyright (c) 2002 William McBrine <wmcbrine@users.sourceforge.net>
+ Copyright (c) 2003 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -11,10 +11,7 @@
 #include "mmail.h"
 #include "../interfac/error.h"
 
-/* Default filenames. Note that EMX now serves for the Win32 port (via
-   RSXNT), as well as for OS/2; one of the few differences is the default
-   editor defined here:
-*/
+/* Default filenames. */
 
 #ifdef __MSDOS__
 # define DEFEDIT "edit"
@@ -40,8 +37,8 @@
 
 #define DEFARJ "arj a -e"
 #define DEFUNARJ "arj e"
-#define DEFRAR "rar u -ep"
-#define DEFUNRAR "rar e -cl -o+"
+#define DEFRAR "rar u -ep -inul"
+#define DEFUNRAR "rar e -cl -o+ -inul"
 #define DEFTAR "tar zcf"
 #define DEFUNTAR "tar zxf"
 
@@ -131,7 +128,7 @@ void baseconfig::newConfig(const char *configname)
 		for (p = intro; *p; p++)
 			fprintf(fd, "# %s\n", *p);
 
-		fprintf(fd, "\nVersion: %d.%d\n", MM_MAJOR, MM_MINOR);
+		fprintf(fd, "\nVersion: " MM_VERNUM "\n");
 
 		for (int x = 0; x < configItemNum; x++) {
 			if (comments[x])
@@ -174,7 +171,7 @@ const int startUpLen =
 const char *resource::rc_names[startUpLen] =
 {
 	"UserName", "InetAddr", "QuoteHead", "InetQuote",
-	"homeDir", "mmHomeDir", "signature", "editor",
+	"mmHomeDir", "TempDir", "signature", "editor",
 	"PacketDir", "ReplyDir", "SaveDir", "AddressBook", "TaglineFile",
 	"ColorFile", "UseColors",
 #ifdef HAS_TRANS
@@ -262,7 +259,7 @@ const char *resource::rc_comments[startUpLen] = {
 
 const int resource::startUp[startUpLen] =
 {
-	UserName, InetAddr, QuoteHead, InetQuote, homeDir, mmHomeDir,
+	UserName, InetAddr, QuoteHead, InetQuote, mmHomeDir, TempDir,
 	sigFile, editor, PacketDir, ReplyDir, SaveDir, AddressFile,
 	TaglineFile, ColorFile, UseColors,
 #ifdef HAS_TRANS
@@ -321,8 +318,8 @@ const int resource::defInt[] =
 
 resource::resource()
 {
-	const char *envhome, *greeting =
-		"\nWelcome to " MM_NAME " v%d.%d!\n\n"
+	const char *greeting =
+		"\nWelcome to " MM_NAME " v" MM_VERNUM "!\n\n"
 		"A new or updated " RCNAME " has been written. "
 		"If you continue now, " MM_NAME " will\nuse the default "
 		"values for any new keywords. (Existing keywords have been "
@@ -343,26 +340,19 @@ resource::resource()
 	}
 	set(outCharset, "iso-8859-1");
 
-	envhome = getenv("MMAIL");
-	if (!envhome)
-		envhome = getenv("HOME");
-	if (!envhome)
-		envhome = error.getOrigDir();
-
-	set_noalloc(homeDir, fixPath(envhome));
-	char *configFileName = fullpath(get(homeDir), RCNAME);
-	
 	initinit();
 	homeInit();
 	mmHomeInit();
 
+	char *configFileName = fullpath(resourceData[homeDir], RCNAME);
+
 	if (parseConfig(configFileName)) {
 		newConfig(configFileName);
-		printf(greeting, MM_MAJOR, MM_MINOR);
+		printf(greeting);
 		char inp = fgetc(stdin);
 
 		if (toupper(inp) == 'Y') {
-			mysystem2(get(editor), configFileName);
+			mysystem2(resourceData[editor], configFileName);
 			parseConfig(configFileName);
 		}
 	}
@@ -372,10 +362,10 @@ resource::resource()
 	if (!verifyPaths())
 		fatalError("Unable to access data directories");
 
-	basedir = mytmpnam();
-	bool tmpok = checkPath(basedir, false);
+	resourceData[BaseDir] = mytmpdir(resourceData[TempDir]);
+	bool tmpok = checkPath(resourceData[BaseDir], false);
 	if (!tmpok)
-		fatalError("Unable to create tmp directory");
+		fatalError("Unable to create temp directory");
 	subPath(WorkDir, "work");
 	subPath(UpWorkDir, "upwork");
 }
@@ -384,12 +374,12 @@ resource::~resource()
 {
 	clearDirectory(resourceData[WorkDir]);
 	clearDirectory(resourceData[UpWorkDir]);
-	mychdir("..");
+	mychdir(resourceData[BaseDir]);
 	myrmdir(resourceData[WorkDir]);
 	myrmdir(resourceData[UpWorkDir]);
-	mychdir("..");
-	myrmdir(basedir);
-	delete[] basedir;
+	clearDirectory(resourceData[BaseDir]);
+	mychdir(resourceData[TempDir]);
+	myrmdir(resourceData[BaseDir]);
 	for (int c = 0; c < noOfStrings; c++)
 		delete[] resourceData[c];
 }
@@ -424,12 +414,8 @@ void resource::processOne(int c, const char *resValue)
 			set_noalloc(c, (c >= noOfRaw) ?
 				canonize(fixPath(resValue)) :
 				strdupplus(resValue));
-			switch (c) {
-			case homeDir:
-				homeInit();
-			case mmHomeDir:
+			if (mmHomeDir == c)
 				mmHomeInit();
-			}
 		} else {
 			int x = 0;
 			char r = toupper(*resValue);
@@ -561,8 +547,24 @@ void resource::set(int ID, int newValue)
 
 void resource::homeInit()
 {
-	set_noalloc(mmHomeDir, canonize(fullpath(resourceData[homeDir],
-		"mmail")));
+	bool usingHOME = false;
+
+	const char *envhome = getenv("MMAIL");
+	if (!envhome) {
+		envhome = getenv("HOME");
+		if (envhome)
+			usingHOME = true;
+		else
+			envhome = error.getOrigDir();
+	}
+
+	set_noalloc(homeDir, canonize(fixPath(envhome)));
+
+	if (usingHOME)
+		set_noalloc(mmHomeDir,
+			canonize(fullpath(resourceData[homeDir], "mmail")));
+	else
+		set(mmHomeDir, resourceData[homeDir]);
 }
 
 void resource::mmEachInit(int index, const char *dirname)
@@ -573,7 +575,7 @@ void resource::mmEachInit(int index, const char *dirname)
 
 void resource::subPath(int index, const char *dirname)
 {
-	char *tmp = fullpath(basedir, dirname);
+	char *tmp = fullpath(resourceData[BaseDir], dirname);
 	set_noalloc(index, tmp);
 	if (!checkPath(tmp, 0))
 		fatalError("tmp Dir could not be created");
@@ -609,6 +611,8 @@ void resource::initinit()
 
 void resource::mmHomeInit()
 {
+	set(TempDir, resourceData[mmHomeDir]);
+
 	mmEachInit(PacketDir, "down");
 	mmEachInit(ReplyDir, "up");
 	mmEachInit(SaveDir, "save");

@@ -3,19 +3,19 @@
  * tagline selection, editing
 
  Copyright (c) 1996 Kolossvary Tamas <thomas@vma.bme.hu>
- Copyright (c) 2002 William McBrine <wmcbrine@users.sourceforge.net>
+ Copyright (c) 2003 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
 
 #include "interfac.h"
 
-int tnamecmp(const void *a, const void *b)
+extern "C" int tnamecmp(const void *a, const void *b)
 {
 	int d;
 	
-	const char *p = (*((TaglineWindow::tagline **) a))->text;
-	const char *q = (*((TaglineWindow::tagline **) b))->text;
+	const char *p = (*((tagline **) a))->text;
+	const char *q = (*((tagline **) b))->text;
 
 	d = strcasecmp(p, q);
 	if (!d)
@@ -24,8 +24,7 @@ int tnamecmp(const void *a, const void *b)
 	return d;
 }
 
-
-TaglineWindow::tagline::tagline(const char *tag)
+tagline::tagline(const char *tag)
 {
 	if (tag)
 		strncpy(text, tag, TAGLINE_LENGTH);
@@ -52,16 +51,12 @@ void TaglineWindow::MakeActive()
 	int expmode = mm.resourceObject->getInt(ExpertMode);
 	nodraw = false;
 
-	srand((unsigned) time(0));
-
 	list_max_y = LINES - (expmode ? 12 : 15);
 
 	int xwidth = COLS - 4;
 	if (xwidth > (TAGLINE_LENGTH + 2))
 		xwidth = TAGLINE_LENGTH + 2;
 	list_max_x = xwidth - 2;
-
-	sprintf(format, "%%-%d.%ds", list_max_x, list_max_x);
 
 	top_offset = 1;
 
@@ -83,7 +78,7 @@ void TaglineWindow::MakeActive()
 		int y = list_max_y + 1;
 
 		list->attrib(C_TKEYSTEXT);
-		list->horizline(y, xwidth - 2);
+		list->horizline(y);
 		list->put(++y, 2, "Q");
 		list->put(y, x, "R");
 		list->put(y, x * 2, "Enter");
@@ -132,36 +127,29 @@ bool TaglineWindow::extrakeys(int key)
 		MakeChain();
 		Delete();
 		MakeActive();
-		break;
-	case '^':
-		{
-			char item[80];
-			*item = '\0';
-
-			if (ui->savePrompt("Filter on:", item)) {
-				delete[] filter;
-				filter = strdupplus(item);
-				MakeChain();
-				if (!NumOfActive) {
-					delete[] filter;
-					filter = 0;
-					MakeChain();
-				}
-			}
-		}
-		Delete();
-		MakeActive();
 	}
 	return false;
+}
+
+void TaglineWindow::setFilter(const char *item)
+{
+	delete[] filter;
+	filter = strdupplus(item);
+	MakeChain();
+	if (!NumOfActive) {
+		delete[] filter;
+		filter = 0;
+		MakeChain();
+	}
 }
 
 void TaglineWindow::RandomTagline()
 {
 	int i = rand() / (RAND_MAX / NumOfActive);
 
-	Move(HOME);
+	Move(KEY_HOME);
 	for (int j = 1; j <= i; j++)
-		Move(DOWN);
+		Move(KEY_DOWN);
 	DrawAll();
 }
 
@@ -171,7 +159,7 @@ void TaglineWindow::EnterTagline(const char *tag)
 	char newtagline[TAGLINE_LENGTH + 1];
 	int y;
 
-	Move(END);
+	Move(KEY_END);
 	if (NumOfActive >= list_max_y) {
 		y = list_max_y;
 		position++;
@@ -184,7 +172,7 @@ void TaglineWindow::EnterTagline(const char *tag)
 		Draw();
 		NumOfActive--;
 	} else {
-		int xwidth = COLS - 2;
+		int xwidth = COLS - 4;
 		if (xwidth > (TAGLINE_LENGTH + 2))
 			xwidth = TAGLINE_LENGTH + 2;
 		list = new InfoWin(5, xwidth, (LINES - 5) >> 1, C_TBBACK);
@@ -226,7 +214,7 @@ void TaglineWindow::EnterTagline(const char *tag)
 				ui->nonFatalError("Already in file");
 		}
 	}
-	Move(END);
+	Move(KEY_END);
 
 	if (!nodraw) {
 		DrawAll();
@@ -359,7 +347,8 @@ void TaglineWindow::oneLine(int i)
 	if (z == active)
 		highlighted = curr;
 
-	sprintf(list->lineBuf, format, curr ? curr->text : " ");
+	sprintf(list->lineBuf, "%-*.*s", list_max_x, list_max_x,
+		curr ? curr->text : " ");
 
 	DrawOne(i, C_TLINES);
 }
