@@ -1,44 +1,87 @@
-${h3}0.44 - 2003/05/07:${h3end}
+${h3}0.45 - 2003/06/08:${h3end}
 
 New features:${pul}
 
-${bullet}Added the pipe character, '|', as an alternative to '^' for invoking the
-${indent}filter function. It turns out that '^' is a poor choice for many non-U.S.
-${indent}keyboards; sorry. The pipe character is also somewhat more consistent with
-${indent}other programs with similar functions. Problem reported by Peter Karlsson.
+${bullet}New temporary directory and file system: Instead of using tmpnam() --
+${indent}which frankly never worked properly outside of Unix, and is sometimes
+${indent}regarded as a security risk there -- MultiMail now generates temp
+${indent}directories of the form \"workNNNN\", where NNNN is a random number, under
+${indent}the directory specified by the new .mmailrc keyword \"TempDir\". By default,
+${indent}TempDir is set to the same value as mmHomeDir. NOTE THAT IF YOU'VE BEEN
+${indent}USING ENVIRONMENT VARAIBLES TO SPECIFY A TEMP DIR, IT WILL NO LONGER WORK.
+${indent}They aren't even used to set the default (as with EDITOR). In the XT port,
+${indent}TempDir also now specifies the location of the swap file, if that feature
+${indent}is enabled. And temporary files are now created as \"tmpNNNNN.txt\" under
+${indent}the workNNNN directory, where NNNNN is a serial number; so they no longer
+${indent}clutter the base temp directory, they have the \".txt\" extension some
+${indent}editors depend on, and there's no longer a problem with editor-created
+${indent}backup files being cleared out.
+
+${bullet}Big improvements in the ANSI viewer under Unix: For those terminals (like
+${indent}the Linux console) that support the \"smpch\" terminfo capability, the IBM
+${indent}PC characters are passed through directly. For other terminals (like
+${indent}xterm), the use of the widely unimplemented ACS_BLOCK and ACS_BOARD has
+${indent}been replaced with an inverse space and ACS_CKBOARD, respectively. (In
+${indent}ncurses' curses.h, ACS_BLOCK and ACS_BOARD are identified as \"Teletype
+${indent}5410v1 symbols\", while ACS_CKBOARD is in the \"VT100 symbols\" group.
+${indent}Everything supports VT100, but few terminals support the other class.)
+${indent}Note that the use of the inverse space does present a problem when
+${indent}characters have the A_BOLD attribute, as it's interpreted differently by
+${indent}different terminals, so that some will make the cell \"bright\", and some
+${indent}won't; but this seems to look best on the greatest number of terminals.
+${indent}Also note that \"xterm -fn vga -tn linux\" is still the best way to view
+${indent}ANSI under X. ;-)
+
+${bullet}A new method for setting mmHomeDir: If it's based on the environment
+${indent}variable \"HOME\", add \"mmail\" to the end, as before; but if it's based on
+${indent}\"MMAIL\" or the start directory, don't. Practically speaking, this should
+${indent}make it apply \"mmail\" under Unix and not under DOS-ish systems, in most
+${indent}cases. That means that if you create a directory like \"C:\MMAIL\" and run
+${indent}mm.exe from there, it will no longer create \"C:\MMAIL\MMAIL\DOWN\", etc.,
+${indent}but simply \"C:\MMAIL\DOWN\". Note that this (unlike the new temp system)
+${indent}applies only to new installations; upgrades will not alter existing
+${indent}MMAIL.RC pathnames.
+
+${bullet}The name shown at the top of the screen is now \"MultiMail/Sysname vX.X\" --
+${indent}i.e., the same as would appear in a QWK reply tearline -- instead of
+${indent}\"MultiMail offline reader vX.X\". Shorter, yet more informative. :-)
 ${ulend}
 Bug fixes and such:${pul}
 
-${bullet}Changed the way that the length of QWK replies is calculated. This is a
-${indent}speculative fix for a reported problem with corrupt replies that I
-${indent}couldn't reproduce; but from what was described, this _should_ do it. At
-${indent}any rate, the new code is simpler and cleaner. Reported by Jimmy Day et
-${indent}al.
+${bullet}Doing a ^X during a bulletin would cause a segfault.
 
-${bullet}Pressing the \"END\" key in string input fields now works corrrectly, taking
-${indent}the cursor to the end of the field instead of ending the edit. Reported by
-${indent}Touko Rajala.
+${bullet}A malformed 'H' command (e.g., using \"0\" as a parameter) in ANSI could
+${indent}cause a segfault.
 
-${bullet}Bogus/unintentional '@' color code sequences could cause segfaults in the
-${indent}ANSI viewer. Reported by Neall Mercado.
+${bullet}The window title is explicitly set to \"MultiMail\" in the Win32 and XCurses
+${indent}ports. This eliminates the problem where \"UNZIP\" would remain in the title
+${indent}after unarchiving a packet under Win 9x.
 
-${bullet}In the Win32 version, under NT (though not 9x), the temporary directories
-${indent}were not being deleted.
+${bullet}Revived cursor mode save/restore routines for PDCurses (except for Win32,
+${indent}where it doesn't work); moved cursor restoration after endwin() call in
+${indent}mysystem() (this is why it didn't do the job before).
 
-${bullet}The filter was not working correctly in the LittleAreaListWindow.
+${bullet}Updated Makefiles for PDCurses 2.6, and GCC 3.2.1 (in the case of EMX). I
+${indent}strongly recommend upgrading to PDCurses 2.6, in most cases, as it already
+${indent}incorporates my patch for halfdelay(); however, there's a fatal bug in the
+${indent}OS/2 version. (Write me for a patch.) I also recommend ncurses 5.3 over
+${indent}5.2 -- for one thing, it fixes the problem with the bool declaration that
+${indent}broke searching and animation in some installations -- but I've left it as
+${indent}5.2 in the Makefile, for now, because I have too many systems to recompile
+${indent}it for. :-)
 
-${bullet}Junk could appear in the LetterList on a resort if some messages were
-${indent}read.
+${bullet}Remaining compilation warnings eliminated for most platforms: Got rid of
+${indent}tmpnam() (see above), moved \"%y\" strftime() strings outside the calls
+${indent}(copied this from Ingo Brueckl), and added \"-Wno-deprecated\" to the
+${indent}Makefile options for the latest versions of gcc.
 
-${bullet}Narrowed the width of some windows as a workaround for display bugs in
-${indent}xterm.
+${bullet}Useless .mmailrc keyword \"homeDir\" removed. (It specified the base value
+${indent}for mmHomeDir, but in most cases that was already specified explicitly on
+${indent}the very next line.)
 
-${bullet}Added \"-inul\" to the default command lines for RAR to supress the output.
+${bullet}Stronger attempts to use backslash characters instead of slash where
+${indent}appropriate in MMAIL.RC (depending on the platform). But again, this is
+${indent}cosmetic.
 
-${bullet}Minor internal changes to allow compilation and remove warnings under
-${indent}Sun's SUNWspro C++ compiler. This also entailed the elimination of the
-${indent}sillier of the \"set_Letter_Params()\" functions, which was long overdue.
-${indent}:-)
-
-${bullet}Miscellaneous small changes for efficiency.
+${bullet}Optimizations, comments, etc.
 ${ulend}

@@ -41,4 +41,3 @@ MMAIL.RC pathnames.
 The name shown at the top of the screen is now "MultiMail/Sysname vX.X" --
 i.e., the same as would appear in a QWK reply tearline -- instead of
 "MultiMail offline reader vX.X". Shorter, yet more informative. :-)
-
