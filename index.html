@@ -171,11 +171,6 @@ make executable (e.g., \"chmod 700 mm-linux-i386elf\"), and run.
 <p>
 <ul>
 <li><b><a
-href=\"${DOWNHTTP}/mm-darwin-ppc.gz\">mm-darwin-ppc.gz
-(${KsizeDarwin}k)</a></b> - Darwin/PPC, aka Mac OS X. Yes, finally a Mac 
-port! (Sort of.)
-
-<li><b><a
 href=\"${DOWNHTTP}/mm-linux-i386elf.gz\">mm-linux-i386elf.gz
 (${KsizeLinux}k)</a></b> - Linux/i386 ELF, compiled on a modified
 Slackware 3.0. Needs libc5.
@@ -192,29 +187,31 @@ href=\"${DOWNHTTP}/mm-qnx-i386.gz\">mm-qnx-i386.gz
 href=\"${DOWNHTTP}/mm-solaris-i386.gz\">mm-solaris-i386.gz
 (${KsizeSolaris}k)</a></b> - Solaris/i386, compiled on 8.
 
-<li><b><a
-href=\"${DOWNHTTP}/mm-solaris-sparc.gz\">mm-solaris-sparc.gz
-(${KsizeSolaris2}k)</a></b> - Solaris/Sparc, compiled on 8.
-
-<li>From the SourceForge compile farm -- these are dynamically linked with
-ncurses:
+<li>From the SourceForge compile farm -- most of these are dynamically
+linked with ncurses:
 
 <ul>
 <li><b><a
-href=\"${DOWNHTTP}/mm-freebsd-i386.gz\">mm-freebsd-i386.gz
-(${KsizeFreeBSD}k)</a></b> - FreeBSD, compiled on 4.2-stable.
+href=\"${DOWNHTTP}/mm-darwin-ppc.gz\">mm-darwin-ppc.gz
+(${KsizeDarwin}k)</a></b> - Darwin/PPC, aka Mac OS X. Yes, finally a Mac 
+port! (Sort of.)
 
 <li><b><a
 href=\"${DOWNHTTP}/mm-linux-alpha.gz\">mm-linux-alpha.gz
-(${KsizeAlpha}k)</a></b> - Linux/Alpha, compiled on Red Hat 7.0.
+(${KsizeAlpha}k)</a></b> - Linux/Alpha, compiled on Debian 3.0.
 
 <li><b><a
-href=\"${DOWNHTTP}/mm-linux-ppc.gz\">mm-linux-ppc.gz
-(${KsizePPC}k)</a></b> - Linux/PPC, compiled on Debian 2.2.
+href=\"${DOWNHTTP}/mm-linux-arm.gz\">mm-linux-arm.gz
+(${KsizeARM}k)</a></b> - Linux/ARM, compiled on Debian 3.0.
 
 <li><b><a
 href=\"${DOWNHTTP}/mm-linux-sparc.gz\">mm-linux-sparc.gz
-(${KsizeSparc}k)</a></b> - Linux/Sparc, compiled on Debian 2.2.
+(${KsizeSparc}k)</a></b> - Linux/Sparc, compiled on Debian 3.0.
+
+<li><b><a
+href=\"${DOWNHTTP}/mm-solaris-sparc.gz\">mm-solaris-sparc.gz
+(${KsizeSolaris2}k)</a></b> - Solaris/Sparc, compiled on 8. This one is 
+statically linked with ncurses.
 </ul>
 
 
@@ -263,13 +260,6 @@ href=\"${DOWNHTTP}/mmwin${SHORTVER}.zip\">mmwin${SHORTVER}.zip
 (${KsizeBCC}k)</a></b> - Borland C++ version. This also includes
 documentation. Needs Windows 9x, ME, NT, 2000 or XP (<i>recommended</i> for
 NT, 2000 or XP). Note that this is a console (text-mode) application.
-
-<!--
-<li><b><a
-href=\"${DOWNHTTP}/mmrsx${SHORTVER}.zip\">mmrsx${SHORTVER}.zip
-(${KsizeRSX}k)</a></b> - Original Win32 version, compiled with RSX/NT.
-(The compiler is the only difference.)
--->
 
 </ul>
 
@@ -345,7 +335,6 @@ Other ports that might be interesting:
 <ul>
 <li>Amiga OS
 <li>Atari MiNT
-<li>Mac OS -- possible?
 </ul>
 
 
@@ -381,12 +370,6 @@ discussion list</a>.
 <h3><a name=\"links\">Other links</a></h3>
 <ul>
 
-<li><b>Old MultiMail pages:</b>
-<ul>
-<li><a href=\"http://www.vma.bme.hu/~stoty/README.html\">
-T&oacute;th Istv&aacute;n's</A>
-
-</ul>
 <li><b>Format specifications:</b>
 <ul>
 <li><a href=\"${DOWNHTTP}/bwdev300.tar.gz\">Blue Wave (51k)</a>

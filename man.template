@@ -164,8 +164,8 @@ A new twist on searching, as of version 0.43, is filtering. This is
 available in all of the list windows, but not the letter or ANSI viewer. 
 Unlike searching, it always applies only to the current list.
 
-Press '^' to bring up the filter prompt, and specify the text to filter
-on. To clear a filter, press '^', and then press return at a blank filter
+Press '|' to bring up the filter prompt, and specify the text to filter
+on. To clear a filter, press '|', and then press return at a blank filter
 prompt. (A string that's not found in the list will have the same effect.)
 Press ESC to leave the filter as it was.
 
