@@ -1,0 +1,16 @@
+Package: multimail
+Obtained from: http://multimail.sourceforge.net/
+Packaged for Debian by: peter karlsson <peterk@debian.org>
+Upstream author: William McBrine <wmcbrine@users.sourceforge.net>
+
+MultiMail was originally developed under Linux by Kolossvary Tamas and Toth
+Istvan. John Zero was the maintainer for versions 0.2 through 0.6; since
+version 0.7, the maintainer is William McBrine
+<wmcbrine@users.sourceforge.net>.
+
+Additional code has been contribued by Peter Karlsson, Mark D. Rejhon, Ingo
+Brueckl, and Robert Vukovic.
+
+MultiMail is free, "open source" software, distributed under the GNU General
+Public License. On Debian systems, the complete text of the GNU General
+Public License can be found in the /usr/share/common-licenses/GPL file.

@@ -2,7 +2,7 @@
  * MultiMail offline mail reader
  * color handling, and default colors
 
- Copyright (c) 1999 William McBrine <wmcbrine@clark.net>,
+ Copyright (c) 2002 William McBrine <wmcbrine@users.sourceforge.net>,
                     Ingo Brueckl <ib@wupperonline.de>
 
  Distributed under the GNU General Public License.
@@ -10,10 +10,10 @@
 
 #include "interfac.h"
 
-const int numColors = 61;
-
-chtype emph(chtype ch)
+chtype emph(coltype chA)
 {
+	chtype ch = ColorArray[chA];
+
 	if (has_colors())
 		switch (PAIR_NUMBER(ch) & 7) {
 		case COLOR_BLACK:
@@ -26,8 +26,10 @@ chtype emph(chtype ch)
 	return ch;
 }
 
-chtype noemph(chtype ch)
+chtype noemph(coltype chA)
 {
+	chtype ch = ColorArray[chA];
+
 	if (has_colors())
 		switch (PAIR_NUMBER(ch) & 7) {
 		case COLOR_WHITE:
@@ -44,63 +46,77 @@ chtype ColorClass::allcolors[numColors] = {
 	COL(COLOR_WHITE, COLOR_BLACK),		//Start screen/backgnd
 	COL(COLOR_BLUE, COLOR_BLACK) | A_BOLD,	//Start/bdr
 	COL(COLOR_MAGENTA, COLOR_BLACK),	//Start screen/bottom
+
 	COL(COLOR_WHITE, COLOR_BLACK) | A_BOLD,	//Help desc.
 	COL(COLOR_YELLOW, COLOR_BLACK) | A_BOLD,//Help keys
 	COL(COLOR_WHITE, COLOR_BLUE) | A_BOLD,	//Help 2 bdr
 	COL(COLOR_YELLOW, COLOR_BLUE) | A_BOLD,	//Help 2 text
+
 	COL(COLOR_YELLOW, COLOR_BLUE) | A_BOLD,	//Welcome bdr
 	COL(COLOR_YELLOW, COLOR_BLUE) | A_BOLD,	//Welcome prog name
 	COL(COLOR_CYAN, COLOR_BLUE) | A_BOLD,	//Welcome auth names
-	COL(COLOR_WHITE, COLOR_GREEN) | A_BOLD,	//Add. backgnd
-	COL(COLOR_GREEN, COLOR_GREEN) | A_BOLD,	//Add. headers
-	COL(COLOR_RED, COLOR_GREEN),		//Address book/text
+
+	COL(COLOR_YELLOW, COLOR_BLUE) | A_BOLD,	//Add. backgnd
+	COL(COLOR_GREEN, COLOR_BLUE) | A_BOLD,	//Add. headers
+	COL(COLOR_CYAN, COLOR_BLUE) | A_BOLD,	//Address book/text
+	
 	COL(COLOR_WHITE, COLOR_RED) | A_BOLD,	//Warn/text
 	COL(COLOR_YELLOW, COLOR_RED) | A_BOLD,	//Warn/hilight
+
 	COL(COLOR_WHITE, COLOR_BLUE) | A_BOLD,	//Letter/text
-	COL(COLOR_WHITE, COLOR_BLUE),    	//Letter/quoted text
-	COL(COLOR_CYAN, COLOR_BLUE) | A_BOLD,	//Letter/tagline
-	COL(COLOR_BLUE, COLOR_BLUE) | A_BOLD,	//Letter/tear
-	COL(COLOR_BLUE, COLOR_BLUE) | A_BOLD,	//Letter/hidden
-	COL(COLOR_BLUE, COLOR_BLUE) | A_BOLD,	//Letter/origin
-	REVERSE(COLOR_MAGENTA, COLOR_WHITE),	//Letter/bottom statline
+	COL(COLOR_CYAN, COLOR_BLUE),		//Letter/quoted text
+	COL(COLOR_CYAN, COLOR_BLUE),		//Letter/tagline
+	COL(COLOR_GREEN, COLOR_BLUE) | A_BOLD,	//Letter/tear
+	COL(COLOR_GREEN, COLOR_BLUE),		//Letter/hidden
+	COL(COLOR_CYAN, COLOR_BLUE),		//Letter/origin
+	COL(COLOR_MAGENTA, COLOR_WHITE) | A_REVERSE, //Letter/bottom statline
+
 	COL(COLOR_BLUE, COLOR_CYAN),		//Letter/header text
-	COL(COLOR_WHITE, COLOR_CYAN) | A_BOLD,	//msgnum
-	COL(COLOR_GREEN, COLOR_CYAN) | A_BOLD,	//from
-	COL(COLOR_WHITE, COLOR_CYAN) | A_BOLD,	//to
-	COL(COLOR_BLUE, COLOR_CYAN) | A_BOLD,	//subject
-	COL(COLOR_WHITE, COLOR_CYAN) | A_BOLD,	//date
-	COL(COLOR_YELLOW, COLOR_CYAN) | A_BOLD,	//flags high
+	COL(COLOR_BLACK, COLOR_CYAN),		//msgnum
+	COL(COLOR_BLACK, COLOR_CYAN),		//from
+	COL(COLOR_BLACK, COLOR_CYAN),		//to
+	COL(COLOR_BLACK, COLOR_CYAN),		//subject
+	COL(COLOR_BLACK, COLOR_CYAN),		//date
+	COL(COLOR_CYAN, COLOR_BLACK) | A_REVERSE, //flags high
 	COL(COLOR_WHITE, COLOR_CYAN),		//flags
+
 	COL(COLOR_YELLOW, COLOR_BLUE) | A_BOLD,	//Packet/header
 	COL(COLOR_GREEN, COLOR_BLUE) | A_BOLD,	//line text
 	COL(COLOR_CYAN, COLOR_BLUE) | A_BOLD,	//Packet/lines
+
 	COL(COLOR_WHITE, COLOR_BLUE) | A_BOLD,	//Little area
 	COL(COLOR_WHITE, COLOR_BLUE) | A_BOLD,	//line text
+
 	COL(COLOR_GREEN, COLOR_BLUE),		//Area list/reply area
 	COL(COLOR_CYAN, COLOR_BLUE),		//Area list/normal
 	COL(COLOR_YELLOW, COLOR_BLUE) | A_BOLD,	//info win
 	COL(COLOR_WHITE, COLOR_BLUE) | A_BOLD,	//filled text
 	COL(COLOR_GREEN, COLOR_BLUE) | A_BOLD,	//border text
 	COL(COLOR_YELLOW, COLOR_BLUE) | A_BOLD,	//border
-	COL(COLOR_MAGENTA, COLOR_BLUE) | A_BOLD,//header text
+	COL(COLOR_GREEN, COLOR_BLUE) | A_BOLD,	//header text
+	
 	COL(COLOR_WHITE, COLOR_BLUE) | A_BOLD,	//Letter text
 	COL(COLOR_CYAN, COLOR_BLUE),		//Letter/enter get1
 	COL(COLOR_GREEN, COLOR_BLUE) | A_BOLD,	//get2
 	COL(COLOR_WHITE, COLOR_RED) | A_BOLD,	//Letter/save border
 	COL(COLOR_WHITE, COLOR_RED) | A_BOLD,	//Letter/save
 	COL(COLOR_YELLOW, COLOR_RED) | A_BOLD,	//get
+
 	COL(COLOR_WHITE, COLOR_BLUE),		//Letter list/top text1
 	COL(COLOR_GREEN, COLOR_BLUE),		//Letter list/personal
 	COL(COLOR_YELLOW, COLOR_BLUE) | A_BOLD,	//Letter list
+
 	COL(COLOR_WHITE, COLOR_BLUE) | A_BOLD,	//top text1
 	COL(COLOR_GREEN, COLOR_BLUE) | A_BOLD,	//areaname
 	COL(COLOR_YELLOW, COLOR_BLUE) | A_BOLD,	//headers
-	COL(COLOR_YELLOW, COLOR_YELLOW) | A_BOLD,	//Tagline
-	COL(COLOR_WHITE, COLOR_YELLOW) | A_BOLD,	//Tagline/text
-	COL(COLOR_GREEN, COLOR_YELLOW) | A_BOLD,	//key select
-	COL(COLOR_GREEN, COLOR_YELLOW) | A_BOLD,	//Tagline/enter
-	COL(COLOR_MAGENTA, COLOR_YELLOW) | A_BOLD,	//enter get
-	COL(COLOR_MAGENTA, COLOR_YELLOW) | A_BOLD,	//lines
+
+	COL(COLOR_YELLOW, COLOR_BLUE) | A_BOLD,	//Tagline
+	COL(COLOR_GREEN, COLOR_BLUE) | A_BOLD,	//Tagline/text
+	COL(COLOR_GREEN, COLOR_BLUE) | A_BOLD,	//key select
+	COL(COLOR_GREEN, COLOR_BLUE) | A_BOLD,	//Tagline/enter
+	COL(COLOR_CYAN, COLOR_BLUE) | A_BOLD,	//enter get
+	COL(COLOR_CYAN, COLOR_BLUE) | A_BOLD,	//lines
+
 	COL(COLOR_WHITE, COLOR_WHITE) | A_BOLD	//All black!
 };
 
@@ -183,14 +199,7 @@ chtype ColorClass::colorparse(const char *colorstring)
 					att = A_BOLD;
 					break;
 				case 9:
-#ifdef __PDCURSES__
-					att = c[0];
-					c[0] = c[1];
-					c[1] = att;
-					att = A_NORMAL;
-#else
 					att = A_REVERSE;
-#endif
 					break;
 				default:
 					c[i] = mapped[j];
@@ -243,7 +252,7 @@ const char *ColorClass::decompose(chtype ch)
 	rev = ch & A_REVERSE;
 
 	// Swap black-on-black for white-on-white:
-	if ((fg == COLOR_WHITE) && (bg == COLOR_WHITE))
+	if ((fg == (COLOR_WHITE)) && (bg == (COLOR_WHITE)))
 		fg = bg = COLOR_BLACK;
 
 	char *p = compost;
@@ -260,14 +269,44 @@ const char *ColorClass::decompose(chtype ch)
 void ColorClass::Init()
 {
 	const char *configname = mm.resourceObject->get(ColorFile);
+	bool usecol = mm.resourceObject->getInt(UseColors);
 
 	names = col_names;
 	intro = col_intro;
 	comments = col_comments;
 	configItemNum = numColors;
 
-	if (parseConfig(configname))
-		newConfig(configname);
+	if (usecol)
+		if (parseConfig(configname))
+			newConfig(configname);
 
+#ifdef __PDCURSES__
+
+// Here is the implementation of monochrome mode for PDCurses. Since we
+// now have to carry over the A_REVERSE flag in allcolors[], and since
+// PDCurses does not handle A_REVERSE properly (it forces black on white),
+// we must also adjust those attributes here even when in color mode.
+// Bonus: the reverse attribute is no longer stripped from color files.
+
+	for (int x = 0; x < numColors; x++) {
+		chtype bold, rev, ch = allcolors[x];
+
+		bold = ch & A_BOLD;
+		rev = ch & A_REVERSE;
+
+		if (rev)
+			if (usecol) {
+				chtype fg = PAIR_NUMBER(ch) >> 3;
+				chtype bg = PAIR_NUMBER(ch) & 7;
+				allcolors[x] = COL(bg, fg) | bold;
+			} else
+				allcolors[x] = A_REVERSE;
+		else
+			if (!usecol)
+				allcolors[x] =
+					COL(COLOR_WHITE, COLOR_BLACK) | bold;
+	}
+#endif
+	
 	ColorArray = allcolors;
 }

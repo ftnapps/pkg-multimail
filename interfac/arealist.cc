@@ -3,7 +3,7 @@
  * area list
 
  Copyright (c) 1996 Kolossvary Tamas <thomas@vma.bme.hu>
- Copyright (c) 1999 William McBrine <wmcbrine@clark.net>
+ Copyright (c) 2002 William McBrine <wmcbrine@users.sourceforge.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -17,14 +17,17 @@ void LittleAreaListWindow::MakeActive()
 	position = 0;
 	areanum = -1;
 
+	mm.areaList->setMode(mm.areaList->getMode() - 1);
+	mm.areaList->relist();
+
 	list_max_y = (NumOfItems() < LINES - 10) ? NumOfItems() : LINES - 10;
 	list_max_x = 52;
 	top_offset = 3;
 
 	borderCol = C_LALBTEXT;
 
-	list = new InfoWin(list_max_y + 4, 54, 3, borderCol, 0, 0, 4,
-		top_offset);
+	list = new InfoWin(list_max_y + 4, list_max_x + 2, 3, borderCol, 0,
+		C_SBACK, 4, top_offset);
 
 	list->put(1, 2, "Reply goes to area:");
 
@@ -78,12 +81,10 @@ void LittleAreaListWindow::oneLine(int i)
 	DrawOne(i, C_LALLINES);
 }
 
-searchret LittleAreaListWindow::oneSearch(int x, const char *item,
-	int ignore)
+searchret LittleAreaListWindow::oneSearch(int x, const char *item, int)
 {
-	ignore = ignore;
 	mm.areaList->gotoActive(x + disp);
-	return searchstr(mm.areaList->getDescription(), item) ? True : False;
+	return mm.areaList->filterCheck(item) ? True : False;
 }
 
 bool LittleAreaListWindow::extrakeys(int key)
@@ -91,19 +92,35 @@ bool LittleAreaListWindow::extrakeys(int key)
 	switch (key) {
 	case MM_ENTER:
 		Select();
-		areanum = mm.areaList->getAreaNo();
+		if (mm.areaList->getType() & (COLLECTION | READONLY)) {
+			areanum = -1;
+			ui->nonFatalError("Cannot reply there");
+		} else
+			areanum = mm.areaList->getAreaNo();
 		break;
 	case 'L':
 		Select();
-		int x = mm.areaList->getAreaNo();
+		{
+			int x = mm.areaList->getAreaNo();
 
-		interface->areas.Select();
-		mm.areaList->relist();
-		interface->areas.ResetActive();
+			ui->areas.Select();
+			mm.areaList->relist();
+			ui->areas.ResetActive();
 
-		mm.areaList->gotoArea(x);
-		active = mm.areaList->getActive() - disp;
-		interface->redraw();
+			mm.areaList->gotoArea(x);
+			active = mm.areaList->getActive() - disp;
+		}
+		ui->redraw();
+		break;
+	case '^':
+		{
+			char item[80];
+			*item = '\0';
+
+			if (ui->savePrompt("Filter on:", item))
+				mm.areaList->setFilter(item);
+		}
+		ui->redraw();
 	}
 	return false;
 }
@@ -147,7 +164,7 @@ void AreaListWindow::oneLine(int i)
 
 	mm.areaList->gotoActive(position + i);
 
-	int attrib = mm.areaList->getType();
+	unsigned long attrib = mm.areaList->getType();
 
 	if (position + i == active) {
 		p += sprintf(p, "%.20s", mm.areaList->getAreaType());
@@ -161,7 +178,7 @@ void AreaListWindow::oneLine(int i)
 				if (mm.areaList->isUsenet())
 					p += sprintf(p, ", Usenet");
 				else
-					if (attrib & ECHO)
+					if (attrib & ECHOAREA)
 						p += sprintf(p, ", Echo");
 
 		if (attrib & PERSONLY)
@@ -170,23 +187,24 @@ void AreaListWindow::oneLine(int i)
 			if (attrib & PERSALL)
 				p += sprintf(p, ", Pers+All");
 
-		int q = 27 - (p - list->lineBuf);
+		int q = ((list_max_x >> 1) - 8) - (p - list->lineBuf);
 		while (--q > 0)
 			sprintf(p++, " ");
 		p = list->lineBuf;
 
 		list->attrib(C_ALINFOTEXT2);
-		list->put(list_max_y + 4, 8, p);
+		list->put(list_max_y + 3 + hasSys, 8, p);
 
 		sprintf(p, format2, mm.areaList->getDescription());
 		areaconv_in(p);
-		list->put(list_max_y + 5, 20, p);
+		list->put(list_max_y + 4 + hasSys, 20, p);
 
 		list->delay_update();
 	}
 	p += sprintf(p, format, ((attrib & ADDED) ? '+' :
 		((attrib & DROPPED) ? '-' : ((attrib & ACTIVE) &&
-		!mm.areaList->isShortlist()) ? '*' : ' ')),
+		!mm.areaList->isShortlist()) ? '*' :
+		((attrib & HASREPLY) ? 'R' : ' '))),
 		mm.areaList->getShortName(), mm.areaList->getDescription());
 
 	if (mm.areaList->getNoOfLetters())
@@ -206,7 +224,8 @@ void AreaListWindow::oneLine(int i)
 		else
 			sprintf(p, "       .   ");
 
-	chtype ch = (attrib & (REPLYAREA | ADDED | DROPPED)) ?
+	coltype ch = ((attrib & (REPLYAREA | ADDED | DROPPED)) ||
+		((attrib & HASREPLY) && !(attrib & ACTIVE))) ?
 		C_ALREPLINE : C_ALPACKETLINE;
 
 	areaconv_in(list->lineBuf);
@@ -215,27 +234,23 @@ void AreaListWindow::oneLine(int i)
 
 searchret AreaListWindow::oneSearch(int x, const char *item, int mode)
 {
-	const char *s;
 	searchret retval;
 
 	mm.areaList->gotoActive(x);
+	retval = mm.areaList->filterCheck(item) ? True : False;
 
-	s = searchstr(mm.areaList->getShortName(), item);
-	if (!s)
-		s = searchstr(mm.areaList->getDescription(), item);
-
-	retval = s ? True : False;
-	if (!s && (mode < s_arealist) && mm.areaList->getNoOfLetters()) {
+	if (!retval && (mode < s_arealist) && mm.areaList->getNoOfLetters()) {
 		int oldactive = active;
 		ResetActive();
 		mm.areaList->getLetterList();
+		mm.letterList->setMode(-1);
 		mm.letterList->relist();
-		interface->changestate(letterlist);
-		interface->letters.setActive(-1);
-		retval = interface->letters.search(item, mode);
+		ui->changestate(letterlist);
+		ui->letters.setActive(-1);
+		retval = ui->letters.search(item, mode);
 		if (retval != True) {
 			active = oldactive;
-			interface->changestate(arealist);
+			ui->changestate(arealist);
 			delete mm.letterList;
 		}
 	}
@@ -255,22 +270,43 @@ void AreaListWindow::ResetActive()
 
 void AreaListWindow::MakeActive()
 {
+	static const char *almodes[] = {"All", "Subscribed", "Active"};
 	int padding, middle;
 	char tmp[80], tpad[7];
 
 	mode = mm.driverList->hasPersonal();
 	mm.areaList->updatePers();
 
-	sprintf(tmp, "Message Areas (%d)", NumOfItems());
+	mm.areaList->setMode(mm.areaList->getMode() - 1);
+	mm.areaList->relist();
 
-	list_max_y = LINES - 15;
+	const char *bb = mm.resourceObject->get(BBSName);
+	const char *sy = mm.resourceObject->get(SysOpName);
+	hasSys = ((bb && *bb) || (sy && *sy));
+
+	list_max_y = LINES - (mm.resourceObject->getInt(ExpertMode) ?
+			11 : 15) + !hasSys;
 	list_max_x = COLS - 6;
 	top_offset = 2;
 
+	const char *filter = mm.areaList->getFilter();
+	
+	char *p = tmp + sprintf(tmp, "%.20s | %s Areas",
+		mm.resourceObject->get(PacketName),
+		almodes[mm.areaList->getMode()]);
+
+	if (NumOfItems() > list_max_y)
+		p += sprintf(p, " (%d)", NumOfItems());
+
+	if (filter)
+		sprintf(p, " | %.20s", filter);
+
+	charconv_in(tmp);
+
 	borderCol = C_ALBORDER;
 
-	list = new InfoWin(list_max_y + 7, list_max_x + 2, 2, borderCol,
-		tmp, C_ALBTEXT, 7);
+	list = new InfoWin(list_max_y + 6 + hasSys, list_max_x + 2, 2, 
+		borderCol, tmp, C_ALBTEXT, 6 + hasSys);
 
 	list->attrib(C_ALHEADTEXT);
 	list->put(1, 3, "Area#  Description");
@@ -291,27 +327,27 @@ void AreaListWindow::MakeActive()
 	middle = (list_max_x - 2) >> 1;
 
 	list->attrib(C_ALINFOTEXT);
-	list->put(list_max_y + 3, 3, "BBS:");
-	list->put(list_max_y + 3, middle, " Sysop:");
-	list->put(list_max_y + 4, 2, "Type:");
-	list->put(list_max_y + 4, middle, "Packet:");
-	list->put(list_max_y + 5, 2, "Area description:");
+	if (hasSys) {
+		list->put(list_max_y + 3, 3, "BBS:");
+		list->put(list_max_y + 3, middle, " Sysop:");
+	}
+	list->put(list_max_y + 3 + hasSys, 2, "Type:");
+	list->put(list_max_y + 4 + hasSys, 2, "Area description:");
 
 	sprintf(tpad, "%%.%ds", (middle < 87) ? middle - 8 : 79);
 	middle += 8;
 
 	list->attrib(C_ALINFOTEXT2);
-	const char *bb = mm.resourceObject->get(BBSName);
-	sprintf(tmp, tpad, (bb && *bb) ? bb : "(unknown)");
-	charconv_in(tmp);
-	list->put(list_max_y + 3, 8, tmp);
 
-	const char *sy = mm.resourceObject->get(SysOpName);
-	sprintf(tmp, tpad, (sy && *sy) ? sy : "(unknown)");
-	charconv_in(tmp);
-	list->put(list_max_y + 3, middle, tmp);
+	if (hasSys) {
+		sprintf(tmp, tpad, (bb && *bb) ? bb : "(unknown)");
+		charconv_in(tmp);
+		list->put(list_max_y + 3, 8, tmp);
 
-	list->put(list_max_y + 4, middle, mm.resourceObject->get(PacketName));
+		sprintf(tmp, tpad, (sy && *sy) ? sy : "(unknown)");
+		charconv_in(tmp);
+		list->put(list_max_y + 3, middle, tmp);
+	}
 
 	padding = list_max_x - 20;
 	sprintf(format2, "%%-%d.%ds", padding, padding);
@@ -350,37 +386,63 @@ bool AreaListWindow::extrakeys(int key)
 
 	Select();
 	switch (key) {
+	case 5:
 	case 'E':
-		if (!mm.areaList->isCollection()) {
-			if (mm.areaList->isEmail()) {
-				interface->addressbook();
+		if (!(mm.areaList->getType() & (COLLECTION | READONLY))) {
+			if ((5 == key) || mm.areaList->isEmail()) {
+				ui->addressbook();
 				Select();
 			}
-			interface->letterwindow.set_Letter_Params(
+			ui->letterwindow.set_Letter_Params(
 				mm.areaList->getAreaNo(), 'E');
-			interface->letterwindow.EnterLetter();
-			interface->redraw();
-		}
+			ui->letterwindow.EnterLetter();
+		} else
+			ui->nonFatalError("Cannot reply there");
 		break;
+#ifdef USE_MOUSE
+	case MM_MOUSE:
+		{
+			int begx = list->xstart(), begy = list->ystart();
+
+			if ( (mouse_event.y != begy) ||
+			    ((mouse_event.x < (begx + 13)) || (mouse_event.x >
+			    (begx + 40))) )
+				break;
+		}
+#endif
 	case 'L':
 		mm.areaList->relist();
 		ResetActive();
-		interface->redraw();
+		ui->redraw();
+		break;
+	case '^':
+		{
+			char item[80];
+			*item = '\0';
+
+			if (ui->savePrompt("Filter on:", item))
+				mm.areaList->setFilter(item);
+		}
+		ui->redraw();
 		break;
 	case 'S':
-	case KEY_IC:
+	case MM_INS:
 	case 'U':
-	case KEY_DC:
+	case MM_DEL:
 		if (mm.areaList->hasOffConfig()) {
-			if ((key == 'S') || (key == KEY_IC))
+			switch (key) {
+			case 'S':
+			case MM_INS:
 				mm.areaList->Add();
-			else
+				break;
+			default:
 				mm.areaList->Drop();
-			interface->setUnsavedNoAuto();
+			}
+			ui->setUnsavedNoAuto();
 			Move(DOWN);
 			Draw();
 		} else
-			interface->nonFatalError(
+			ui->nonFatalError(
 				"Offline config is unavailable");
 	}
 	return end;

@@ -3,7 +3,7 @@
  * main_read_class, reply_read_class
 
  Copyright (c) 1996 Toth Istvan <stoty@vma.bme.hu>
- Copyright (c) 1999 William McBrine <wmcbrine@clark.net>
+ Copyright (c) 2001 William McBrine <wmcbrine@users.sourceforge.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -19,70 +19,85 @@ read_class::~read_class()
 
 /* main_read_class -- for regular areas */
 
-main_read_class::main_read_class(mmail *mm, specific_driver *driverA)
+main_read_class::main_read_class(mmail *mmA, specific_driver *driverA) :
+	mm(mmA), driver(driverA)
 {
-	FILE *readFile;
-	file_header *redfile, *xtifile;
-	const char *readFileN;
-	file_list *wl = mm->workList;
-	driver = driverA;
-	bool xti = false;
-
 	ro = mm->resourceObject;
 
 	noOfAreas = driver->getNoOfAreas();
 	noOfLetters = new int[noOfAreas];
 	readStore = new int *[noOfAreas];
 
-	hasPersArea = driver->hasPersArea();
-	hasPersNdx = !(!(wl->exists("personal.ndx")));
+	for (int c = 0; c < noOfAreas; c++) {
+		driver->selectArea(c);
 
+		int numlett = driver->getNoOfLetters();
+		noOfLetters[c] = numlett;
+		readStore[c] = numlett ? new int[numlett] : 0;
+
+		for (int d = 0; d < numlett; d++)
+			readStore[c][d] = 0;
+	}
+
+	hasPersArea = driver->hasPersArea();
+	hasPersNdx = !(!(mm->workList->exists("personal.ndx")));
+}
+
+main_read_class::~main_read_class()
+{
+	while(noOfAreas--)
+		delete[] readStore[noOfAreas];
+	delete[] readStore;
+	delete[] noOfLetters;
+}
+
+void main_read_class::init()
+{
 	// If basename.red not found, look for any .red file;
-	// then look for an .xti file, and use the most recent:
+	// then look for an old-style file, and use the most recent:
+
+	file_header *redfile, *oldfile;
+	file_list *wl = mm->workList;
 
 	redfile = wl->existsF(readFilePath(ro->get(PacketName)));
 	if (!redfile)
 		redfile = wl->existsF(".red");
 
-	xtifile = wl->existsF(".xti");
+	const char *oldFileN = driver->oldFlagsName();
+	oldfile = oldFileN ? wl->existsF(oldFileN) : 0;
 
-	if (xtifile && (!redfile || (xtifile->getDate() >
-	    redfile->getDate()))) {
-		xti = true;
-		readFileN = xtifile->getName();
-	} else
-		readFileN = redfile ? redfile->getName() : 0;
+	bool oldused = (oldfile && (!redfile || (oldfile->getDate() >
+		redfile->getDate())));
 
-	readFile = readFileN ? wl->ftryopen(readFileN, "rb") : 0;
+	if (oldused) {
+		int oldsort = lsorttype;
+		lsorttype = LS_MSGNUM;
 
-	// Don't init personal area, unless using .red, and QWK
-	// personal.ndx (this is for backwards compatibility):
+		oldused = driver->readOldFlags();
 
-	bool noskip = !hasPersArea || (!xti && hasPersNdx);
-
-	for (int c = 0; c < noOfAreas; c++) {
-		driver->selectArea(c);
-		noOfLetters[c] = driver->getNoOfLetters();
-		readStore[c] = new int[noOfLetters[c]];
-
-		// .xti -> .red mapping: crude, but effective:
-
-		for (int d = 0; d < noOfLetters[c]; d++)
-		    readStore[c][d] = readFile ? ((c || noskip) ? (xti ?
-			(fgetc(readFile) & (MS_READ | MS_REPLIED)) +
-			(fgetc(readFile) ? MS_MARKED : 0) :
-			fgetc(readFile)) : 0) : 0;
+		lsorttype = oldsort;
 	}
-	if (readFile)
-		fclose(readFile);
-}
 
-main_read_class::~main_read_class()
-{
-	while(noOfAreas)
-		delete[] readStore[--noOfAreas];
-	delete[] readStore;
-	delete[] noOfLetters;
+	if (!oldused) {
+		FILE *readFile;
+		const char *readFileN = redfile ? redfile->getName() : 0;
+
+		readFile = readFileN ? wl->ftryopen(readFileN) : 0;
+
+		if (readFile) {
+			// Don't init personal area, unless using QWK
+			// personal.ndx (this is for backwards
+			// compatibility):
+
+			int skip = hasPersArea && !hasPersNdx;
+
+			for (int c = skip; c < noOfAreas; c++)
+			    for (int d = 0; d < noOfLetters[c]; d++)
+				readStore[c][d] = fgetc(readFile);
+
+			fclose(readFile);
+		}
+	}
 }
 
 void main_read_class::setRead(int area, int letter, bool value)
@@ -130,17 +145,25 @@ int main_read_class::getNoOfMarked(int area)
 
 bool main_read_class::saveAll()
 {
-	FILE *readFile;
-	int oldsort = lsorttype;
+	const char *readFileN = 0, *oldFileN = driver->oldFlagsName();
 
-	lsorttype = LS_MSGNUM;
+	bool oldused = !(!oldFileN);
 
-	const char *readFileN = 0, *oldFileN = ro->getInt(MakeOldFlags) ?
-		driver->saveOldFlags() : 0;
+	if (mychdir(ro->get(WorkDir)))
+		fatalError("Unable to change to work directory");
 
-	lsorttype = oldsort;
+	if (oldused) {
+		int oldsort = lsorttype;
+		lsorttype = LS_MSGNUM;
 
-	if (!oldFileN) {
+		oldused = driver->saveOldFlags();
+
+		lsorttype = oldsort;
+	}
+
+	if (!oldused) {
+		FILE *readFile;
+
 		readFileN = readFilePath(ro->get(PacketName));
 		readFile = fopen(readFileN, "wb");
 
@@ -160,8 +183,6 @@ const char *main_read_class::readFilePath(const char *FileN)
 {
 	static char tmp[13];
 
-	if (mychdir(ro->get(WorkDir)))
-		fatalError("Unable to change to work directory");
 	sprintf(tmp, "%.8s.red", findBaseName(FileN));
 	return tmp;
 }
@@ -169,53 +190,43 @@ const char *main_read_class::readFilePath(const char *FileN)
 /* reply_read_class -- for reply areas */
 /* (Formerly known as dummy_read_class, because it does almost nothing) */
 
-reply_read_class::reply_read_class(mmail *mmA, specific_driver *driverA)
+reply_read_class::reply_read_class(mmail *, specific_driver *)
 {
-	mmA = mmA;
-	driverA = driverA;
 }
 
 reply_read_class::~reply_read_class()
 {
 }
 
-void reply_read_class::setRead(int area, int letter, bool value)
+void reply_read_class::init()
 {
-	area = area;
-	letter = letter;
-	value = value;
 }
 
-bool reply_read_class::getRead(int area, int letter)
+void reply_read_class::setRead(int, int, bool)
 {
-	area = area;
-	letter = letter;
+}
+
+bool reply_read_class::getRead(int, int)
+{
 	return true;
 }
 
-void reply_read_class::setStatus(int area, int letter, int value)
+void reply_read_class::setStatus(int, int, int)
 {
-	area = area;
-	letter = letter;
-	value = value;
 }
 
-int reply_read_class::getStatus(int area, int letter)
+int reply_read_class::getStatus(int, int)
 {
-	area = area;
-	letter = letter;
 	return 1;
 }
 
-int reply_read_class::getNoOfUnread(int area)
+int reply_read_class::getNoOfUnread(int)
 {
-	area = area;
 	return 0;
 }
 
-int reply_read_class::getNoOfMarked(int area)
+int reply_read_class::getNoOfMarked(int)
 {
-	area = area;
 	return 0;
 }
 

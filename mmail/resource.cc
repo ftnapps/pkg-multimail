@@ -3,7 +3,7 @@
  * resource class
 
  Copyright (c) 1996 Toth Istvan <stoty@vma.bme.hu>
- Copyright (c) 1999 William McBrine <wmcbrine@clark.net>
+ Copyright (c) 2002 William McBrine <wmcbrine@users.sourceforge.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -18,22 +18,22 @@
 
 #ifdef __MSDOS__
 # define DEFEDIT "edit"
-# define DEFZIP "pkzip"
-# define DEFUNZIP "pkunzip -o"
+# define DEFZIP "pkzip -#"
+# define DEFUNZIP "pkunzip -# -o"
 # define DEFLHA "lha a /m"
 # define DEFUNLHA "lha e"
 #else
-# ifdef __EMX__
-#  ifdef __WIN32__
-#   define DEFEDIT "edit"
-#  else
-#   define DEFEDIT "tedit"
-#  endif
+# ifdef __WIN32__
+#  define DEFEDIT "start /w notepad"
 # else
-#  define DEFEDIT "vi"
+#  ifdef __EMX__
+#   define DEFEDIT "tedit"
+#  else
+#   define DEFEDIT "vi"
+#  endif
 # endif
-# define DEFZIP "zip -jk"
-# define DEFUNZIP "unzip -joL"
+# define DEFZIP "zip -jkq"
+# define DEFUNZIP "unzip -joLq"
 # define DEFLHA "lha af"
 # define DEFUNLHA "lha efi"
 #endif
@@ -42,11 +42,13 @@
 #define DEFUNARJ "arj e"
 #define DEFRAR "rar u -ep"
 #define DEFUNRAR "rar e -cl -o+"
+#define DEFTAR "tar zcf"
+#define DEFUNTAR "tar zxf"
 
 #define DEFNONE "xxcompress"
 #define DEFUNNONE "xxuncompress"
 
-#if defined (__MSDOS__) || defined (__EMX__)
+#ifdef DOSNAMES
 # define RCNAME "mmail.rc"
 # define ADDRBOOK "address.bk"
 #else
@@ -68,7 +70,8 @@ bool baseconfig::parseConfig(const char *configFileName)
 	char buffer[256], *pos, *resName, *resValue;
 	int vermajor = 0, verminor = 0;
 
-	if ((configFile = fopen(configFileName, "rt"))) {
+	configFile = fopen(configFileName, "rt");
+	if (configFile) {
 	    while (myfgets(buffer, sizeof buffer, configFile)) {
 		if ((buffer[0] != '#') && (buffer[0] != '\n')) {
 			pos = buffer;
@@ -104,11 +107,8 @@ bool baseconfig::parseConfig(const char *configFileName)
 				sscanf(resValue, "%d.%d", &vermajor,
 					&verminor);
 			else
-				for (int c = 0; c < configItemNum; c++)
-					if (!strcasecmp(names[c], resName)) {
-						processOne(c, resValue);
-						break;
-					}
+				processOneByName(resName, resValue);
+
 		}
 	    }
 	    fclose(configFile);
@@ -126,8 +126,8 @@ void baseconfig::newConfig(const char *configname)
 
 	printf("Updating %s...\n", configname);
 
-	if ((fd = fopen(configname, "wt"))) {
-
+	fd = fopen(configname, "wt");
+	if (fd) {
 		for (p = intro; *p; p++)
 			fprintf(fd, "# %s\n", *p);
 
@@ -144,25 +144,57 @@ void baseconfig::newConfig(const char *configname)
 		fatalError("Error writing config file");
 }
 
+void baseconfig::processOneByName(const char *resName, const char *resValue)
+{
+	int c;
+	for (c = 0; c < configItemNum; c++)
+		if (!strcasecmp(names[c], resName)) {
+			processOne(c, resValue);
+			break;
+		}
+	if (c == configItemNum)
+		printf("Unrecognized keyword: %s\n",
+			resName);
+}
+
 // ==============
 // resource class
 // ==============
 
-const int startUpLen = 38;
+const int startUpLen =
+ 49
+#ifdef USE_SPAWNO
+ + 1
+#endif
+#ifdef HAS_TRANS
+ + 1
+#endif
+ ;
 
 const char *resource::rc_names[startUpLen] =
 {
 	"UserName", "InetAddr", "QuoteHead", "InetQuote",
 	"homeDir", "mmHomeDir", "signature", "editor",
 	"PacketDir", "ReplyDir", "SaveDir", "AddressBook", "TaglineFile",
-	 "ColorFile", "arjUncompressCommand", "zipUncompressCommand",
+	"ColorFile", "UseColors",
+#ifdef HAS_TRANS
+	"Transparency",
+#endif
+	"BackFill",
+	"arjUncompressCommand", "zipUncompressCommand",
 	"lhaUncompressCommand", "rarUncompressCommand",
-	"unknownUncompressCommand", "arjCompressCommand",
-	"zipCompressCommand", "lhaCompressCommand", "rarCompressCommand",
-	"unknownCompressCommand", "PacketSort", "LetterSort", "Charset",
-	"UseTaglines", "AutoSaveReplies", "AutoSaveRead", "StripSoftCR",
-	"BeepOnPers", "UseLynxNav", "UseScrollBars", "BuildPersArea",
-	"MakeOldFlags", "QuoteWrapCols", "MaxLines"
+	"tarUncompressCommand", "unknownUncompressCommand",
+	"arjCompressCommand", "zipCompressCommand", "lhaCompressCommand",
+	"rarCompressCommand", "tarCompressCommand",
+	"unknownCompressCommand", "PacketSort", "AreaMode", "LetterSort",
+	"LetterMode", "ClockMode", "Charset", "UseTaglines",
+	"AutoSaveReplies", "StripSoftCR", "BeepOnPers", "UseLynxNav",
+	"ReOnReplies", "QuoteWrapCols", "MaxLines", "outCharset",
+	"UseQPMailHead", "UseQPNewsHead", "UseQPMail", "UseQPNews",
+	"ExpertMode", "IgnoreNDX"
+#ifdef USE_SPAWNO
+	, "swapOut"
+#endif
 };
 
 const char *resource::rc_intro[] = {
@@ -175,6 +207,8 @@ const char *resource::rc_intro[] = {
  "",
  "If you change either of the base directories, all the subsequent paths",
  "will be changed, unless they're overriden in the individual settings.",
+ "",
+ "Please see the man page for a more thorough explanation of these options.",
  0
 };
 
@@ -190,66 +224,103 @@ const char *resource::rc_comments[startUpLen] = {
  MM_NAME " will look for packets here",
  "Reply packets go here",
  "Saved messages go in this directory, by default",
- "Full paths to the address book and tagline file", 0,
- "Full path to color specification file",
+ "Full paths to the address book, tagline and color specification files",
+	0, 0,
+ "Color or monochrome? (Mono mode uses the default colors)",
+#ifdef HAS_TRANS
+ "Make black backgrounds transparent? (Only works with ncurses)",
+#endif
+ "Fill background with checkerboard pattern (ACS_BOARD)?",
  "Decompression commands (must include an option to junk/discard paths!)",
-	0, 0, 0, 0,
+	0, 0, 0, 0, 0,
  "Compression commands (must include an option to junk/discard paths!)",
-	0, 0, 0, 0,
+	0, 0, 0, 0, 0,
  "Default sort for packet list: by Name or Time (most recent first)",
+ "Default mode for area list: All, Subscribed, or Active",
  "Default sort for letter list: by Subject, Number, From or To",
+ "Default mode for letter list: All or Unread",
+ "Clock in letter window: Off, Time (of day), or Elapsed (since startup)",
  "Console character set: CP437 (IBM PC) or Latin-1 (ISO-8859-1)",
  "Prompt to add taglines to replies?",
  "Save replies after editing without prompting?",
- "Save lastread pointers without prompting?",
  "Strip \"soft carriage returns\" (char 141) from messages?",
  "Beep when a personal message is opened in the letter window?",
  "Use Lynx-like navigation (right arrow selects, left backs out)?",
- "Put scroll bars on list windows when items exceed window lines?",
- "Build \"Personal\" area (letters addressed to you)",
- "Generate .XTI file instead of .RED for Blue Wave packets",
+ "Add \"Re: \" prefix on Subject of replies? (Note that it will be added\n"
+ "# in Internet email and Usenet areas regardless of this setting.)",
  "Wrap quoted text at this column width (including quote marks)",
- "Maximum lines per part for reply split (see docs)"
+ "Maximum lines per part for reply split (see docs)",
+ "8-bit character set for SOUP packets (see docs)",
+ "Quoted-printable options for outgoing messages (see docs)",
+	0, 0, 0,
+ "Supress help messages (use more of the screen for content)",
+ "For QWK only: Generate indexes from MESSAGES.DAT instead of *.NDX"
+#ifdef USE_SPAWNO
+ , "Attempt to swap MultiMail out of conventional memory when shelling"
+#endif
 };
 
 const int resource::startUp[startUpLen] =
 {
 	UserName, InetAddr, QuoteHead, InetQuote, homeDir, mmHomeDir,
 	sigFile, editor, PacketDir, ReplyDir, SaveDir, AddressFile,
-	TaglineFile, ColorFile, arjUncompressCommand,
+	TaglineFile, ColorFile, UseColors,
+#ifdef HAS_TRANS
+	Transparency,
+#endif
+	BackFill,
+	arjUncompressCommand,
 	zipUncompressCommand, lhaUncompressCommand, rarUncompressCommand,
-	unknownUncompressCommand, arjCompressCommand, zipCompressCommand,
-	lhaCompressCommand, rarCompressCommand, unknownCompressCommand,
-	PacketSort, LetterSort, Charset, UseTaglines, AutoSaveReplies,
-	AutoSaveRead, StripSoftCR, BeepOnPers, UseLynxNav, UseScrollBars,
-	BuildPersArea, MakeOldFlags, QuoteWrapCols, MaxLines
+	tarUncompressCommand, unknownUncompressCommand,
+	arjCompressCommand, zipCompressCommand, lhaCompressCommand,
+	rarCompressCommand, tarCompressCommand, unknownCompressCommand,
+	PacketSort, AreaMode, LetterSort, LetterMode, ClockMode, Charset,
+	UseTaglines, AutoSaveReplies, StripSoftCR, BeepOnPers, UseLynxNav,
+	ReOnReplies, QuoteWrapCols, MaxLines, outCharset, UseQPMailHead,
+	UseQPNewsHead, UseQPMail, UseQPNews, ExpertMode, IgnoreNDX
+#ifdef USE_SPAWNO
+	, swapOut
+#endif
 };
 
 const int resource::defInt[] =
 {
 	1,	// PacketSort == by time
+	1, 	// AreaMode == subscribed
 	0,	// LetterSort == by subject
-#if defined (__MSDOS__) || defined (__EMX__)
+	1,	// LetterMode == unread
+#ifdef DOSCHARS
 	0,	// Charset == CP437
 #else
 	1,	// Charset == Latin-1
 #endif
 	1,	// UseTaglines == Yes
-	0,	// AutoSaveReplies == No
-	0,	// AutoSaveRead == No
+	1,	// AutoSaveReplies == Yes
 	0,	// StripSoftCR == No
 	0,	// BeepOnPers == No
-	0,	// UseLynxNav == No
-	1,	// UseScrollBars == Yes
-	1,	// BuildPersArea == Yes
-	0,	// MakeOldFlags == No
+	1,	// UseLynxNav == Yes
+	1,	// ReOnReplies == Yes
 	78,	// QuoteWrapCols
-	0	// MaxLines == disabled
+	0,	// MaxLines == disabled
+	1,	// UseQPMailHead == Yes
+	1,	// UseQPNewsHead == Yes
+	1,	// UseQPMail == Yes
+	0,	// UseQPNews == No
+	0,	// ExpertMode == No
+	0,	// IgnoreNDX = No
+#ifdef USE_SPAWNO
+	1,	// swapOut == Yes
+#endif
+	1,	// UseColors == Yes
+#ifdef HAS_TRANS
+	0,	// Transparency == No
+#endif
+	1,	// BackFill == Yes
+	1	// ClockMode == Time
 };
 
 resource::resource()
 {
-	char configFileName[256], inp;
 	const char *envhome, *greeting =
 		"\nWelcome to " MM_NAME " v%d.%d!\n\n"
 		"A new or updated " RCNAME " has been written. "
@@ -263,21 +334,24 @@ resource::resource()
 	comments = rc_comments;
 	configItemNum = startUpLen;
 
-	for (int c = 0; c < noOfStrings; c++)
+	int c;
+	for (c = 0; c < noOfStrings; c++)
 		resourceData[c] = 0;
-	for (int c = noOfStrings; c < noOfResources; c++) {
+	for (c = noOfStrings; c < noOfResources; c++) {
 		int d = c - noOfStrings;
 		resourceInt[d] = defInt[d];
 	}
+	set(outCharset, "iso-8859-1");
+
 	envhome = getenv("MMAIL");
 	if (!envhome)
 		envhome = getenv("HOME");
 	if (!envhome)
 		envhome = error.getOrigDir();
 
-	set(homeDir, fixPath(envhome));
-	sprintf(configFileName, "%.243s/" RCNAME, get(homeDir));
-
+	set_noalloc(homeDir, fixPath(envhome));
+	char *configFileName = fullpath(get(homeDir), RCNAME);
+	
 	initinit();
 	homeInit();
 	mmHomeInit();
@@ -285,22 +359,23 @@ resource::resource()
 	if (parseConfig(configFileName)) {
 		newConfig(configFileName);
 		printf(greeting, MM_MAJOR, MM_MINOR);
-		inp = fgetc(stdin);
+		char inp = fgetc(stdin);
 
 		if (toupper(inp) == 'Y') {
-			char tmp[512];
-			sprintf(tmp, "%.255s %.255s", get(editor),
-				canonize(configFileName));
-			mysystem(tmp);
+			mysystem2(get(editor), configFileName);
 			parseConfig(configFileName);
 		}
 	}
 
+	delete[] configFileName;
+
 	if (!verifyPaths())
 		fatalError("Unable to access data directories");
 
-	mytmpnam(basedir);
-	checkPath(basedir, false);
+	basedir = mytmpnam();
+	bool tmpok = checkPath(basedir, false);
+	if (!tmpok)
+		fatalError("Unable to create tmp directory");
 	subPath(WorkDir, "work");
 	subPath(UpWorkDir, "upwork");
 }
@@ -314,21 +389,9 @@ resource::~resource()
 	myrmdir(resourceData[UpWorkDir]);
 	mychdir("..");
 	myrmdir(basedir);
+	delete[] basedir;
 	for (int c = 0; c < noOfStrings; c++)
 		delete[] resourceData[c];
-}
-
-// For consistency, no path should end in a slash:
-const char *resource::fixPath(const char *path)
-{
-	static char tmp[256];
-	char d = path[strlen(path) - 1];
-
-	if ((d == '/') || (d == '\\')) {
-		sprintf(tmp, "%.254s.", path); 
-		return tmp;
-	} else
-		return path;
 }
 
 bool resource::checkPath(const char *onepath, bool show)
@@ -358,8 +421,9 @@ void resource::processOne(int c, const char *resValue)
 		c = startUp[c];
 		if (c < noOfStrings) {
 			// Canonized for the benefit of the Win32 version:
-			set(c, (c > noOfRaw) ? canonize(fixPath(resValue))
-				: resValue);
+			set_noalloc(c, (c >= noOfRaw) ?
+				canonize(fixPath(resValue)) :
+				strdupplus(resValue));
 			switch (c) {
 			case homeDir:
 				homeInit();
@@ -374,6 +438,14 @@ void resource::processOne(int c, const char *resValue)
 			case PacketSort:
 				x = (r == 'T');
 				break;
+			case AreaMode:
+				x = (r == 'S');
+				if (!x) {
+					r = toupper(resValue[1]);
+					if (r == 'C')
+						x = 2;
+				}
+				break;
 			case LetterSort:
 				switch (r) {
 				case 'N':
@@ -384,6 +456,21 @@ void resource::processOne(int c, const char *resValue)
 					break;
 				case 'T':
 					x = 3;
+				}
+				break;
+			case LetterMode:
+				x = (r == 'U');
+				break;
+			case ClockMode:
+				switch (r) {
+				case 'O':
+					x = 0;
+					break;
+				case 'T':
+					x = 1;
+					break;
+				case 'E':
+					x = 2;
 				}
 				break;
 			case Charset:
@@ -405,7 +492,10 @@ void resource::processOne(int c, const char *resValue)
 const char *resource::configLineOut(int x)
 {
 	static const char *pktopt[] = {"Name", "Time"},
-		*lttopt[] = {"Subject", "Number", "From", "To"},
+		*areaopt[] = {"All", "Subscribed", "Active"},
+		*lttopt1[] = {"Subject", "Number", "From", "To"},
+		*lttopt2[] = {"All", "Unread"},
+		*clockopt[] = {"Off", "Time", "Elapsed"},
 		*charopt[] = {"CP437", "Latin-1"},
 		*stdopt[] = {"No", "Yes"};
 
@@ -416,60 +506,75 @@ const char *resource::configLineOut(int x)
 		sprintf(value, "%d", getInt(x));
 		return value;
 	} else
-		return (x < noOfStrings) ? get(x) : ((x == PacketSort) ?
-			pktopt : ((x == LetterSort) ? lttopt : ((x == Charset) ?
-				charopt : stdopt)))[getInt(x)];
+		return (x < noOfStrings) ? get(x) :
+			((x == PacketSort) ? pktopt :
+			((x == AreaMode) ? areaopt :
+			((x == LetterSort) ? lttopt1 :
+			((x == LetterMode) ? lttopt2 :
+			((x == ClockMode) ? clockopt :
+			((x == Charset) ? charopt :
+			stdopt))))))[getInt(x)];
 }
 
 const char *resource::get(int ID) const
 {
+	if (ID >= noOfStrings)
+		fatalError("String resource out of range");
 	return resourceData[ID];
 }
 
 int resource::getInt(int ID) const
 {
+	if (ID < noOfStrings)
+		fatalError("Integer resource out of range");
 	ID -= noOfStrings;
 	return resourceInt[ID];
 }
 
 void resource::set(int ID, const char *newValue)
 {
+	if (ID >= noOfStrings)
+		fatalError("String resource out of range");
 	delete[] resourceData[ID];
 	resourceData[ID] = strdupplus(newValue);
 }
 
+void resource::set_noalloc(int ID, char *newValue)
+{
+	if (ID >= noOfStrings)
+		fatalError("String resource out of range");
+	delete[] resourceData[ID];
+	resourceData[ID] = newValue;
+}
+
 void resource::set(int ID, int newValue)
 {
+	if (ID < noOfStrings)
+		fatalError("Integer resource out of range");
 	ID -= noOfStrings;
 	resourceInt[ID] = newValue;
 }
 
-//------------------------------------------------------------------------
+// --------------------------------------------------------------------
 // The resource initializer functions
-//------------------------------------------------------------------------
+// --------------------------------------------------------------------
 
 void resource::homeInit()
 {
-	char tmp[256];
-
-	sprintf(tmp, "%.243s/mmail", resourceData[homeDir]);
-	set(mmHomeDir, tmp);
+	set_noalloc(mmHomeDir, canonize(fullpath(resourceData[homeDir],
+		"mmail")));
 }
 
 void resource::mmEachInit(int index, const char *dirname)
 {
-	char tmp[256];
-
-	sprintf(tmp, "%.243s/%s", resourceData[mmHomeDir], dirname);
-	set(index, tmp);
+	set_noalloc(index, canonize(fullpath(resourceData[mmHomeDir],
+		dirname)));
 }
 
 void resource::subPath(int index, const char *dirname)
 {
-	char tmp[256];
-
-	sprintf(tmp, "%.243s/%s", basedir, dirname);
-	set(index, tmp);
+	char *tmp = fullpath(basedir, dirname);
+	set_noalloc(index, tmp);
 	if (!checkPath(tmp, 0))
 		fatalError("tmp Dir could not be created");
 }
@@ -480,11 +585,13 @@ void resource::initinit()
 	set(zipUncompressCommand, DEFUNZIP);
 	set(lhaUncompressCommand, DEFUNLHA);
 	set(rarUncompressCommand, DEFUNRAR);
+	set(tarUncompressCommand, DEFUNTAR);
 	set(unknownUncompressCommand, DEFUNNONE);
 	set(arjCompressCommand, DEFARJ);
 	set(zipCompressCommand, DEFZIP);
 	set(lhaCompressCommand, DEFLHA);
 	set(rarCompressCommand, DEFRAR);
+	set(tarCompressCommand, DEFTAR);
 	set(unknownCompressCommand, DEFNONE);
 
 	set(UncompressCommand, DEFUNZIP);

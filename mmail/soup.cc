@@ -2,7 +2,7 @@
  * MultiMail offline mail reader
  * SOUP
 
- Copyright (c) 1999 William McBrine <wmcbrine@clark.net>
+ Copyright (c) 2002 William McBrine <wmcbrine@users.sourceforge.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -10,11 +10,11 @@
 #include "soup.h"
 #include "compress.h"
 
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------
 // The sheader methods
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------
 
-const char *sheader::compare[items] =
+const char *sheader::compare[] =
 {
 	"Date:", "From:", "To:", "Reply-To:", "Subject:", "Newsgroups:",
 	"Followup-To:", "References:", "Message-ID:"
@@ -24,6 +24,8 @@ sheader::sheader()
 {
 	for (int c = 0; c < items; c++)
 		values[c] = 0;
+
+	has8bit = qpenc = false;
 }
 
 sheader::~sheader()
@@ -94,8 +96,14 @@ bool sheader::init(FILE *msg)
 					    lastc = c;
 					    break;
 					}
-				if (c == items)
+				if (c == items) {
 				    lastc = -1;
+				    *sp = ' ';
+				    if (!strcasecmp(buffer,
+					"content-transfer-encoding: "
+					"quoted-printable"))
+					    qpenc = true;
+				}
 			    }
 		}
 	} while (buffer != end);	// End of header == blank line
@@ -104,11 +112,15 @@ bool sheader::init(FILE *msg)
 
 	if (values[refs]) {
 		end = strrchr(values[refs], '<');
-		if (!strchr(end, '>')) {
-			if (end[-1] == ' ')
-				end--;
-			*end = '\0';
-		}
+		if (!end) {		// no Message-ID's!
+			delete values[refs];
+			values[refs] = 0;
+		} else
+			if (!strchr(end, '>')) {
+				if (end[-1] == ' ')
+					end--;
+				*end = '\0';
+			}
 	}
 
 	return true;
@@ -148,27 +160,32 @@ bool sheader::init(const char *fromA, const char *toName,
 }
 
 // Write out the header in 'b' or 'B' form
-void sheader::output(FILE *msg)
+void sheader::output(FILE *msg, const char *cset, bool useQPHead,
+	bool useQPBody)
 {
-	char readername[80];
-	sprintf(readername, "User-Agent: " MM_NAME "/%d.%d (SOUP; %s)",
+	static const char *MIMEhead =
+		"MIME-Version: 1.0\nContent-Type: text/plain; "
+		"charset=%.14s\nContent-Transfer-Encoding: %s\n";
+
+	static const char *eightbit = "8bit", *QP = "quoted-printable";
+
+	for (int c = 0; c <= refs; c++)
+		if (values[c] && values[c][0]) {
+			fprintf(msg, "%s ", compare[c]);
+			if (((c == from) || (c == to) || (c == subject))
+			    && useQPHead)
+				headenc((unsigned char *) values[c],
+					cset, msg);
+			else
+				fprintf(msg, "%s", values[c]);
+			fprintf(msg, "\n");
+		}
+
+	if (has8bit)
+		fprintf(msg, MIMEhead, cset, useQPBody ? QP : eightbit);
+
+	fprintf(msg, "User-Agent: " MM_NAME "/%d.%d (SOUP; %s)\n\n",
 		MM_MAJOR, MM_MINOR, sysname());
-
-	long outlen = msglen + strlen(readername) + 2;
-
-	for (int c = 0; c <= refs; c++)
-		if (values[c] && values[c][0])
-			outlen += strlen(compare[c]) + strlen(values[c]) + 2;
-
-	unsigned char outlenA[4];
-	putblong(outlenA, outlen);
-	fwrite(outlenA, 4, 1, msg);
-
-	for (int c = 0; c <= refs; c++)
-		if (values[c] && values[c][0])
-			fprintf(msg, "%s %s\n", compare[c], values[c]);
-
-	fprintf(msg, "%s\n\n", readername);
 }
 
 const char *sheader::From()
@@ -216,9 +233,9 @@ const char *sheader::Refs()
 	return values[refs];
 }
 
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------
 // The SOUP methods
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------
 
 soup::soup(mmail *mmA)
 {
@@ -252,7 +269,7 @@ soup::~soup()
 	}
 	delete[] body;
 	delete[] areas;
-	delete[] bodyString;
+	delete bodyString;
 
 	if (infile)
 		fclose(infile);
@@ -271,10 +288,15 @@ bool soup::msgopen(int area)
 
 		oldArea = area;
 
+		char tmp[13];
 		const char *fname = areas[area]->msgfile;
 		if (!(*fname))
 			return false;
-		if (!(infile = mm->workList->ftryopen(fname, "rb")))
+
+		sprintf(tmp, "%.8s.MSG", fname);
+
+		infile = mm->workList->ftryopen(tmp);
+		if (!infile)
 			fatalError("Could not open .MSG file");
 	}
 	return true;
@@ -303,6 +325,60 @@ int soup::getNoOfLetters()
 	return areas[currentArea]->nummsgs;
 }
 
+// Check for valid "From "-line message separator
+bool soup::parseFrom(const char *s)
+{
+	// Based on the VALID macro from the IMAP toolkit
+	// by Mark Crispin <mrc@cac.washington.edu>
+	// Copyright 1989-2000 University of Washington
+	// http://www.washington.edu/imap/
+	// Modified by William McBrine
+
+	int ti = 0;		// Time Index (location of date string)
+	const char *x = s + strlen(s);
+
+	while (('\n' == x[-1]) || ('\r' == x[-1]))
+	    x--;
+
+	if ((x - s) > 40) {
+	    int c;
+
+	    for (c = -1; x[c] != ' '; c--);
+
+	    if (!strncmp(x + c - 12, " remote from", 12))
+		x += c - 12;
+	}
+	if ((x - s) > 26) {
+	    if (' ' == x[-5]) {			// Year is last field?
+		if (':' == x[-8])
+		    ti = -5;
+		else
+		    if (' ' == x[-9])
+			ti = -9;
+		    else
+			if ((' ' == x[-11]) && (('+' == x[-10]) ||
+			    ('-' == x[-10])))
+				ti = -11;
+	    } else
+		if (' ' == x[-4]) {		// Or three-letter time zone?
+		    if (' ' == x[-9])
+			ti = -9;
+		} else
+		    if (' ' == x[-6]) {		// Or numeric time zone?
+			if ((' ' == x[-11]) && (('+' == x[-5]) ||
+			    ('-' == x[-5])))
+				ti = -11;
+		    }
+
+	    if (ti && !((':' == x[ti - 3]) && (' ' == x[ti -=
+		((':' == x[ti - 6]) ? 9 : 6)]) && (' ' == x[ti - 3])
+		&& (' ' == x[ti - 7]) && (' ' == x[ti - 11])))
+		    ti = 0;
+	}
+
+	return (ti != 0);
+}
+
 // Build indices from *.MSG -- does not handle type 'M', nor *.IDX
 void soup::buildIndices()
 {
@@ -315,6 +391,7 @@ void soup::buildIndices()
 	ndx_fake base, *oldndx, *tmpndx;
 
 	for (x = 0; x < maxConf; x++) {
+
 	    body[x] = 0;
 	    cMsgNum = 0;
 
@@ -326,6 +403,7 @@ void soup::buildIndices()
 		case 'B':
 		case 'b':
 		case 'u':
+		case 'n':	// bogus identifer used by GNUS, same as u
 			long offset, counter;
 
 			while (!feof(infile)) {
@@ -366,19 +444,20 @@ void soup::buildIndices()
 			while (!feof(infile)) {
 			    c = ftell(infile);
 			    if (myfgets(buffer, sizeof buffer, infile))
-				if (!strncmp(buffer, "From ", 5)) {
-				    if (lastc != -1) {
-					tmpndx->next = new ndx_fake;
-					tmpndx = tmpndx->next;
+				if (!strncmp(buffer, "From ", 5))
+				    if (parseFrom(buffer)) {
+					if (lastc != -1) {
+					    tmpndx->next = new ndx_fake;
+					    tmpndx = tmpndx->next;
 
-					tmpndx->pointer = lastc;
-					tmpndx->length = c - lastc;
+					    tmpndx->pointer = lastc;
+					    tmpndx->length = c - lastc;
 
-					numMsgs++;
-					cMsgNum++;
+					    numMsgs++;
+					    cMsgNum++;
+					}
+					lastc = c;
 				    }
-				    lastc = c;
-				}
 			}
 			if (lastc != -1) {
 				tmpndx->next = new ndx_fake;
@@ -447,10 +526,10 @@ letter_header *soup::getNextLetter()
 	}
 
 	letter_header *tmp = new letter_header(mm, sHead.Subject(),
-		sHead.To() ? sHead.To() : "All", *fr ? fr : na,
+		sHead.To() ? sHead.To() : "All", *fr ? fr : (const char *) na,
 		sHead.Date(), msgid, 0, currentLetter, currentLetter + 1,
 		currentArea, false, len, this, na, true, sHead.Newsgrps(),
-		sHead.Follow(), sHead.ReplyTo());
+		sHead.Follow(), sHead.ReplyTo(), sHead.qpenc);
 
 	currentLetter++;
 
@@ -460,62 +539,100 @@ letter_header *soup::getNextLetter()
 }
 
 // returns the body of the requested letter
-const char *soup::getBody(letter_header &mhead)
+letter_body *soup::getBody(letter_header &mhead)
 {
-	// Load the message to a temporary area, then copy the header
-	// with hidden line markers. Uses twice the memory, but what
-	// the hell.
-
 	int AreaID, LetterID;
+	long length, offset;
+	letter_body head(0, 0), *currblk = &head;
 
 	AreaID = mhead.getAreaID() - mm->driverList->getOffset(this);
 	LetterID = mhead.getLetterID();
 
-	long len = body[AreaID][LetterID].msgLength;
-	char *tmp = new char[len + 1];
+	delete bodyString;
+
+	length = limitmem(body[AreaID][LetterID].msgLength);
+	offset = body[AreaID][LetterID].pointer;
 
 	msgopen(AreaID);
 
-	fseek(infile, body[AreaID][LetterID].pointer, SEEK_SET);
-	fread(tmp, 1, len, infile);
+	bool firstblk = true;
 
-	tmp[len] = '\0';
+	if (!length)
+	    head.next = new letter_body(strdupplus("\n"), 1);
+	else
+	    while (length) {
+		unsigned char *p, *src, *begin;
+		long count, blklen, oldoffs;
 
-	// Find number of header lines:
+		fseek(infile, offset, SEEK_SET);
+		oldoffs = offset;
 
-	char *c;
-	int headlines = 0;
-	for (c = tmp; !((c[0] == '\n') && (c[1] == '\n')); c++)
-		if (c[1] == '\n')
-			headlines++;
+		if (firstblk) {
+			int lastkar = -1, kar = -1;
 
-	// Allocate space for ^A characters:
+			do {
+				if ('\r' != kar)
+					lastkar = kar;
+				kar = fgetc(infile);
+			} while (!(('\n' == kar) && ('\n' == lastkar)));
 
-	delete[] bodyString;
-	bodyString = new char[len + headlines + 1];
+			long count = ftell(infile) - offset;
 
-	// Copy header, hiding it:
+			fseek(infile, offset, SEEK_SET);
+			src = new unsigned char[count + 1];
+			p = src;
 
-	char *dest = bodyString, *source = tmp;
-	do {
-		*dest++ = 1;
-		do
-			*dest++ = *source++;
-		while (source[-1] != '\n');
-	} while (source[0] != '\n');
+			getblk(0, offset, count, p, begin);
+			*p = '\0';
 
-	// Copy body:
+			currblk->next = new letter_body((char *) src,
+				count, 0, true);
+			currblk = currblk->next;
 
-	memcpy(dest, source, len - (c - tmp));
-	delete[] tmp;
+			oldoffs = offset = ftell(infile);
+			length -= count;
+		}
 
-	// Strip blank lines from end:
+		blklen = (length > MAXBLOCK) ? MAXBLOCK : length;
+		src = begin = p = new unsigned char[blklen + 1];
 
-	dest += len - (c - tmp) - 1;
-	do
-		dest--;
-	while ((*dest == ' ') || (*dest == '\n'));
-	dest[1] = '\0';
+		getblk(0, offset, blklen, p, begin);
+
+		if (length > MAXBLOCK) {
+			if (begin > src)
+				count = begin - src;
+			else {
+				offset = ftell(infile);
+				count = p - src;
+			}
+			length -= (offset - oldoffs);
+		} else {
+			// Strip blank lines
+			do
+				p--;
+			while ((*p == ' ') || (*p == '\n'));
+
+			length = 0;
+			count = p - src + 1;
+		}
+		src[count] = '\0';
+
+		if (mhead.isQP()) {
+			unsigned char *p = qpdecode(src);
+			*p = '\0';
+			count = p - src;
+		}
+
+		p = src;
+
+		currblk->next = new letter_body((char *) src, count,
+			p - src);
+		currblk = currblk->next;
+
+		firstblk = false;
+	    }
+	bodyString = head.next;
+	head.next = 0;		// Prevent deletion of chain
 
 	return bodyString;
 }
@@ -540,12 +657,12 @@ void soup::readAreas()
 		} else
 			tmp = strdupplus(defAddr);
 	} else
-		tmp = "";
+		tmp = strdupplus("");
 
-	mm->resourceObject->set(LoginName, tmp);
+	mm->resourceObject->set_noalloc(LoginName, tmp);
 	mm->resourceObject->set(AliasName, "");
-	mm->resourceObject->set(BBSName, 0);
-	mm->resourceObject->set(SysOpName, 0);
+	mm->resourceObject->set(BBSName, (char *) 0);
+	mm->resourceObject->set(SysOpName, (char *) 0);
 
 	// AREAS:
 
@@ -562,7 +679,7 @@ void soup::readAreas()
 	tmparea->attr = ACTIVE | LATINCHAR | INTERNET | NETMAIL | PRIVATE;
 	strcpy(tmparea->numA, "0");
 
-	FILE *afile = wl->ftryopen("areas", "rb");
+	FILE *afile = wl->ftryopen("areas");
 	if (afile) {
 		char buffer[128], *msgfile, *name, *rawattr;
 		do
@@ -616,14 +733,23 @@ void soup::readAreas()
 		areas = 0;
 }
 
+const char *soup::getTear(int)
+{
+	return 0;
+}
+
 bool soup::isLatin()
 {
 	return true;
 }
 
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------
 // The SOUP reply methods
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------
+
+souprep::upl_soup::upl_soup(const char *name) : pktreply::upl_base(name)
+{
+}
 
 souprep::souprep(mmail *mmA, specific_driver *baseClassA)
 {
@@ -645,32 +771,42 @@ souprep::~souprep()
 bool souprep::getRep1(FILE *rep, upl_soup *l)
 {
 	FILE *orgfile, *destfile;
-	char buffer[128], *msgfile, *mnflag, *rawattr;
+	char buffer[128], *msgfile, *mnflag; //, *rawattr;
 	long count = 0;
+	bool has8bit = false;
 
 	if (!myfgets(buffer, sizeof buffer, rep))
 		return false;
 
 	msgfile = strtok(buffer, "\t");
 	mnflag = strtok(0, "\t");
-	rawattr = strtok(0, "\t");
+	//rawattr = strtok(0, "\t");
 
 	l->privat = (*mnflag == 'm');
 
-	mytmpnam(l->fname);
-
-	if ((orgfile = upWorkList->ftryopen(msgfile, "rb"))) {
+	orgfile = upWorkList->ftryopen(msgfile);
+	if (orgfile) {
 		fseek(orgfile, 4, SEEK_SET);
 		if (!l->sHead.init(orgfile))
 			return false;
+
 		const char *to = l->sHead.To();
 		if (to)
 			l->na = fromAddr(to);
-		if ((destfile = fopen(l->fname, "wt"))) {
-			int c;
-			while ((c = fgetc(orgfile)) != EOF) {
-				fputc(c, destfile);
-				count++;
+
+		destfile = fopen(l->fname, "wt");
+		if (destfile) {
+			if (l->sHead.qpenc) {
+				count = qpdecode(orgfile, destfile);
+				has8bit = true;
+			} else {
+				int c;
+				while ((c = fgetc(orgfile)) != EOF) {
+					fputc(c, destfile);
+					if (c & 0x80)
+						has8bit = true;
+					count++;
+				}
 			}
 			fclose(destfile);
 		}
@@ -678,8 +814,9 @@ bool souprep::getRep1(FILE *rep, upl_soup *l)
 	}
 
 	l->msglen = l->sHead.msglen = count;
-	l->refnum = 0;
+	l->sHead.has8bit = has8bit;
 
+	l->refnum = 0;
 	l->origArea = l->privat ? 1 : -1;
 
 	remove(msgfile);
@@ -746,10 +883,9 @@ letter_header *souprep::getNextLetter()
 }
 
 void souprep::enterLetter(letter_header &newLetter,
-				const char *newLetterFileName, int length)
+			const char *newLetterFileName, long length)
 {
-	upl_soup *newList = new upl_soup;
-	memset(newList, 0, sizeof(upl_soup));
+	upl_soup *newList = new upl_soup(newLetterFileName);
 
 	newList->origArea = mm->areaList->getAreaNo();
 	newList->privat = newLetter.getPrivate();
@@ -761,8 +897,25 @@ void souprep::enterLetter(letter_header &newLetter,
 		newLetter.getSubject(), newLetter.getNewsgrps(),
 		newLetter.getMsgID(), length);
 
-	strcpy(newList->fname, newLetterFileName);
 	newList->msglen = length;
+
+	// Check for 8-bit characters -- there should be a better way
+	// to do this:
+
+	FILE *tmp;
+	bool has8bit = false;
+
+	tmp = fopen(newLetterFileName, "rt");
+	if (tmp) {
+		int c;
+		while ((c = fgetc(tmp)) != EOF)
+			if (c & 0x80)
+				has8bit = true;
+
+		fclose(tmp);
+	}
+
+	newList->sHead.has8bit = has8bit;
 
 	addUpl(newList);
 }
@@ -778,52 +931,65 @@ void souprep::addRep1(FILE *rep, upl_base *node, int recnum)
 	fprintf(rep, "R%07d\t%sn\n", recnum, l->privat ?
 		"mail\tb" : "news\tB");
 
-	if ((orgfile = fopen(l->fname, "rt"))) {
+	orgfile = fopen(l->fname, "rt");
+	if (orgfile) {
 
-		char *replyText = new char[l->msglen + 1];
+		destfile = fopen(dest, "wb");
+		if (destfile) {
+			unsigned char outlen[4];
+			putblong(outlen, 0L);
+			fwrite(outlen, 4, 1, destfile);
 
-		fread(replyText, l->msglen, 1, orgfile);
-		fclose(orgfile);
+			bool useQPbody = l->privat ?
+				mm->resourceObject->getInt(UseQPMail) :
+				mm->resourceObject->getInt(UseQPNews);
 
-		replyText[l->msglen] = '\0';
+			bool useQPhead = l->privat ?
+				mm->resourceObject->getInt(UseQPMailHead) :
+				mm->resourceObject->getInt(UseQPNewsHead);
 
-		if ((destfile = fopen(dest, "wb"))) {
+			l->sHead.output(destfile,
+				mm->resourceObject->get(outCharset),
+				useQPhead, useQPbody);
 
-			l->sHead.output(destfile);
-
-			char *lastsp = 0, *q = replyText;
-			int count = 0;
-
-			for (char *p = replyText; *p; p++) {
-				if (*p == '\n') {
-					*p = '\0';
-					fprintf(destfile, "%s\n", q);
-					q = p + 1;
-					count = 0;
-					lastsp = 0;
-				} else {
+			if (useQPbody && l->sHead.has8bit)
+				qpencode(orgfile, destfile);
+			else {
+				int c, count = 0, lastsp = 0;
+				while ((c = fgetc(orgfile)) != EOF) {
 					count++;
-					if (*p == ' ')
-						lastsp = p;
-				}
+					if ((count > 80) && lastsp) {
+						fseek(orgfile, lastsp - count,
+							SEEK_CUR);
+						fseek(destfile, lastsp - count,
+							SEEK_CUR);
+						c = '\n';
+					}
 
-				// wrap at 80 characters
-				if ((count >= 80) && lastsp) {
-					*lastsp = '\n';
-					p = lastsp - 1;
+					if ('\n' == c)
+						count = lastsp = 0;
+					else
+						if (' ' == c)
+							lastsp = count;
+
+					fputc(c, destfile);
 				}
 			}
-			if (count)
-				fprintf(destfile, "%s\n", q);
+
+			putblong(outlen, ftell(destfile) - 4L);
+
+			fseek(destfile, 0, SEEK_SET);
+			fwrite(outlen, 4, 1, destfile);
+			fseek(destfile, 0, SEEK_END);
+
 			fclose(destfile);
 		}
-		delete[] replyText;
+		fclose(orgfile);
 	}
 }
 
-void souprep::addHeader(FILE *repFile)
+void souprep::addHeader(FILE *)
 {
-	repFile = repFile;	// nothing to do but supress warnings
 }
 
 // set names for reply packet files
@@ -836,9 +1002,8 @@ void souprep::repFileName()
 }
 
 // list files to be archived when creating reply packet
-const char *souprep::repTemplate(bool offres)
+const char *souprep::repTemplate(bool)
 {
-	offres = offres;
 	return "REPLIES *.MSG";
 }
 

@@ -2,7 +2,7 @@
  * MultiMail offline mail reader
  * OMEN
 
- Copyright (c) 1999 William McBrine <wmcbrine@clark.net>
+ Copyright (c) 2001 William McBrine <wmcbrine@users.sourceforge.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -12,11 +12,11 @@
 
 // Area attributes in SYSTEMxy.BBS
 enum {OM_WRITE = 1, OM_SYSOP = 2, OM_PRIVATE = 4, OM_PUBLIC = 8,
-	OM_NETMAIL = 16, OM_ALIAS = 32, OM_ACTIVE = 64};
+	OM_NETMAIL = 0x10, OM_ALIAS = 0x20, OM_ACTIVE = 0x40};
 
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------
 // The OMEN methods
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------
 
 omen::omen(mmail *mmA)
 {
@@ -28,7 +28,8 @@ omen::omen(mmail *mmA)
 
 	readSystemBBS();
 
-	if (!(infile = mm->workList->ftryopen("newmsg", "rb")))
+	infile = mm->workList->ftryopen("newmsg");
+	if (!infile)
 		fatalError("Could not open NEWMSGxy.TXT");
 
 	buildIndices();
@@ -78,9 +79,11 @@ void omen::buildIndices()
 
 	char junk[12];
 	const char *p;
-	int counter, personal = 0;
+	int nlen, personal = 0;
+	long counter;
 	const char *name = mm->resourceObject->get(UserName);
-	bool checkpers = name && mm->resourceObject->getInt(BuildPersArea);
+	nlen = name ? strlen(name) : 0;
+	bool checkpers = name && nlen;
 
 	numMsgs = 0;
 
@@ -103,7 +106,7 @@ void omen::buildIndices()
 			if (checkpers) {
 				p = nextLine();
 				p = strchr(p, '=') + 3;
-				if (!strncasecmp(p, name, strlen(name))) {
+				if (!strncasecmp(p, name, nlen)) {
 					tmpndx->pers = true;
 					personal++;
 				}
@@ -115,10 +118,10 @@ void omen::buildIndices()
 			while (!feof(infile) && (fgetc(infile) != 2));
 
 			// find length of text:
-			long len = 0;
+			long tlen = 0;
 			while (!feof(infile) && (fgetc(infile) != 3))
-				len++;
-			tmpndx->length = len;
+				tlen++;
+			tmpndx->length = tlen;
 		}
 	}
 
@@ -129,7 +132,8 @@ letter_header *omen::getNextLetter()
 {
 	char date[20], subject[73], c, priflag = 0, *from, *to, *net;
 	unsigned long pos;
-	int areaID, letterID, x, msgnum, junk, refnum = 0;
+	int areaID, letterID, x;
+	long msgnum, refnum = 0, junk;
 	net_address na;
 
 	pos = body[currentArea][currentLetter].pointer;
@@ -142,7 +146,7 @@ letter_header *omen::getNextLetter()
 	from = nextLine() + 1;
 	to = strchr(from, ' ');
 	*to = '\0';
-	msgnum = atoi(from);
+	msgnum = atol(from);
 
 	from = to + 2;
 	sscanf(from, "%d:", &areaID);
@@ -153,7 +157,7 @@ letter_header *omen::getNextLetter()
 	to = strchr(from, '(');
 	if (to) {
 		to[-2] = '\0';
-		sscanf(to, "(%d/%d)", &refnum, &junk);
+		sscanf(to, "(%ld/%ld)", &refnum, &junk);
 		to = strchr(to + 1, '(');
 		priflag = to[1];
 	}
@@ -205,37 +209,11 @@ letter_header *omen::getNextLetter()
 		!(!(areas[areaID].attr & LATINCHAR)));
 }
 
-// returns the body of the requested letter
-const char *omen::getBody(letter_header &mhead)
+void omen::prefirstblk()
 {
-	unsigned char *p;
-	int c, kar, AreaID, LetterID;
+	// Skip header
 
-	AreaID = mhead.getAreaID() - mm->driverList->getOffset(this);
-	LetterID = mhead.getLetterID();
-
-	delete[] bodyString;
-	bodyString = new char[body[AreaID][LetterID].msgLength + 1];
-	fseek(infile, body[AreaID][LetterID].pointer, SEEK_SET);
-
-	while (!feof(infile) && (fgetc(infile) != 2));	// Skip header
-
-	for (c = 0, p = (unsigned char *) bodyString;
-	     c < body[AreaID][LetterID].msgLength; c++) {
-		kar = fgetc(infile);
-
-		if (!kar)
-			kar = ' ';
-
-		if (kar != '\r')
-			*p++ = kar;
-	}
-	do
-		p--;
-	while ((*p == ' ') || (*p == '\n'));	// Strip blank lines
-	p[1] = '\0';
-
-	return bodyString;
+	while (!feof(infile) && (fgetc(infile) != 2));
 }
 
 // Area and packet init: SYSTEMxy.BBS, BNAMESxy.BBS, INFOxy.BBS
@@ -259,7 +237,7 @@ void omen::readSystemBBS()
 
 	// INFOxy.BBS:
 
-	infile = wl->ftryopen("info", "rb");
+	infile = wl->ftryopen("info");
 	if (infile) {
 		while (!feof(infile)) {
 			const char *line = nextLine();
@@ -274,11 +252,11 @@ void omen::readSystemBBS()
 		}
 		fclose(infile);
 	} else
-			mm->resourceObject->set(SysOpName, 0);
+			mm->resourceObject->set(SysOpName, (char *) 0);
 
 	// SYSTEMxy.BBS, and BNAMESxy.BBS if available:
 
-	infile = wl->ftryopen("system", "rb");
+	infile = wl->ftryopen("system");
 	if (infile) {
 		const char *s = wl->getName();
 		packetBaseName[0] = toupper(s[6]);
@@ -306,7 +284,7 @@ void omen::readSystemBBS()
 		areas[0].name = strdupplus("PERSONAL");
 		areas[0].attr = PUBLIC | PRIVATE | COLLECTION;
 
-		infile = wl->ftryopen("bnames", "rb");
+		infile = wl->ftryopen("bnames");
 		for (int x = 1; x < maxConf; x++) {
 			areas[x].num = (int) (areatmp[x - 1].BrdHighNum <<
 				8) + areatmp[x - 1].BrdNum;
@@ -318,6 +296,7 @@ void omen::readSystemBBS()
 				((a & OM_PUBLIC) ? PUBLIC : 0) |
 				((a & OM_NETMAIL) ? NETMAIL : 0) |
 				((a & OM_ALIAS) ? ALIAS : 0) |
+				((a & OM_WRITE) ? 0 : READONLY) |
 				hasOffConfig | useLatin;
 
 			if (infile)		// use long area names
@@ -347,13 +326,18 @@ bool omen::isLatin()
 	return !(!(useLatin & LATINCHAR));
 }
 
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------
 // The OMEN reply methods
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------
 
 // Letter attributes in HEADERxy.BBS
 enum {OMR_SAVE = 1, OMR_DEL = 2, OMR_TOGGLE = 4, OMR_MOVE = 8,
-	OMR_PRIVATE = 16, OMR_ALIAS = 32};
+	OMR_PRIVATE = 0x10, OMR_ALIAS = 0x20};
+
+omenrep::upl_omen::upl_omen(const char *name) : pktreply::upl_base(name)
+{
+	memset(&omen_rec, 0, sizeof(omen_rec));
+}
 
 // convert OMEN reply packet header to C structures
 bool omenrep::upl_omen::init(FILE *rep)
@@ -430,17 +414,19 @@ bool omenrep::getRep1(FILE *rep, upl_omen *l, int recnum)
 {
 	FILE *orgfile, *destfile;
 	char orgname[13];
-	int c, count = 0;
+	int c;
+	long count = 0;
 
 	if (!l->init(rep))
 		return false;
 
 	sprintf(orgname, "msg%s%02d.txt", baseClass->getBaseName(),
 		recnum);
-	mytmpnam(l->fname);
 
-	if ((orgfile = upWorkList->ftryopen(orgname, "rb"))) {
-	    if ((destfile = fopen(l->fname, "wt"))) {
+	orgfile = upWorkList->ftryopen(orgname);
+	if (orgfile) {
+	    destfile = fopen(l->fname, "wt");
+	    if (destfile) {
 		while ((c = fgetc(orgfile)) != EOF) {
 			if (c != '\r') {
 				fputc(c, destfile);
@@ -503,10 +489,9 @@ letter_header *omenrep::getNextLetter()
 }
 
 void omenrep::enterLetter(letter_header &newLetter,
-				const char *newLetterFileName, int length)
+			const char *newLetterFileName, long length)
 {
-	upl_omen *newList = new upl_omen;
-	memset(newList, 0, sizeof(upl_omen));
+	upl_omen *newList = new upl_omen(newLetterFileName);
 
 	strncpy(newList->subject, newLetter.getSubject(), 72);
 	strncpy(newList->to, newLetter.getTo(), 35);
@@ -515,7 +500,6 @@ void omenrep::enterLetter(letter_header &newLetter,
 	newList->privat = newLetter.getPrivate();
 	newList->refnum = newLetter.getReplyTo();
 	newList->na = newLetter.getNetAddr();
-	strcpy(newList->fname, newLetterFileName);
 
 	newList->msglen = length;
 
@@ -534,50 +518,39 @@ void omenrep::addRep1(FILE *rep, upl_base *node, int recnum)
 	sprintf(dest, "MSG%s%02d.TXT", baseClass->getBaseName(),
 		recnum);
 
-	if ((orgfile = fopen(l->fname, "rt"))) {
+	orgfile = fopen(l->fname, "rt");
+	if (orgfile) {
 
-		char *replyText = new char[l->msglen + 1];
+		destfile = fopen(dest, "wb");
+		if (destfile) {
 
-		fread(replyText, l->msglen, 1, orgfile);
-		fclose(orgfile);
-
-		replyText[l->msglen] = '\0';
-
-		if ((destfile = fopen(dest, "wb"))) {
-
-			char *lastsp = 0, *q = replyText;
-			int count = 0;
-
-			for (char *p = replyText; *p; p++) {
-				if (*p == '\n') {
-					*p = '\0';
-					fprintf(destfile, "%s\r\n", q);
-					q = p + 1;
-					count = 0;
-					lastsp = 0;
-				} else {
-					count++;
-					if (*p == ' ')
-						lastsp = p;
+			int c, count = 0, lastsp = 0;
+			while ((c = fgetc(orgfile)) != EOF) {
+				count++;
+				if ((count > 80) && lastsp) {
+					fseek(orgfile, lastsp - count,
+						SEEK_CUR);
+					fseek(destfile, lastsp - count,
+						SEEK_CUR);
+					c = '\n';
 				}
-
-				// wrap at 80 characters
-				if ((count >= 80) && lastsp) {
-					*lastsp = '\n';
-					p = lastsp - 1;
+				if ('\n' == c) {
+					fprintf(destfile, "\r\n");
+					count = lastsp = 0;
+				} else {
+					fputc(c, destfile);
+					if (' ' == c)
+						lastsp = count;
 				}
 			}
-			if (count)
-				fprintf(destfile, "%s\r\n", q);
 			fclose(destfile);
 		}
-		delete[] replyText;
+		fclose(orgfile);
 	}
 }
 
-void omenrep::addHeader(FILE *repFile)
+void omenrep::addHeader(FILE *)
 {
-	repFile = repFile;	// nothing to do but supress warnings
 }
 
 // set names for reply packet files
@@ -609,7 +582,8 @@ bool omenrep::getOffConfig()
 	bool status = false;
 	upWorkList = new file_list(mm->resourceObject->get(UpWorkDir));
 
-	if ((olc = upWorkList->ftryopen("select", "rb"))) {
+	olc = upWorkList->ftryopen("select");
+	if (olc) {
 		char line[128];
 		int areaOMEN, areaNo, current = -1;
 
@@ -659,15 +633,18 @@ bool omenrep::makeOffConfig()
 	if (!todoor)
 		return false;
 
+	int oldarea = mm->areaList->getAreaNo();
+
 	int maxareas = mm->areaList->noOfAreas();
 	for (int areaNo = 0; areaNo < maxareas; areaNo++) {
 		mm->areaList->gotoArea(areaNo);
-		int attrib = mm->areaList->getType();
+		unsigned long attrib = mm->areaList->getType();
 
 		if (!(attrib & COLLECTION) && (((attrib & ACTIVE)
 		    && !(attrib & DROPPED)) || (attrib & ADDED)))
  			fprintf(todoor, "%s\n", mm->areaList->getShortName());
 	}
+	mm->areaList->gotoArea(oldarea);
 	fclose(todoor);
 
 	return true;

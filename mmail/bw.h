@@ -3,7 +3,7 @@
  * Blue Wave
 
  Copyright (c) 1996 Toth Istvan <stoty@vma.bme.hu>
- Copyright (c) 1999 William McBrine <wmcbrine@clark.net>
+ Copyright (c) 2001 William McBrine <wmcbrine@users.sourceforge.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -22,6 +22,7 @@
 class bluewave : public pktbase
 {
 	FILE *ftiFile;
+	INF_HEADER infoHeader;
 	INF_AREA_INFO *areas;
 	MIX_REC *mixRecord;
 
@@ -41,16 +42,22 @@ class bluewave : public pktbase
 	void findInfBaseName();
 	void initInf();
 	void initMixID();
+
+	void getblk(int, long &, long, unsigned char *&, unsigned char *&);
+	void endproc(letter_header &);
  public:
 	bluewave(mmail *);
 	~bluewave();
 	area_header *getNextArea();
 	int getNoOfLetters();
 	letter_header *getNextLetter();
-	const char *getBody(letter_header &);
-	const char *saveOldFlags();
+	const char *getTear(int);
+	const char *oldFlagsName();
+	bool readOldFlags();
+	bool saveOldFlags();
+	INF_HEADER &getInfHeader();
 };
-	
+
 class bwreply : public pktreply
 {
 	class upl_bw : public upl_base {
@@ -58,7 +65,7 @@ class bwreply : public pktreply
 		UPL_REC uplRec;
 		char *msgid, *newsgrps, *extsubj;
 
-		upl_bw();
+		upl_bw(const char * = 0);
 		~upl_bw();
 	};
 
@@ -78,9 +85,17 @@ class bwreply : public pktreply
 	~bwreply();
 	area_header *getNextArea();
 	letter_header *getNextLetter();
-	void enterLetter(letter_header &, const char *, int);
+	void enterLetter(letter_header &, const char *, long);
 	bool getOffConfig();
 	bool makeOffConfig();
 };
+
+/* To ensure correct operation where alignment padding is used, when
+   reading from or writing to disk, use the _SIZE defines given here
+   rather than "sizeof":
+*/
+
+#define UPI_HEAD_SIZE 55
+#define PDQ_REC_SIZE 21
 
 #endif

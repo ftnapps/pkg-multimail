@@ -1,3 +1,118 @@
+multimail (0.43-1) unstable; urgency=low
+
+  * New upstream release (see upstream ChangeLog for further details):
+   - Filter function for all lists.
+   - Clock in letter window.
+   - "AT code" parser in ANSI viewer for PCBoard/Wildcat.
+   - Better SOUP mail parsing.
+   - Packet name always visible.
+
+ -- peter karlsson <peterk@debian.org>  Sat, 09 Mar 2002 23:15:00 +0100
+
+multimail (0.42-1) unstable; urgency=low
+
+  * New upstream release (see upstream ChangeLog for further details):
+   - New addressbook functionality.
+   - Better error reporting on failed uncompression.
+
+ -- peter karlsson <peterk@debian.org>  Sun, 09 Dec 2001 12:45:00 +0100
+
+multimail (0.41-1) unstable; urgency=low
+
+  * New upstream release (see upstream ChangeLog for further details):
+   - Config-file options can now be specified on the command line.
+   - Better handling of corrupt QWK *.NDX files.
+   - Better pathname handling.
+   - Miscellaneous fixes.
+  * Updated to policy 3.5.6.
+
+ -- peter karlsson <peterk@debian.org>  Tue, 16 Oct 2001 18:15:00 +0200
+
+multimail (0.40-1) unstable; urgency=low
+
+  * New upstream release:
+   - Fixed crashing from 0.39.
+
+ -- peter karlsson <peterk@debian.org>  Sun, 15 Apr 2001 22:17:15 +0200
+
+multimail (0.39-1) unstable; urgency=low
+
+  * New upstream release (see upstream ChangeLog for further details):
+   - Mouse functionality.
+   - New "saved" flag.
+   - Various bugfixes, including buffer overflow fixes.
+   - Minimum screen size is now 60x17.
+
+ -- peter karlsson <peterk@debian.org>  Sat, 14 Apr 2001 21:36:44 +0200
+
+multimail (0.38-1) unstable; urgency=low
+
+  * New upstream release (see upstream ChangeLog for further details):
+   - Transparency support for Eterm and friends.
+   - Original timestamps of packets are preserved.
+   - Expert mode, removes help text from screen.
+   - Fix for SIGWINCH in ncurses 5.0+.
+   - New default colors.
+   - for more info, see upstreams ChangeLog.
+  * Updated to standards version 3.2.1.
+  * Added "Hints" to the menu file.
+
+ -- peter karlsson <peterk@debian.org>  Sat,  3 Feb 2001 13:18:40 +0100
+
+multimail (0.37-3) unstable; urgency=low
+
+  * Add Build-Depends on debhelper
+    (Closes: Bug#66522).
+  * Updated to standards version 3.0.1.
+  * Suggest zip and unzip, since these are the most common archivers for
+    packages read by this program.
+
+ -- peter karlsson <peterk@debian.org>  Fri, 25 Aug 2000 20:30:00 +0200
+
+multimail (0.37-2) unstable; urgency=low
+
+  * Added upstream patch that resolves crashes on some illegal headers in
+    SOUP archives.
+
+ -- peter karlsson <peterk@debian.org>  Thu, 29 Jun 2000 21:59:00 +0200
+
+multimail (0.37-1) unstable; urgency=low
+
+  * New upstream release.
+  * New maintainer (previously sponsored).
+  * Adds support for tar.gz compression and GNUS-style SOUP flags
+    (Closes: Bug#63746).
+  * Updated references to author's address, denoting move to SourceForge.
+
+ -- peter karlsson <peterk@debian.org>  Wed, 28 Jun 2000 17:16:01 +0200
+
+multimail (0.36-1) unstable; urgency=low
+
+  * New upstream release.
+  * Add Build-Depends on libncurses5-dev.
+  * Remove INSTALL document from /usr/share/doc/multimail.
+
+ -- Per Lundberg <plundis@debian.org>  Wed, 17 May 2000 00:46:57 +0200
+
+multimail (0.35-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Per Lundberg <plundis@debian.org>  Fri, 31 Mar 2000 23:38:22 +0200
+
+multimail (0.33-1) unstable; urgency=low
+
+  * New upstream release.
+  * Builds with libncurses5-dev instead of libncurses4-dev. Closes: #59043.
+
+ -- Per Lundberg <plundis@debian.org>  Mon, 28 Feb 2000 18:47:14 +0100
+
+multimail (0.32-3) frozen; urgency=low
+
+  * Corrected menu entry (adapted from newer unstable versions).
+
+ -- Per Lundberg <plundis@debian.org>  Wed, 17 May 2000 10:05:00 +0200
+
 multimail (0.32-2) unstable; urgency=low
 
   * Fixed some mistakes in the path names used.
@@ -15,7 +130,3 @@ multimail (0.31-1) unstable; urgency=low
   * Initial Release.
 
  -- Per Lundberg <plundis@debian.org>  Tue, 19 Oct 1999 20:22:16 +0200
-
-Local variables:
-mode: debian-changelog
-End:

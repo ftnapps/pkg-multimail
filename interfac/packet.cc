@@ -4,12 +4,14 @@
 
  Copyright (c) 1996 Kolossvary Tamas <thomas@vma.bme.hu>
  Copyright (c) 1997 John Zero <john@graphisoft.hu>
- Copyright (c) 1999 William McBrine <wmcbrine@clark.net>
+ Copyright (c) 2002 William McBrine <wmcbrine@users.sourceforge.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
 
 #include "interfac.h"
+
+#ifdef VANITY_PLATE
 
 void Welcome::MakeActive()
 {
@@ -17,9 +19,10 @@ void Welcome::MakeActive()
 	window->attrib(C_WELCOME1);
 	window->put(1, 7,
 		"Welcome to " MM_NAME " Offline Reader!");
+	//window->put(2, 13, "http://multimail.sf.net/");
 	window->attrib(C_WELCOME2);
 	window->put(3, 2,
-		"Copyright (c) 1999 William McBrine, Kolossvary"); 
+		"Copyright (c) 2002 William McBrine, Kolossvary"); 
 	window->put(4, 7,
 		"Tamas, Toth Istvan, John Zero, et al.");
 	window->touch();
@@ -30,11 +33,39 @@ void Welcome::Delete()
 	delete window;
 }
 
+#endif
+
+PacketListWindow::oneDir::oneDir(const char *nameA, oneDir *parentA) :
+	parent(parentA)
+{
+	name = fixPath(nameA);
+	position = active = 0;
+}
+
+PacketListWindow::oneDir::~oneDir()
+{
+	delete[] name;
+}
+
 PacketListWindow::PacketListWindow()
 {
-	origDir = strdupplus(mm.resourceObject->get(PacketDir));
+#ifdef HAS_HOME
+	home = getenv("HOME");
+#endif
+	origDir = 0;
+	packetList = 0;
+}
+
+void PacketListWindow::init()
+{
+	mychdir(mm.resourceObject->get(PacketDir));
+	char *tmp = mygetcwd();
+	origDir = new oneDir(tmp, 0);
+	delete[] tmp;
+
+	currDir = origDir;
+
 	sorttype = mm.resourceObject->getInt(PacketSort);
-	packetList = dirList = 0;
 	newList();
 	if (noFiles)			// If there are any files,
 		active = noDirs;	// set active to the first one.
@@ -42,60 +73,117 @@ PacketListWindow::PacketListWindow()
 
 PacketListWindow::~PacketListWindow()
 {
+	delete origDir;
 	delete packetList;
-	delete dirList;
-	delete[] origDir;
 }
 
 void PacketListWindow::newList()
 {
 	delete packetList;
-	delete dirList;
 
-	mm.resourceObject->set(oldPacketName, 0);
+	mm.resourceObject->set(oldPacketName, (char *) 0);
+
+	const char *target = currDir->name;
+	mm.resourceObject->set(PacketDir, target);
 
 	time(&currTime);
-	currDir = mm.resourceObject->get(PacketDir);
 
-	dirList = new file_list(currDir, false, true);
-	packetList = new file_list(currDir, sorttype);
+	packetList = new file_list(target, sorttype, true);
 
-	noDirs = dirList->getNoOfFiles();
+	noDirs = packetList->getNoOfDirs();
 	noFiles = packetList->getNoOfFiles();
-
-	if (!NumOfItems())
-		error();
 }
 
-void PacketListWindow::error()
+void PacketListWindow::MakeActiveCore()
 {
-	char tmp[512];
+	const int stline =
+#ifdef VANITY_PLATE
+		9;
+#else
+		2;
+#endif
+	list_max_y = LINES - (stline +
+		(mm.resourceObject->getInt(ExpertMode) ? 5 : 9));
 
-	sprintf(tmp, "No packets found.\n\n"
-		"Please place any packets to be read in:\n%s", currDir);
-	fatalError(tmp);
+	bool usenum = false;
+	int items = NumOfItems();
+
+	if (list_max_y > items)
+		list_max_y = items ? items : 1;
+	else
+		usenum = true;
+
+	char tmp[46], *dest = tmp, *src = currDir->name;
+	int end, maxlen = 36, len = strlen(src);
+
+	if (usenum)
+		maxlen -= sprintf(tmp, " (%d)", noFiles);
+
+#ifdef HAS_HOME
+	int hlen = home ? strlen(home) : 0;
+	bool inhome = hlen && (hlen <= len) && !strncmp(home,
+		currDir->name, hlen);
+
+	if (inhome && ((len - hlen) < maxlen)) {
+		tmp[0] = '~';
+		dest++;
+		src += hlen;
+		end = len - hlen + 1;
+	} else
+#endif
+		if (len > maxlen) {
+			strcpy(tmp, "...");
+			dest += 3;
+			src += (len - maxlen) + 3;
+			end = maxlen;
+		} else
+			end = len;
+
+	strcpy(dest, src);
+	canonize(dest);
+
+	int newend = end + sprintf(tmp + end, ", by %s", sorttype ?
+		"time" : "name");
+	if (usenum)
+		newend += sprintf(tmp + newend, " (%d)", noFiles);
+
+	const char *filter = packetList->getFilter();
+	if (filter) {
+		int flen = strlen(filter);
+		int fmax = list_max_x - 5 - newend;
+		if (flen > fmax)
+			flen = fmax;
+
+		char fmt[12];
+		sprintf(fmt, " | %%.%ds", flen);
+		sprintf(tmp + newend, fmt, filter);
+	}
+
+	list = new InfoWin(list_max_y + 3, list_max_x + 2, stline, borderCol,
+		tmp, C_PHEADTEXT);
+
+	list->attrib(C_PLINES);
+	tmp[end] = '\0';
+	list->put(0, 3, tmp);
+
+	list->attrib(C_PHEADTEXT);
+	list->put(1, 3, "Packet                  Size    Date");
+	list->touch();
+
+	DrawAll();
 }
 
 void PacketListWindow::MakeActive()
 {
-	const int stline = 9;
-	list_max_y = LINES - (stline + 9);
 	list_max_x = 48;
 	top_offset = 2;
 
 	borderCol = C_PBBACK;
 
-	if (list_max_y > NumOfItems())
-		list_max_y = NumOfItems();
-
+#ifdef VANITY_PLATE
 	welcome.MakeActive();
-
-	list = new InfoWin(list_max_y + 3, 50, stline, borderCol, currDir,
-		C_PHEADTEXT);
-	list->attrib(C_PHEADTEXT);
-	list->put(1, 3, "Packet                  Size    Date");
-	list->touch();
-	DrawAll();
+#endif
+	MakeActiveCore();
 }
 
 int PacketListWindow::NumOfItems()
@@ -105,8 +193,10 @@ int PacketListWindow::NumOfItems()
 
 void PacketListWindow::Delete()
 {
-	delete list;
+	delete list;	
+#ifdef VANITY_PLATE
 	welcome.Delete();
+#endif
 }
 
 void PacketListWindow::oneLine(int i)
@@ -115,88 +205,92 @@ void PacketListWindow::oneLine(int i)
 	int absPos = position + i;
 	time_t tmpt;
 
-	if (absPos < noDirs) {
-		dirList->gotoFile(absPos);
+	if (absPos < NumOfItems()) {
+		packetList->gotoFile(absPos);
 
-		absPos = sprintf(tmp, "  <%.32s", dirList->getName());
-		char *tmp2 = tmp + absPos;
-		*tmp2++ = '>';
+		if (absPos < noDirs) {
+			absPos = sprintf(tmp, "  <%.28s",
+				packetList->getName());
+			char *tmp2 = tmp + absPos;
+			*tmp2++ = '>';
 
-		absPos = 32 - absPos;
-		while (--absPos)
-			*tmp2++ = ' ';
-		tmpt = dirList->getDate();
-	} else {
-		packetList->gotoFile(absPos - noDirs);
+			absPos = 32 - absPos;
+			while (--absPos > 0)
+				*tmp2++ = ' ';
+		} else {
+			const char *tmp2 = packetList->getName();
 
-		const char *tmp2 = packetList->getName();
+			strcpy(tmp, "          ");
 
-		strcpy(tmp, "          ");
+			if (*tmp2 == '.')
+				sprintf(&tmp[2], "%-20.20s", tmp2);
+			else {
+				for (int j = 2; *tmp2 && (*tmp2 != '.') &&
+					(j < 10); j++)
+						tmp[j] = *tmp2++;
 
-		if (*tmp2 == '.')
-			sprintf(&tmp[2], "%-20.20s", tmp2);
-		else {
-			for (int j = 2; *tmp2 && (*tmp2 != '.') &&
-				(j < 10); j++)
-					tmp[j] = *tmp2++;
+				sprintf(&tmp[10], "%-10.10s", tmp2);
+			}
 
-			sprintf(&tmp[10], "%-10.10s", tmp2);
+			sprintf(&tmp[20], "%12lu",
+				(unsigned long) packetList->getSize());
 		}
 
-		sprintf(&tmp[20], "%12u",
-			(unsigned) packetList->getSize());
-
 		tmpt = packetList->getDate();
-	}
-	long dtime = currTime - tmpt;
 
-	// 15000000 secs = approx six months (use year if older):
-	strftime(&tmp[32], 17, ((dtime < 0 || dtime > 15000000) ?
-		"  %b %d  %Y  " : "  %b %d %H:%M  "), localtime(&tmpt));
+#ifdef TIMEKLUDGE
+		if (!tmpt)
+			tmpt = currTime;
+#endif
+		long dtime = currTime - tmpt;
+
+		// 15000000 secs = approx six months (use year if older):
+		strftime(&tmp[32], 17, ((dtime < 0 || dtime > 15000000L) ?
+			"  %b %d  %Y  " : "  %b %d %H:%M  "),
+				localtime(&tmpt));
+	} else {
+		char fmt[12];
+
+		sprintf(fmt, "%%-%d.%ds", list_max_x, list_max_x);
+		sprintf(tmp, fmt, " ");
+	}
 
 	DrawOne(i, C_PLINES);
 }
 
 searchret PacketListWindow::oneSearch(int x, const char *item, int mode)
 {
-	file_list *foo;
 	const char *s;
 	searchret retval;
 
-	if (x < noDirs)
-		foo = dirList;
-	else {
-		foo = packetList;
-		x -= noDirs;
-	}
-	foo->gotoFile(x);
+	packetList->gotoFile(x);
 
-	s = foo->getName();
+	s = packetList->getName();
 	retval = searchstr(s, item) ? True : False;
 
-	if ((retval == False) && (foo == packetList) &&
+	if ((retval == False) && (x >= noDirs) &&
 	    (mode < s_pktlist)) {
 		int oldactive = active;
-		active = x + noDirs;
+		active = x;
 		if (OpenPacket() == PKT_OK) {
 			mm.checkForReplies();
 			mm.openReply();
 
-			interface->redraw();
-			ShadowedWin searchsay(3, 31, (LINES >> 1) - 2,
-				C_WTEXT);
-			searchsay.put(1, 2, "Searching (ESC to abort)...");
-			searchsay.update();
+			ui->redraw();
+			ui->ReportWindow("Searching (ESC to abort)...");
 
 			mm.areaList = new area_list(&mm);
+			mm.areaList->getRepList();
+			mm.driverList->initRead();
+			mm.areaList->setMode(-1);
 			mm.areaList->relist();
-			interface->changestate(arealist);
-			interface->areas.setActive(-1);
-			retval = interface->areas.search(item, mode);
+			ui->changestate(arealist);
+			ui->areas.setActive(-1);
+			retval = ui->areas.search(item, mode);
 			if (retval != True) {
 				active = oldactive;
 				mm.Delete();
-				interface->changestate(packetlist);
+				ui->changestate(packetlist);
 			}
 		} else
 			active = oldactive;
@@ -207,20 +301,23 @@ searchret PacketListWindow::oneSearch(int x, const char *item, int mode)
 
 void PacketListWindow::Select()
 {
-	if (active < noDirs)
-		dirList->gotoFile(active);
-	else
-		packetList->gotoFile(active - noDirs);
+	packetList->gotoFile(active);
 }
 
 bool PacketListWindow::back()
 {
 	bool end = false;
 
-	if (strcmp(currDir, origDir)) {
-		mm.resourceObject->set(PacketDir, dirList->changeDir(".."));
-		active = position = 0;
-		extrakeys('U');
+	if (currDir != origDir) {
+		oneDir *oldDir = currDir->parent;
+		delete currDir;
+		currDir = oldDir;
+
+		newList();
+		position = currDir->position;
+		active = currDir->active;
+
+		ui->redraw();
 	} else
 		end = true;
 	return end;
@@ -231,11 +328,37 @@ bool PacketListWindow::extrakeys(int key)
 	bool end = false;
 
 	switch (key) {
+#ifdef USE_MOUSE
+	case MM_MOUSE:
+		{
+			int begx = list->xstart(), begy = list->ystart();
+
+			if ( (mouse_event.y != begy) ||
+			    ((mouse_event.x < (begx + 3)) || (mouse_event.x >
+			    (begx + list_max_x))) )
+				break;
+		}
+#endif
 	case 'S':
 	case '$':
 		packetList->resort();
 		sorttype = !sorttype;
-		DrawAll();
+		delete list;
+		MakeActiveCore();
+		break;
+	case '^':
+		{
+			char item[80];
+			*item = '\0';
+
+			if (ui->savePrompt("Filter on:", item)) {
+				packetList->setFilter(item);
+
+				noDirs = packetList->getNoOfDirs();
+				noFiles = packetList->getNoOfFiles();
+			}
+		}
+		ui->redraw();
 		break;
 	case 'G':
 		gotoDir();
@@ -243,15 +366,43 @@ bool PacketListWindow::extrakeys(int key)
 	case 'R':
 		renamePacket();
 		break;
-	case KEY_DC:
+	case MM_DEL:
 	case 'K':
 		killPacket();
 		break;
+	case 'T':
+		Select();
+		packetList->setDate();
+		time(&currTime);
+		delete list;
+		MakeActiveCore();
+		break;
 	case 'U':
 		newList();
-		interface->redraw();
+		ui->redraw();
 	}
 	return end;
+}
+
+bool PacketListWindow::newDir(const char *dname)
+{
+	char *result = packetList->changeDir(homify(dname));
+
+	if (result) {
+		currDir->position = position;
+		currDir->active = active;
+
+		oneDir *nd = new oneDir(result, currDir);
+		currDir = nd;
+
+		newList();
+		position = 0;
+		active = noFiles ? noDirs : 0;
+
+		delete[] result;
+		return true;
+	}
+	return false;
 }
 
 void PacketListWindow::gotoDir()
@@ -259,14 +410,16 @@ void PacketListWindow::gotoDir()
 	char pathname[70];
 	pathname[0] = '\0';
 
-	if (interface->savePrompt("New directory:", pathname) &&
+	if (ui->savePrompt("New directory:", pathname) &&
 	    pathname[0]) {
-		mm.resourceObject->set(PacketDir,
-			dirList->changeDir(pathname));
-		active = position = 0;
-		extrakeys('U');
+
+		if (newDir(pathname))
+			ui->redraw();
+		else
+			ui->nonFatalError("Could not change to directory");
+
 	} else
-		interface->redraw();
+		ui->nonFatalError("Change cancelled");
 }
 
 void PacketListWindow::renamePacket()
@@ -274,17 +427,41 @@ void PacketListWindow::renamePacket()
 	if (active >= noDirs) {
 		Select();
 
-		char question[60], answer[60];
-		sprintf(question, "New filename for %.39s:",
-			packetList->getName());
-		answer[0] = '\0';
+		const char *fname = packetList->getName();
 
-		if (interface->savePrompt(question, answer) &&
-		    answer[0]) {
-			packetList->changeName(answer);
-			extrakeys('U');
+		char question[60], answer[60];
+		sprintf(question, "New filename for %.39s:", fname);
+
+		if (getNumExt(fname) != -1)
+			sprintf(answer, "%.59s", fname);
+		else {
+			const char *base = findBaseName(fname);
+			int ext = packetList->nextNumExt(base);
+
+			sprintf(answer, "%.55s.%03d", base, ext);
+		}
+
+		if (ui->savePrompt(question, answer) &&
+		    answer[0] && strcmp(fname, answer)) {
+			const char *expanswer = homify(answer);
+
+			bool changeit =
+				!(packetList->exists(expanswer));
+
+			if (changeit) {
+				Select();
+				changeit = !(packetList->
+					changeName(expanswer));
+
+				if (changeit) {
+					newList();
+					ui->redraw();
+				} else
+					ui->nonFatalError("Rename failed");
+			} else
+				ui->nonFatalError("Name already used");
 		} else
-			interface->redraw();
+			ui->nonFatalError("Rename cancelled");
 	}
 }
 
@@ -297,14 +474,11 @@ void PacketListWindow::killPacket()
 		sprintf(tmp, "Do you really want to delete %.90s?",
 			packetList->getName());
 
-		if (interface->WarningWindow(tmp)) {
+		if (ui->WarningWindow(tmp)) {
 			packetList->kill();
 			noFiles = packetList->getNoOfFiles();
 		}
-		if (NumOfItems())
-			interface->redraw();
-		else
-			error();
+		ui->redraw();
 	}
 }
 
@@ -312,12 +486,14 @@ pktstatus PacketListWindow::OpenPacket()
 {
 	Select();
 	if (active < noDirs) {
-		mm.resourceObject->set(PacketDir, dirList->changeDir());
-		newList();
-		position = 0;
-		active = noFiles ? noDirs : 0;	// active = first file
-		interface->redraw();
+
+		if (newDir(0)) 
+			ui->redraw();
+		else
+			ui->nonFatalError("Could not change to directory");
+
 		return NEW_DIR;
 	} else
-		return mm.selectPacket(packetList->getName());
+		return (active < NumOfItems()) ?
+			mm.selectPacket(packetList->getName()) : PKT_UNFOUND;
 }

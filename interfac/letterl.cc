@@ -4,7 +4,7 @@
 
  Copyright (c) 1996 Kolossvary Tamas <thomas@tvnet.hu>
  Copyright (c) 1997 John Zero <john@graphisoft.hu>
- Copyright (c) 1999 William McBrine <wmcbrine@clark.net>
+ Copyright (c) 2002 William McBrine <wmcbrine@users.sourceforge.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -23,10 +23,10 @@ void LetterListWindow::listSave()
 
 	int marked = !(!mm.areaList->getNoOfMarked());
 
-	int status = interface->WarningWindow("Save which?", saveopts +
+	int status = ui->WarningWindow("Save which?", saveopts +
 		!marked, 3 + marked);
 	if (status) {
-		bool saveok = interface->letterwindow.Save(status);
+		bool saveok = ui->letterwindow.Save(status);
 		if ((status == 1) && saveok)
 			Move(DOWN);
 	}
@@ -66,10 +66,10 @@ void LetterListWindow::oneLine(int i)
 	int st = mm.letterList->getStatus();
 
 	char *p = list->lineBuf;
-	p += sprintf(p, format, (st & MS_MARKED) ? 'M' : ' ',
-	    (st & MS_REPLIED) ? '~' : ' ', (st & MS_READ) ? '*' : ' ',
-		mm.letterList->getMsgNum(), mm.letterList->getFrom(),
-		    mm.letterList->getTo(),
+	p += sprintf(p, format, (st & MS_MARKED) ? 'M' :
+	    (st & MS_SAVED) ? 's' : ' ', (st & MS_REPLIED) ? '~' : ' ',
+		(st & MS_READ) ? '*' : ' ', mm.letterList->getMsgNum(),
+		    mm.letterList->getFrom(), mm.letterList->getTo(),
 			stripre(mm.letterList->getSubject()));
 
 	if (mm.areaList->isCollection()) {
@@ -81,7 +81,7 @@ void LetterListWindow::oneLine(int i)
 			sprintf(p - 15, " %-13.13s ", origArea);
 	}
 
-	chtype linecol = mm.letterList->isPersonal() ? C_LLPERSONAL :
+	coltype linecol = mm.letterList->isPersonal() ? C_LLPERSONAL :
 		C_LISTWIN;
 
 	letterconv_in(list->lineBuf);
@@ -90,36 +90,26 @@ void LetterListWindow::oneLine(int i)
 
 searchret LetterListWindow::oneSearch(int x, const char *item, int mode)
 {
-	const char *s;
 	searchret retval;
 
 	mm.letterList->gotoActive(x);
+	retval = mm.letterList->filterCheck(item) ? True : False;
 
-	s = searchstr(mm.letterList->getFrom(), item);
-	if (!s) {
-		s = searchstr(mm.letterList->getTo(), item);
-		if (!s)
-			s = searchstr(mm.letterList->getSubject(), item);
-	}
-
-	retval = s ? True : False;
-	if (!s && (mode == s_fulltext)) {
-		interface->changestate(letter);
-		interface->letterwindow.setPos(-1);
-		retval = interface->letterwindow.search(item);
+	if (!retval && (mode == s_fulltext)) {
+		ui->changestate(letter);
+		ui->letterwindow.setPos(-1);
+		retval = ui->letterwindow.search(item);
 		if (retval != True)
-			interface->changestate(letterlist);
+			ui->changestate(letterlist);
 	}
 
 	return retval;
 }
 
-void LetterListWindow::MakeActive()
+void LetterListWindow::setFormat()
 {
-	char *topline, tformat[50];
+	char topformat[50];
 	int tot, maxFromLen, maxToLen, maxSubjLen;
-
-	topline = new char[COLS + 1];
 
 	tot = COLS - 19;
 	maxSubjLen = tot / 2;
@@ -138,37 +128,76 @@ void LetterListWindow::MakeActive()
 		maxFromLen = 0;
 	}
 
-	sprintf(format, "%%c%%c%%c%%6d  %%-%d.%ds %%-%d.%ds %%-%d.%ds",
+	sprintf(format, "%%c%%c%%c%%6ld  %%-%d.%ds %%-%d.%ds %%-%d.%ds",
 		maxFromLen, maxFromLen, maxToLen, maxToLen,
 			maxSubjLen, maxSubjLen);
 
-	interface->areas.Select();
+	sprintf(topformat, "   Msg#  %%-%d.%ds %%-%d.%ds %%-%d.%ds",
+		maxFromLen, maxFromLen, maxToLen, maxToLen,
+			maxSubjLen, maxSubjLen);
 
-	sprintf(tformat, "Letters in %%.%ds (%%d)", COLS - 30);
-	sprintf(topline, tformat, mm.areaList->getDescription(),
-		NumOfItems());
-	areaconv_in(topline);
+	sprintf(topline, topformat, "From", "To", "Subject");
+}
 
-	list_max_y = (NumOfItems() < LINES - 11) ? NumOfItems() : LINES - 11;
-	list_max_x = COLS - 6;
-	top_offset = 2;
+void LetterListWindow::MakeActiveCore()
+{
+	static const char *llmodes[] = {"All", "Unread", "Marked"},
+		*llsorts[] = {"subject", "number", "from", "to"};
+	char tmpformat[50];
+
+	int maxbott = LINES -
+		(mm.resourceObject->getInt(ExpertMode) ? 7 : 11);
+	list_max_y = (NumOfItems() < maxbott) ? NumOfItems() : maxbott;
+
+	bool too_many = (NumOfItems() > list_max_y);
+
+	const char *modestr = llmodes[mm.letterList->getMode()];
+	const char *sortstr = llsorts[lsorttype];
+	const char *pn = mm.resourceObject->get(PacketName);
+	const char *filter = mm.letterList->getFilter();
+
+	int pnlen = strlen(pn);
+	if (pnlen > 20)
+		pnlen = 20;
+	int offset = strlen(modestr) + pnlen + 3;
+	int flen = filter ? strlen(filter) + 3 : 0;
+	if (flen > 20)
+		flen = 20;
+	int nwidth = COLS - (too_many ? 27 : 19) - offset - flen -
+		strlen(sortstr);
+
+	char *title = new char[COLS + 1];
+
+	sprintf(tmpformat, "%%.%ds | %%s in %%.%ds", pnlen, nwidth);
+	char *end = title + sprintf(title, tmpformat,
+		pn, modestr, mm.areaList->getDescription());
+
+	char *newend = end + sprintf(end, ", by %s", sortstr);
+	if (too_many)
+		newend += sprintf(newend, " (%d)", NumOfItems());
+	if (flen) {
+		flen -= 3;
+		sprintf(tmpformat, " | %%.%ds", flen);
+		sprintf(newend, tmpformat, filter);
+	}
+
+	areaconv_in(title);
 
 	borderCol = C_LLBBORD;
 
-	list = new InfoWin(list_max_y + 3, COLS - 4, 2, borderCol,
-		topline, C_LLTOPTEXT2);
+	list = new InfoWin(list_max_y + 3, list_max_x + 2, 2, borderCol,
+		title, C_LLTOPTEXT1);
 
-	list->attrib(C_LLTOPTEXT1);
-	list->put(0, 3, "Letters in ");
+	list->attrib(C_LLTOPTEXT2);
 
-	sprintf(tformat, "   Msg#  %%-%d.%ds %%-%d.%ds %%-%d.%ds",
-		maxFromLen, maxFromLen, maxToLen, maxToLen,
-			maxSubjLen, maxSubjLen);
+	*end = '\0';
+	offset += 3;
+	list->put(0, offset + 3, title + offset);
+
+	delete[] title;
+
 	list->attrib(C_LLHEAD);
-	sprintf(topline, tformat, "From", "To", "Subject");
 	list->put(1, 3, topline);
-
-	delete[] topline;
 
 	if (mm.areaList->isCollection())
 		list->put(1, COLS - 19, "Area");
@@ -176,6 +205,18 @@ void LetterListWindow::MakeActive()
 
 	DrawAll();
 	Select();
+}
+
+void LetterListWindow::MakeActive()
+{
+	top_offset = 2;
+	list_max_x = COLS - 6;
+
+	topline = new char[COLS + 1];
+
+	setFormat();
+	ui->areas.Select();
+	MakeActiveCore();
 }
 
 void LetterListWindow::Select()
@@ -191,51 +232,82 @@ void LetterListWindow::ResetActive()
 void LetterListWindow::Delete()
 {
 	delete list;
+	delete[] topline;
 }
 
 bool LetterListWindow::extrakeys(int key)
 {
 	Select();
 	switch (key) {
+#ifdef USE_MOUSE
+	case MM_MOUSE:
+		{
+			int begx = list->xstart(), begy = list->ystart();
+
+			if (mouse_event.y == begy) {
+				if ((mouse_event.x > (begx + 12)) &&
+				    (mouse_event.x < (begx + 27)))
+					extrakeys('L');
+				else
+				    if ((mouse_event.x > (begx + 27)) &&
+					(mouse_event.x < (begx + list_max_x)))
+					    extrakeys('$');
+			}
+		}
+		break;
+#endif
 	case 'U':
 	case 'M':	// Toggle read/unread and marked from letterlist
 		mm.letterList->setStatus(mm.letterList->getStatus() ^
 			((key == 'U') ? MS_READ : MS_MARKED));
-		interface->setAnyRead();
+		ui->setAnyRead();
 		Move(DOWN);
 		Draw();
 		break;
+	case 5:
 	case 'E':
 		if (mm.areaList->isReplyArea())
-			interface->letterwindow.KeyHandle('E');
+			ui->letterwindow.KeyHandle('E');
 		else
-		    if (!mm.areaList->isCollection()) {
-			if (mm.areaList->isEmail())
-				interface->addressbook();
-			interface->letterwindow.set_Letter_Params(
+		    if (!(mm.areaList->getType() & (COLLECTION | READONLY))) {
+			    if ((5 == key) || mm.areaList->isEmail())
+				ui->addressbook();
+			    ui->letterwindow.set_Letter_Params(
 				mm.areaList->getAreaNo(), 'E');
-			interface->letterwindow.EnterLetter();
-		    }
+			    ui->letterwindow.EnterLetter();
+		    } else
+			    ui->nonFatalError("Cannot reply there");
 		break;
 	case 2:
 	case 6:
-	case KEY_DC:
+	case MM_DEL:
 	case 'K':
 		if (mm.areaList->isReplyArea())
-			interface->letterwindow.KeyHandle(key);
+			ui->letterwindow.KeyHandle(key);
 		break;
 	case 'L':
 		mm.letterList->relist();
 		ResetActive();
-		interface->redraw();
+		ui->redraw();
 		break;
 	case '$':
 		mm.letterList->resort();
-		DrawAll();
+		delete list;
+		MakeActiveCore();
+		break;
+	case '^':
+		{
+			char item[80];
+			*item = '\0';
+
+			if (ui->savePrompt("Filter on:", item))
+				mm.letterList->setFilter(item);
+		}
+		ui->redraw();
 		break;
 	case 'S':
 		listSave();
-		interface->redraw();
+		ui->redraw();
 	}
 	return false;
 }

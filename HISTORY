@@ -1,13 +1,728 @@
 Revision History
 ================
 
+0.43 - 2002/03/09:
+
+New features:
+
+- A big one: Filter feature in all list windows, invoked by pressing '^'
+  (shift-6). See the "FILTERING" section of the man page for details. This
+  was inspired by similar features in the Pan and BNR newsreaders.
+
+- Clock in the upper right corner of the letter window. (I would've added it
+  to the others, but they lack an obvious place to put it. I figured that
+  one spends most of one's time in the letter window anyway.) It can show
+  time of day, time since startup, or be disabled, as controlled by the new
+  keyword "ClockMode". Note that this required changes to the keyboard
+  routines (now using halfdelay() instead of a blocking call), which in turn
+  affected the ability of MultiMail to give up CPU time when idling. Most
+  ports still use little CPU, but the XT version pegs it high, except under
+  DOSEmu. (Old versions of DOSEmu, ironically, instead show high CPU usage
+  with the new DOS (DPMI) version, which doesn't have that problem under
+  Windows or OS/2.) Also, I had to fix PDCurses to make this work -- write
+  to me if you want the patch.
+
+- "AT code" parser for the ANSI viewer, for PCBoard and Wildcat '@' color
+  codes. (I've only seen these used in the sample packets that came with a
+  few readers -- do they exist in the wild?) Also, "ANSI music", though
+  still not played, is now filtered out, so at least it doesn't clutter the
+  image.
+
+- The "UseColors" keyword is now available in the PDCurses (DOSish) ports.
+  That means a monochrome mode, which should help on some displays.
+
+- The packet name is now displayed when in the letter list, letter window or
+  ANSI viewer. No more having to back out to check. :-) The placement of the
+  packet name in the area list window has been changed for consistency.
+
+- The tagline window can now be sorted, optionally.
+
+- An "Opening..." notice is now displayed when entering an area, as when
+  opening a packet. (This operation can be slow, so it's good to have a hint
+  that MultiMail got the message.)
+
+Bug fixes and such:
+
+- The type 'm' (Unix mailbox) parser in the SOUP module was missing some
+  valid "From " separators, so I incorporated code based on the VALID macro
+  from the C-Client library by Mark Crispin. I've read conflicting claims
+  about whether its "free-fork" license is GPL-compatible, but since I don't
+  see a better way to do this, I've chosen to assume that it is, at least for
+  now. Anyway, this may in fact be the _only_ valid (no pun intended) way to
+  parse a Unix mailbox without false positives or negatives.
+
+- The ANSI viewer was not displaying the headers of SOUP messages when
+  animating them, or thereafter. This was really a problem with multiblock
+  messages (otherwise not noticeable except in the XT version, and then only
+  with a message over 64K). Also, the ANSI viewer now acknowledges "expert"
+  mode (i.e., it omits the "F1 or ? - Help" message from the lower right).
+
+- The address book and tagline windows now show the number of items, like
+  the other lists.
+
+- In an xterm, when the tagline window was active, bits of the scroll bar
+  and the screen border were being replaced with blanks. I've fixed this in
+  an ad hoc way, but I'm not quite sure what caused it.
+
+- An empty file list in the packet window caused problems. Normally you
+  wouldn't see this, because there's always at least a ".." entry for the
+  parent directory. But the filesystem on a Windows CE device apparently
+  lacks them, as I found when running MultiMail/XT under PocketDOS.
+
+- Setting the "UseColors" keyword to "No" now forces the use of the default
+  colors (or rather, the monochrome version of them), as the .mmailrc
+  comment had already claimed it did, instead of the monochrome version of
+  the colors specified by "ColorFile".
+
+- The "Reverse" attribute will no longer be stripped from a color file
+  that's rewritten by a PDCurses (DOSish) port.
+
+- If the tagline file existed, but was completely empty, a segfault would
+  occur on selecting the (nonexistent) tagline when composing a message.
+  Reported by Touko Rajala.
+
+- Some really basic stuff added to the man page -- it always should've been
+  there. Further revision is needed.
+
+- Minor speedups.
+
+0.42 - 2001/12/08:
+
+New features:
+
+- CTRL-E instead of 'E' now forces invocation of the addressbook when
+  entering a message in a non-netmail, non-email area. This only gets you
+  the real name portion. I don't really see the use of this myself -- the
+  entire point of the addressbook is to store netmail and email addresses,
+  not simple names -- but it was requested, and easy to do, so here it is.
+  It works wherever 'E' works (area list, letter list, letter window),
+  although due to space considerations and laziness, it only appears in the
+  letter list's help menu. Note that you can still only use the 'L' function
+  of the addressbook on messages where an address is present. (Changing that
+  would be more involved.) Suggested by Greg Sears.
+
+Bug fixes and such:
+
+- In the Win32 version, under Windows XP and perhaps 2000 (?), the window
+  was scrolled up on returning from a shell (unarchiving, etc.), unless the
+  scrollback buffer was disabled. Although cosmetic, this was enough of a
+  nuisance that I'm releasing 0.42 now.
+
+- Added strings.h to the includes in mmail.h to get it to compile under QNX.
+  (If you're trying this, edit the Makefile to say "-lncurses" rather than
+  "-lcurses".) Note that the background characters (ACS_BOARD and
+  ACS_CKBOARD) aren't what they should be in QNX; otherwise, it works well.
+
+- New error message for the case when no files are found in the work
+  directory after uncompression, but no error code was returned by the
+  unarchiver. (Previously this resulted in the misleading message "Packet
+  type not recognized"; that message is now reserved for times when there
+  are actually some files in the work directory.)
+
+- Since version 0.38, when I moved development to a new computer, the
+  documentation file "mm.txt", included with the DOSish ports, had not been
+  converted correctly by the script that builds those archives -- it was
+  left as raw troff code instead of a rendered man page, and the line
+  endings were left as LF (Unix style). In other words, it was basically
+  illegible. The discouraging part of this is that no one reported it, which
+  makes me think that no one's reading the documentation. :-(
+
+- Other, minor updates to the documentation.
+
+0.41 - 2001/10/16:
+
+New features:
+
+- Options can now be specified on the command line. Any .mmailrc option may
+  be used, though not all will actually work (some of them are used in
+  initialization before this point). Options are preceded by '-' or "--",
+  and must finish before a packet is specified. See the man page for more
+  details.
+
+- New keyword: "IgnoreNDX". This makes MultiMail ignore the *.NDX files in
+  QWK packets, in favor of the new (slower, but safer) indexing method that
+  uses only MESSAGES.DAT. Turn this on if you get bogus *.NDX files from
+  your BBS (as seems all too common).
+
+Bug fixes and such:
+
+- Big bug: Reply splitting in QWK on DOSish systems (DOS, Win32, OS/2)
+  generated a corrupt reply packet (always). It's been this way a long time;
+  possibly since the message split feature was introduced. I never noticed
+  it because a) I rarely split messages, b) I seldom use QWK anymore -- all
+  SOUP and BW now, c) I never use the DOSish ports, except for testing, and
+  d) the split replies _look_ OK, until you close and reopen the packet. I
+  had a lot of bug reports which, in retrospect, seem to be about this, but
+  I never got enough detail to make sense of the problem, until Ken Hrynchuk
+  reported on it. Many thanks to him.
+
+- Bogus values in the *.NDX files of a QWK packet are now checked for and
+  often handled without having to abort. In some cases, MultiMail is able to
+  revert to the alternate indexing method automatically; in others, the
+  message "ERROR READING MESSAGES.DAT" appears in the letter list, instead
+  of the gibberish that resulted when following a bogus pointer. For those
+  cases which still cause problems, see the new "IgnoreNDX" keyword.
+
+- Problems with the ncurses configuration on Mandrake 8 (well, on my system,
+  anyway) caused MultiMail to hang on searches or ANSI animation. There's
+  now a partial workaround for this (searching works OK, ANSI anim still
+  hangs) in MultiMail. But the proper fix is this: Download the ncurses
+  source; configure; manually edit the line in curses.h that defines bool to
+  say "typedef unsigned char bool" instead of "typedef unsigned bool";
+  compile; and install. I still have to figure out why the typedef comes out
+  that way; the same version of ncurses (with the same configure script)
+  works correctly on my old Slackware system. You might see this problem on
+  other systems as well.
+
+- Blue Wave messages with Internet kludge lines (as produced by version 4
+  doors) were causing segfaults. This is what happens when a feature doesn't
+  get exercised for a while. :-(
+
+- Segfault on a message with a MSGID kludge line, but no other body text.
+
+- In the Win32 port, packet time stamping now works under Win 9x, though it
+  still doesn't work on network shares under NT.
+
+- Some unprintable characters weren't being filtered out when running in an
+  xterm, resulting in a garbled display.
+
+- In the 16-bit port, in QWK packets with no *.NDX files, MultiMail was
+  failing if the MESSAGES.DAT file was larger than 32K.
+
+- The END key now works under screen (for example) with ncurses.
+
+- The message-splitting function now uses parentheses instead of brackets,
+  and the part number is padded with leading zeroes. I did this to match
+  standard practice in the alt.binaries.* newsgroups.
+
+- Added the undocumented option "-#" to the default command lines for PKZip
+  and PKUnzip. This supresses output, equivalent to the "-q" option used in
+  the default InfoZip command lines. Suggested by K.H. (Note that if you're
+  upgrading, you'll have to put it in manually, if you want it; as always,
+  MultiMail won't alter values that are already specified in its config
+  file.)
+
+- Shelled commands (zip, unzip, edit) can now handle paths with spaces in
+  them.
+
+- On MultiMail's first run, on DOSish systems, the MMAIL.RC ended up with
+  paths that had a mix of slash and backslash characters. Although this
+  didn't interfere with operation, it was a cosmetic defect.
+
+- The defaults in the top-level Makefile have changed to "<curses.h>" for
+  CURS_INC, and "-lcurses" for LIBS. Most/all distros of Linux, as well as
+  FreeBSD, have replaced the older curses with ncurses by now, and some
+  (e.g., Debian) lack the old-style compatibility links, so this now seems
+  to be the most widely compatible configuration. (The old defaults are now
+  in the first commented-out example section.)
+
+- I figured out the problem that led to the hasty release of version 0.40 --
+  it was a missing pair of parentheses. <sigh> Or to look at it another way,
+  a misunderstanding of operator precedence.
+
+0.40 - 2001/04/15:
+
+New features:
+
+- Nothing new this time.
+
+Bug fixes and such:
+
+- Undid one part of the BSOC, which (perversely enough, since this is exactly
+  what it was intended to cut down on) was causing crashes in the Win32, XT,
+  and OS/2 ports. I still haven't nailed down WHY it was doing this, but I
+  isolated the source of the trouble by brute-force analysis. :-( I promise
+  better testing next time.
+
+- Useless mouse code now omitted in DOS, XT and OS/2 ports. (Yes, I hope to
+  actually support the mouse on these platforms eventually. First, mouse
+  support has to be added to their respective ports of PDCurses.)
+
+0.39 - 2001/04/13:
+
+New features:
+
+- Mouse functionality. Currently, this is only supported under X (with
+  either ncurses or PDCurses), in the Linux console with gpm, and in the
+  Win32 port. See the man page for a description of how to use this -- not
+  well-described there, but it should be fairly intuitive.
+
+- A new flag to join Marked, Replied, Read and Private: Saved. It's set
+  automatically when a message is saved (natch). It appears in the letter
+  list as a lowercase 's', and as a new flag in the group displayed in the
+  letter window. (Note that if the message is also Marked, only the 'M' will
+  appear in the letter list -- I was short of columns.) Because of this, the
+  names displayed in the letter window have been shortened. Saving a message
+  no longer marks it as Read, since that seems redundant now (though it
+  still does clear the Marked flag). The new flag is mapped appropriately in
+  .XTI files, but not in MAIL.FDX, so it's not preserved in OPX packets.
+
+- New transparency method: The transparent background color is the one
+  specified by "Main_Back" in the colors file, rather than always black.
+  This allows the use of transparency with light backgrounds, etc. (See the
+  screenshots web page.)
+
+Bug fixes and such:
+
+- A longstanding bug: It was impossible to rename packets after opening
+  them. Finally fixed, as part of a big string-operation cleanup.
+
+- Another longstanding one, also part of the BSOC: On some platforms, when
+  specifying a packet name on the command line, names of certain lengths
+  wouldn't work. After I finally sorted this out, the surprising thing was
+  that it had ever been working for names of any length. <sigh>
+
+- Many potential buffer overflows and bogus limits fixed in the BSOC. Others
+  remain. :-(
+
+- Since time immemorial: When pulled from the address book into a message,
+  the "To:" field was being restricted to 29 characters, regardless of packet
+  type. Also, the length of names in the address book had been limited to 44
+  characters.
+
+- A fresh one: Reply packets were being stamped with a bogus date.
+
+- The packet list, if sorted by time, is no longer rearranged when a packet
+  is Touched.
+
+- Replies are now preserved in the event of a crash during the write-out
+  process. Inspired by Matt Munson.
+
+- The highlight bar wasn't showing up in XCurses -- probably since about
+  version 0.18, which shows how often I try that port. (I also had some
+  other problems with XCurses, as yet unsolved; it sometimes locked up on
+  starting.)
+
+- Stupid bug in SOUP: segfault on message areas with 8-character filenames.
+
+- The line showing "BBS:" and "Sysop name:" in the area list is now omitted
+  if neither is defined (as in SOUP packets), leaving an extra line for the
+  areas themselves.
+
+- The minimum screen size is now 60x17. I'm shooting for 40 columns. ;-)
+
+0.38 - 2001/02/03:
+
+New features:
+
+- First new version in over seven months! See, it's not dead after all.
+
+- Transparency: There are three new keywords in the .mmailrc which are
+  mainly for making the background transparent, for use in programs like
+  Eterm which can put an image in the background: "UseColors" (default:
+  yes), "Transparency" (default: no), and "BackFill". "Transparency" only
+  works in ncurses; "BackFill" is the only one available on all platforms.
+  See the man page for more on these.
+
+- New date/timestamp handling: When updating packets with the .red markers,
+  MultiMail now preserves the original timestamp of the file. This means
+  that date sorting will reflect the order in which packets arrived, rather
+  than the order in which they were last read. (Note, however, that this
+  feature doesn't quite work correctly in the Win32 port (see README.win).
+  One way around this would be to use PKZIP with the "-k" option; or just
+  use the DOS port.) Inspired by Ingo Brueckl. At first I had this toggled
+  by a keyword, but then...
+
+- The complement to the new timestamp handling is the 'T' function in the
+  packet window, which "Touches" a file, setting its timestamp to the
+  current time. I needed this because I actually depend on the timestamps
+  being updated sometimes.
+
+- New "ExpertMode" option supresses the help text, for those who are
+  familiar with the commands and would rather use more of the screen for
+  text. Four lines are gained in the packet, area and letter lists, among
+  other gains.
+
+- In a related note, you now can gain seven lines in the packet list by
+  undefining VANITY_PLATE in config.h, but this is strictly a compile-time
+  option. :-)
+
+- OPX secretly restored. ;-)
+
+Bug fixes and such:
+
+- Removed several older keywords to simplify the .mmailrc: BuildPersArea
+  (even on my XT, it didn't really take much longer), MakeOldFlags,
+  UseScrollBars, and AutoSaveRead (all these are now always on).
+
+- The default editor for the Win32 port is now "start /w notepad". I'm not
+  crazy about this, but under NT (in VMware), EDIT was completely locking
+  up. Unfortunately MS provides no text-mode, native Win32 editor. (BTW, an
+  interesting aside: Under NT, "notepad" is actually sufficient (the calling
+  program waits for it to return); the "start /w" bit is for the benefit of
+  9x, which otherwise launches notepad and returns immediately.)
+
+- The Win32 port had trouble with the most recent Win32 version of PDCurses,
+  because it now returns shift, alt and control immediately as keystrokes.
+  (XCurses presumably had the same problem, but I didn't test this.) This is
+  worked around now.
+
+- SOUP (and BW v4): Newsgroup lines which exceed the width of the display
+  now end in "..." to indicate a continuation. (You can see the entire
+  "Newsgroups:" line by pressing 'X' for full headers.)
+
+- SOUP (and BW v4?): Broken "References:" lines which contained no proper
+  message ID's were causing segfaults. Reported by Peter Karlsson. BTW,
+  would the perpetrators of these broken messages please fix them?
+
+- SOUP: In 'm' mode, checking for "From "-line dividers is a little more
+  rigorous; the line must now also contain an '@'. This eliminated all the
+  false positives I was seeing on Pine-generated mail folders.
+
+- In packets where the list of subscribed areas is not known (e.g., all
+  plain QWK and SOUP packets), the "Subscribed" mode in the area list is now
+  skipped automatically.
+
+- The default color scheme is now a little less day-glo, :-) and shows up
+  better on some terminals. The old one is still available in tradit.col.
+  Let me know what you think.
+
+- Ncurses' built-in SIGWINCH handler is on by default in 5.0+; this was
+  conflicting with MultiMail's handler. It should now work OK, but see
+  NCURSES_SIGWINCH in interfac.h if you're not using ncurses' defaults.
+
+- When going backwards through messages via '-' and backing out of an area,
+  the display was not updated correctly. I've also changed the behavior of
+  '-' in this instance to go back to the last non-empty group instead of the
+  last group (more consistent with '+').
+
+0.37 - 2000/06/28:
+
+New features:
+
+- Moved web site and email from ClarkNet to SourceForge. Among other
+  benefits, this means that old versions of the MultiMail source code are
+  now archived online, going back to 0.1. Binaries (for certain platforms)
+  from 0.36 on will also be archived.
+
+- New compression type: tar/gz. (New .mmailrc keywords: "tarCompressCommand"
+  and "tarUncompressCommand".) Unlike the other types, this recompresses the
+  entire packet when updating the .red flags, so it can be a bit slow. Also,
+  the supplied command lines assume GNU tar, which has gzip built-in.
+  Separated gunzip/tar and tar/gzip command lines would require a (simple)
+  external script. MultiMail only checks for the gzip signature. Requested
+  by Peter Karlsson for compatibility with GNUS.
+
+Bug fixes and such:
+
+- The packet list could crash on directory names longer than 32 characters.
+  Reported by Tuukka Lehtinen.
+
+- Zero-length messages caused a segfault. Reported by T.L.
+
+- In SOUP packets with index files, the .idx file would be opened instead of
+  the corresponding .msg file. Reported (indirectly) by Peter Karlsson.
+
+- GNUS apparently uses a bogus identifier 'n' in the first position of the
+  attribute fields of the AREA files in the SOUP packets it generates,
+  equivalent to the standard type 'u'. MultiMail now recognizes this flag.
+  Reported by P.K.
+
+- In MakeChain(), rejoin is now always applied to non-quoted lines. This
+  looks better in most cases; in particular, where space padding on the end
+  of a line resulted in a line of exactly 80 columns. (Previous versions of
+  MultiMail would print an extra blank line then.)
+
+- relist() is now always called from MakeActive() in the area list and
+  little area list. This means that the list is updated properly in Active
+  mode, among other things.
+
+- In the packet list search function, the wrong packet was highlighted.
+
+- On some platforms (including the NetBSD m68k binary distributed on the web
+  site), forced word-alignment of structs broke the "old-style" (.PDQ-based)
+  offline config in Blue Wave mode. (Yes, I should've anticipated this after
+  the similar bug with OPX mode in 0.32.)
+
+- The signature-adding routine will now skip CR characters, so (in
+  principle) a .sig could be shared between Unix and DOSish readers. Other
+  text files should still be kept separate. Inspired by Martin Prieto.
+
+- The backslashes that had briefly appeared in the DOSish versions' packet
+  windows had reverted to forward slashes again in 0.36. :-)
+
+0.36 - 2000/04/28:
+
+New features:
+
+- The area list has a new mode, "Active", to accompany the existing "All"
+  and "Subscribed" views. The Active mode lists only those areas that
+  contain messages. The L key now cycles among all three modes. (Note that
+  in some cases, two modes may be equivalent; e.g., in plain QWK packets,
+  there's no way to distinguish Active from Subscribed.)
+
+- There's also a new "Marked" view in the letter list. If any messages in
+  the area are marked, the L key cycles between all, unread, and marked
+  views. (Otherwise, it toggles all/unread, as before.) Marked messages are
+  no longer automatically included in the unread view.
+
+- In the packet and letter lists, the current sort modes are now displayed.
+  And in the area and letter lists, the current mode is displayed. The
+  number of files is shown in the packet list, but only if the total number
+  of items (files + directories) exceeds the window length. The area and
+  letter lists now work similarly, showing the number of items only when
+  they exceed the window length.
+
+- By popular demand, the default modes for the area list (all, subscribed,
+  or active) and the letter list (all or unread) can now be set in .mmailrc.
+  See the "AreaMode" and "LetterMode" keywords.
+
+- Old-style Blue Wave offline config, using .PDQ files, is now supported.
+  (.UPI/.NET replies still aren't, yet.) Requested by Russell Tiedt.
+
+- Specifying a directory on the command line now opens the packet window on
+  that directory. No more items are read from the command line afterwards.
+
+- In Unix, the "~" character is now recognized as a synonym for the contents
+  of the "HOME" environment variable in input, and is also used that way in
+  the packet list display. (However, "~username" is not supported.)
+
+- The Tab key works as an alternative to Enter in input windows.
+
+- The BCC port is now the "standard" Win32 port. (The RSX/NT port is still
+  available, renamed mmrsxNNN.zip.)
+
+- New BeOS binary.
+
+Bug fixes and such:
+
+- Makefile.tcc and Makefile.bcc are now sensible -- no more renaming or
+  moving kludges. :-) Also, the "UNUSED_PARAMS" nonsense is gone, and
+  MultiMail compiles without warnings under BCC.
+
+- The message and ansi viewers can now handle > 64k in the 16-bit version,
+  depending on available memory.
+
+- In myreaddir(), the DJGPP, Turbo and Borland ports (mmdos, mmxt, and
+  mmwin) now use findfirst()/findnext() instead of readdir()/stat(). This
+  means that the packet window opens significantly faster on large
+  directories. (stat() is fine in Unix, but slow in MS-DOS, where it's
+  implemented via findfirst().) Also, the list is now built in a single
+  pass, instead of one pass for files and another for directories, resulting
+  in a speedup on all platforms.
+
+- Test of read-only status now works in Borland/Turbo ports.
+
+- Grabbing of Fidonet addresses was broken in some situations, causing
+  segfaults. Reported by Greg Paski.
+
+- When lines ended with spaces, they could be quoted incorrectly. Reported
+  by Jim Hanoian.
+
+- Tab characters in messages could cause segfaults in some cases.
+
+- Soft CR stripping wasn't working.
+
+- Looking through my (very) old packets, I found some in which another
+  reader (?) had added its own files to a packet with the names "a0000.ndx"
+  and "a0001.ndx", which made MultiMail generate a bogus area 0 for those
+  packets. Fixed.
+
+- The keypad mostly didn't work in the BCC (Win32) port of MultiMail.
+  Reported by Jeff Foy.
+
+- Using the Goto function in the packet list now puts the highlight bar on
+  the first file, as when a directory is selected by pressing Enter. In Lynx
+  mode, going left (back) in the packet list now actually goes to the
+  previous directory, instead of the parent directory, and the previous
+  highlight position is restored.
+
+- When cycling through sort modes in the letter list, sort by "To:" is now
+  skipped for areas which have no such field (i.e., Usenet areas).
+
+- Wrapped header lines in SOUP are now displayed in the correct color.
+
+- When writing out offline config (add/drop), the area list was scanned, but
+  the current area number was not preserved. This sometimes led to minor
+  cosmetic problems in the reply area. Reported by J.H.
+
+- Finally replaced the ugly #define list in mmcolor.h with an enum.
+
+- Some malformed Internet "From:" lines appear without a space between the
+  name and address. In such cases, MultiMail was stripping the last letter
+  of the real name.
+
+- Several new error messages.
+
+- The color files are now archived separately within the binary archives, to
+  reduce clutter. Now if I can just figure out how to combine some of the
+  documentation files in a sensible way...
+
+0.35 - 2000/03/29:
+
+New features:
+
+- None.
+
+Bug fixes and such:
+
+- Oops! Due to the changes in the way LetterWindow::MakeChain() works, quote
+  wrapping was broken. (Lines after wrapped lines would not be wrapped
+  upwards, nor marked with quote marks.) A five-second fix, but alas, I
+  didn't notice the bug until now.
+
+0.34 - 2000/03/29:
+
+New features:
+
+- Two new ports officially supported: An alternate Win32 port, via Borland
+  C++ 5.5 (available free at the Borland web site); and, more interestingly,
+  a 16-bit MS-DOS port, via Turbo C++ 3.0 (an ancestor of Borland C++ 5.5).
+  I released an experimental version of the latter a couple weeks ago, but
+  the official 0.34 version is much better, mainly in reducing memory usage
+  and in not (always) giving up when memory runs out. :-)
+
+- Areas that have replies are now always included in the short list, which
+  prevents the replies being misdirected on re-edit. Such areas are also now
+  flagged with an 'R' in the main area list.
+
+Bug fixes and such:
+
+- The "References:" line disappeared from SOUP replies if they were
+  re-edited before posting. Reported by J.B. Moreno.
+
+- Massive reductions in memory usage for the LetterWindow and AnsiWindow
+  classes. The plain message text takes up about half as much space as
+  before; the ANSI viewer savings vary, but can be even greater.
+
+- The environmental variable "TEMP" now works as an alternative to "TMP"
+  with the DJGPP port. If neither of those is defined, nor "DJGPP", it will
+  now use the startup directory instead of "C:\".
+
+- TEMP or TMP values ending in a slash or backslash now work correctly in
+  the Win32, OS/2 and 16-bit MS/DOS ports. Also, all these ports now use the
+  startup directory rather than the MMAIL directory as the default location
+  for the temporary directories and files, in the absence of a TEMP or TMP
+  environment variable.
+
+- SOUP replies sometimes had the wrong length in the length field (one byte
+  too long), resulting in spurious characters at the ends of messages.
+
+- Skip trying to add to read-only files. (But this check doesn't work yet in
+  the Borland/Turbo ports.)
+
+- References to "interface" in the code changed to "ui". (Apparently,
+  "interface" is a reserved word in Borland C++.)
+
+- Soft CR stripping moved to the Blue Wave class. Let me know if this is a
+  problem. (I haven't seen them in QWK or OMEN packets, and they'll never
+  appear in SOUP.)
+
+- Various code cleanup. Now 16-bit clean, among other things. :-)
+
+0.33 - 2000/02/21:
+
+New features:
+
+- Support for encoding and decoding Quoted-Printable headers and bodies,
+  primarily in SOUP packets. Decoding is always performed; encoding is
+  performed subject to the new .mmailrc keywords "outCharSet", "UseQPHead",
+  "UseQPMailHead", "UseQPNewsHead", "UseQPMail" and "UseQPNews". Thanks to
+  Peter Karlsson for some of the code.
+
+- Support for the OPX format has been removed. I hope this will be only
+  temporary. The reason is not technical. If you're affected by this, and
+  you'd like to continue using OPX, please email me privately.
+
+- Support for individual packet types may now be disabled when compiling, in
+  order to save a little space in the executable. The packet modules to
+  include are selected in the "modules" file.
+
+- The Rename function in the packet list now brings up a Blue Wave-style
+  default filename, with a numeric extension based on the last one found
+  plus one, unless the packet already has a numeric extension. Also, rename
+  failures are reported, and you can no longer rename to the name of an
+  existing file.
+
+- Some extra pop-up notices like "Opening...", mainly for the benefit of
+  slower systems. :-) There are also additional non-fatal error messages in
+  several places, as when a Save fails.
+
+- .XTI support is now fully segregated into the Blue Wave module. This is
+  cleaner, but it means that .XTI files are only recognized in Blue Wave
+  packets, and not in other types. The default for the "MakeOldFlags" option
+  in .mmailrc has been changed to "Yes".
+
+- The automatic prefixing of "Re: " on the subjects of replies can now be
+  disabled, for non-Internet areas only, via the "ReOnReplies:" .mmailrc
+  keyword. By popular demand. :-)
+
+- New color scheme contributed by Tuukka Lehtinen.
+
+- Before the removal of the OPX module, these features were added:
+
+- In OPX mode, MAIL.FDX is now handled in the same way as .XTI in Blue Wave
+  mode. It's written instead of .red when "MakeOldFlags" is set.
+
+- Offline config in OPX mode. Thanks to Armando Ramos for the format.
+
+Bug fixes and such:
+
+- "To:" and "From:" kludge lines in text are now checked only in QWKE
+  packets, instead of all QWK packets. This should help with some systems
+  that require "To:" lines for Internet addressing.
+
+- Blue Wave anonymous areas are now recognized as alias areas, as in QWKE.
+
+- Areas flagged as read-only will no longer accept replies, and will pop up
+  an error box instead. This works in Blue Wave, QWKE, and OMEN. Requested
+  by Jaakko Lintula.
+
+- The MS-DOS version sometimes segfaulted due to bugs in DJGPP's qsort().
+  Fixed by upgrading to a newer DJGPP library. Reported by Laird Kelly.
+
+- When reading the .mmailrc file, unrecognized keywords are now reported.
+  May help to catch typos. :-)
+
+- In OMEN mode, when the UserName was not set in .mmailrc, all messages were
+  being flagged as personal.
+
+- Defaults for "AutoSaveReplies" and "AutoSaveRead" changed to "Yes".
+
+- Compiling on an Alpha revealed several bugs that didn't show up on systems
+  where pointers and ints were the same size (i.e., all the 32-bit systems);
+  mainly inappropriate usage of resource::get() vs. ::getInt(). MultiMail is
+  now 64-bit ready. :-) Thanks to Compaq for the free account.
+
+- In Blue Wave mode, the echotag field is now used as the area description
+  if the description field was left blank. Problem reported by Greg Mayman.
+
+- Internet address parsing modified to deal with badly-formed addresses like
+  "(Name) <address>". Problem reported by Dane Beko.
+
+- There were intermittent segfaults in the letter window with screens wider
+  than 80 columns, due to an off-by-one error in memory allocation.
+
+- The following fixes were made to the OPX module prior to its removal:
+
+- Some versions of the Silver Xpress door eat the last character of the tear
+  line. MultiMail now pads it out with a sacrificial space in OPX mode.
+  Reported by Jim Hanoian.
+
+- Some OPX packets split their areas into BRDINFO.DAT and EXTAREAS.DAT;
+  MultiMail should now be able to handle this (untested). Reported by
+  Armando Ramos.
+
+- On some platforms (e.g., the NetBSD version distributed on my site), OPX
+  support was not working due to structure alignment padding. Fixed.
+
+- New line ending recognized: plain CR. (This is in addition to the LF,
+  CRLF, and 0x8D endings recognized in 0.32.) If you got messages with blank
+  bodies, or immediate segfaults when opening messages, this will probably
+  fix it. Reported by Laird Kelly.
+
+- Certain packets (with messages over 64k?) reportedly had incorrect values
+  in the length fields of some messages, causing everything after that point
+  to become unreadable. This is fixable by using MAIL.FDX to index the
+  messages, which MultiMail now does. Reported by Armando Ramos.
+
 0.32 - 1999/10/30:
 
 New features:
 
-- Support for the OPX (Silver Xpress) packet format. This was reverse-
-  engineered, and has really only been tested with the WINS SX door. See
-  mmail/opxstrct.h in the source code archive for the specs.
+- Support for the OPX packet format. This was reverse-engineered, and has
+  really only been tested with the WINS door. See mmail/opxstrct.h in the
+  source code archive for the specs.
 
 - A "Personal" area (messages addressed to you) is now created automatically
   for all packet types except SOUP. This can be turned on or off (default is
@@ -1317,7 +2032,7 @@ New features:
 
 - QWK now has the option (on by default) to show only those areas which have
   messages in them, instead of the full area list. I set this on by default
-  to match the behavior of the QWK side; you can change this in the
+  to match the behavior of the Blue Wave side; you can change this in the
   top-level Makefile. Currently, it's only a compile-time option. (In the
   future, I'll add the ability to do a full list in Blue Wave mode, and to
   toggle the mode at runtime.)

@@ -3,21 +3,20 @@
  * file_header and file_list
 
  Copyright (c) 1996 Toth Istvan <stoty@vma.bme.hu>
- Copyright (c) 1999 William McBrine <wmcbrine@clark.net>
+ Copyright (c) 2002 William McBrine <wmcbrine@users.sourceforge.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
 
 #include "mmail.h"
 
-// --------------------------------------------------------------------------
+// ----------------------------------------------------------------
 // file_header methods
-// --------------------------------------------------------------------------
-file_header::file_header(const char *nameA, time_t dateA, off_t sizeA)
+// ----------------------------------------------------------------
+file_header::file_header(const char *nameA, time_t dateA, off_t sizeA) :
+	date(dateA), size(sizeA)
 {
 	name = strdupplus(nameA);
-	date = dateA;
-	size = sizeA;
 	next = 0;
 }
 
@@ -36,62 +35,100 @@ time_t file_header::getDate() const
 	return date;
 }
 
+void file_header::setDate()
+{
+	date = touchFile(name);
+}
+
 off_t file_header::getSize() const
 {
 	return size;
 }
 
-// ------------------------------------------------------------------------
+// --------------------------------------------------------------
 // file_list methods
-// ------------------------------------------------------------------------
+// --------------------------------------------------------------
 
-file_list::file_list(const char *FileDir, bool sorttypeA, bool dirlistA)
+file_list::file_list(const char *FileDir, bool sorttypeA, bool dirlistA) :
+	sorttype(sorttypeA), dirlist(dirlistA)
 {
-	sorttype = sorttypeA;
-	dirlist = dirlistA;
-
-	dirlen = strlen(FileDir);
-	DirName = new char[dirlen + 81];
-	strcpy(DirName, FileDir);
-
-	initFiles();
+	DirName = strdupplus(FileDir);
+	filter = 0;
+	relist();
 }
 
 file_list::~file_list()
 {
+	cleanup();
+
+	delete[] DirName;
+	delete[] filter;
+}
+
+void file_list::cleanup()
+{
 	while (noOfFiles)
 		delete files[--noOfFiles];
 	delete[] files;
-	delete[] DirName;
+
+	while (noOfDirs)
+		delete dirs[--noOfDirs];
+	delete[] dirs;
 }
 
-void file_list::initFiles()
+void file_list::relist()
 {
 	if (!myopendir(DirName))
 		fatalError("There is no Packet Dir!");
 
-	noOfFiles = 0;
+	noOfFiles = noOfDirs = 0;
 
-	file_header head("", 0, 0);
-	file_header *filept = &head;
+	file_header head("", 0, 0), dirhead("", 0, 0);
+	file_header *filept = &head, *dirpt = &dirhead;
 
 	const char *fname;
 	mystat st;
 
-	while ((fname = myreaddir()))
-	    if (st.init(fname))
-		if (dirlist ^ !st.isdir)
+	while ((fname = myreaddir(st)) != 0)
+	    if (!filter || searchstr(fname, filter))
+		if (dirlist || !st.isdir())
 		    if (strcmp(fname, "."))
-			if (readable(fname)) {
-				filept->next = new file_header(fname,
-					st.date, st.size);
-				filept = filept->next;
-				noOfFiles++;
+			if (st.readable()) {
+				file_header *trec = new file_header(fname,
+					st.fdate(), st.fsize());
+				if (st.isdir()) {
+					dirpt->next = trec;
+					dirpt = dirpt->next;
+					noOfDirs++;
+				} else {
+					filept->next = trec;
+					filept = filept->next;
+					noOfFiles++;
+				}
 			}
 
+	int c;
+
+	if (noOfDirs > 0) {
+		dirs = new file_header *[noOfDirs];
+		dirpt = dirhead.next;
+
+		c = 0;
+		while (dirpt) {
+			dirs[c++] = dirpt;
+			dirpt = dirpt->next;
+		}
+
+		if (noOfDirs > 1)
+			qsort(dirs, noOfDirs, sizeof(file_header *),
+				fnamecomp);
+	} else
+		dirs = 0;
+
 	files = new file_header *[noOfFiles];
-	int c = 0;
 	filept = head.next;
+
+	c = 0;
 	while (filept) {
 		files[c++] = filept;
 		filept = filept->next;
@@ -128,14 +165,19 @@ int fnamecomp(const void *a, const void *b)
 
 int ftimecomp(const void *a, const void *b)
 {
-	return (*((file_header **) b))->getDate() -
+	long result = (*((file_header **) b))->getDate() -
 		(*((file_header **) a))->getDate();
+	return (result > 0) ? 1 : (result < 0) ? -1 : 0;
 }
 
 const char *file_list::getDirName() const
 {
-	DirName[dirlen] = '\0';
 	return DirName;
+}
+
+int file_list::getNoOfDirs() const
+{
+	return noOfDirs;
 }
 
 int file_list::getNoOfFiles() const
@@ -145,26 +187,21 @@ int file_list::getNoOfFiles() const
 
 void file_list::gotoFile(int fileNo)
 {
-	if (fileNo < noOfFiles)
+	if (fileNo < (noOfFiles + noOfDirs))
 		activeFile = fileNo;
 }
 
-const char *file_list::changeDir(const char *newpath)
+char *file_list::changeDir(const char *newpath)
 {
-	static char newdir[256];
+	char *newdir = 0;
 
 	if (dirlist) {
 		if (!newpath)
 			newpath = getName();
-		mychdir(DirName);
-		mychdir(newpath);
-		mygetcwd(newdir);
 
-		char *p = newdir + strlen(newdir) - 1;
-		if ((*p == '\\') || (*p == '/')) {
-			p[1] = '.';
-			p[2] = '\0';
-		}
+		mychdir(DirName);
+		if (!mychdir(newpath))
+			newdir = mygetcwd();
 	}
 	return newdir;
 }
@@ -175,19 +212,35 @@ int file_list::changeName(const char *newname)
 	return rename(getName(), newname);
 }
 
+file_header *file_list::base() const
+{
+	return (activeFile < noOfDirs) ? dirs[activeFile] :
+		files[activeFile - noOfDirs];
+}
+
+file_header *file_list::base(int i) const
+{
+	return (i < noOfDirs) ? dirs[i] : files[i - noOfDirs];
+}
+
 const char *file_list::getName() const
 {
-	return files[activeFile]->getName();
+	return base()->getName();
 }
 
 time_t file_list::getDate() const
 {
-	return files[activeFile]->getDate();
+	return base()->getDate();
+}
+
+void file_list::setDate()
+{
+	base()->setDate();
 }
 
 off_t file_list::getSize() const
 {
-	return files[activeFile]->getSize();
+	return base()->getSize();
 }
 
 const char *file_list::getNext(const char *fname)
@@ -199,8 +252,8 @@ const char *file_list::getNext(const char *fname)
 	if (fname) {
 		isExt = (*fname == '.');
 
-		for (c = activeFile + 1; c < noOfFiles; c++) {
-			q = files[c]->getName();
+		for (c = activeFile + 1; c < (noOfFiles + noOfDirs); c++) {
+			q = base(c)->getName();
 
 			if (isExt) {
 				len = strlen(q);
@@ -223,7 +276,7 @@ const char *file_list::getNext(const char *fname)
 
 file_header *file_list::getNextF(const char *fname)
 {
-	return getNext(fname) ? files[activeFile] : 0;
+	return getNext(fname) ? base() : 0;
 }
 
 const char *file_list::exists(const char *fname)
@@ -234,7 +287,7 @@ const char *file_list::exists(const char *fname)
 
 file_header *file_list::existsF(const char *fname)
 {
-	return exists(fname) ? files[activeFile] : 0;
+	return exists(fname) ? base() : 0;
 }
 
 void file_list::addItem(file_header **list, const char *q, int &filecount)
@@ -243,7 +296,7 @@ void file_list::addItem(file_header **list, const char *q, int &filecount)
 	int x;
 
 	gotoFile(-1);
-	while ((p = getNextF(q))) {
+	while ((p = getNextF(q)) != 0) {
 		for (x = 0; x < filecount; x++)
 			if (list[x] == p)
 				break;
@@ -254,24 +307,82 @@ void file_list::addItem(file_header **list, const char *q, int &filecount)
 	}
 }
 
-const char *file_list::expandName(const char *fname)
+char *file_list::expandName(const char *fname)
 {
-	sprintf(DirName + dirlen, "/%.79s", fname);
-	return DirName;
+	return fullpath(DirName, fname);
 }
 
-FILE *file_list::ftryopen(const char *fname, const char *mode)
+FILE *file_list::ftryopen(const char *fname)
 {
+	FILE *f;
+	
 	const char *p = exists(fname);
-	return p ? fopen(expandName(p), mode) : 0;
+	if (p) {
+		char *q = expandName(p);
+		f = fopen(q, "rb");
+		delete[] q;
+	} else
+		f = 0;
+
+	return f;
 }
 
 void file_list::kill()
 {
-	remove(expandName(getName()));
+	if (activeFile >= noOfDirs) {
+		int i = activeFile - noOfDirs;
 
-	delete files[activeFile];
-	noOfFiles--;
-	for (int i = activeFile; i < noOfFiles; i++)
-		files[i] = files[i + 1];
+		char *fname = expandName(getName());
+		remove(fname);
+		delete[] fname;
+
+		delete files[i];
+		noOfFiles--;
+		for (; i < noOfFiles; i++)
+			files[i] = files[i + 1];
+	}
+}
+
+int file_list::nextNumExt(const char *baseName)
+{
+	int retval = -1;
+	const char *nextName;
+
+	gotoFile(-1);
+	do {
+		nextName = getNext(baseName);
+		if (nextName) {
+			int newval = getNumExt(nextName);
+
+			if (newval > retval)
+				retval = newval;
+		}
+	} while (nextName);
+
+	if (retval == 999)
+		retval = -1;
+
+	return ++retval;
+}
+
+const char *file_list::getFilter() const
+{
+	return filter;
+}
+
+void file_list::setFilter(const char *newfilter)
+{
+	delete[] filter;
+	filter = (newfilter && *newfilter) ? strdupplus(newfilter) : 0;
+
+	cleanup();
+	relist();
+
+	if (filter && !(noOfDirs + noOfFiles)) {
+		delete[] filter;
+		filter = 0;
+		
+		cleanup();
+		relist();
+	}
 }
