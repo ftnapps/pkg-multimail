@@ -7,7 +7,7 @@ Description:\tMultiMail is a curses-based Blue Wave, QWK, OMEN and SOUP
 Keywords:\tmail bluewave omen qwk soup bbs fido offline reader
 Author:\t\t${EMAIL} (William McBrine) et al.
 Maintained-by:\t${EMAIL} (William McBrine)
-Primary-site:\tdownload.sourceforge.net /pub/sourceforge/multimail
+Primary-site:\tprdownloads.sourceforge.net /multimail
 \t\t`du -b ${MMFILE}`
 Alternate-site: sunsite.unc.edu /pub/Linux/system/bbs/mail
 Original-site:

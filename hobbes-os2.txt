@@ -22,7 +22,7 @@
 \040   included in listings? yes
 
 Operating System/Version: OS/2 2.0+
-\040Additional requirements: EMX runtime (0.9d), InfoZip
+\040Additional requirements: InfoZip
 
 \040               Replaces: mmos2${OLDSHORT}.zip
 
