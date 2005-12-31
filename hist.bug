@@ -1,25 +1,10 @@
-With this version, I've added MIPS and AMD64 to my list of tested systems
-(no mods needed). However, I'm not including those binaries, because a)  
-the MIPS binary I built is only for a Tivo, and doesn't display onscreen
-anyway, so you'd have to telnet in or use a serial console; and b) there's
-a small but annoying bug in the (beta) version of ncurses used on SF.net's
-AMD64 compile farm machine, such that the window borders all show up with
-the wrong color. (The problem is not actually 64-bit related. Also, please
-note that MultiMail itself has been 64-bit ready for a long time, since
-being ported to the Alpha processor.)
+Revisions for newest version of PDCurses -- fewer ifdefs needed. Note 
+that MultiMail now must be compiled with PDCurses 2.7 or later.
 
-Fix for some incorrect CONTROL.DAT files -- a failed read (because a file
-was too short) was returning a dupe of the last line; now returns a blank.
+Changed some compiler options to work better with recent gcc. 
+Unfortunately it bloats the executable.
 
-Make reply endings in OPX conform better to what SX does -- CR/LF, and a
-trailing zero. (I noticed that the tearline was being eaten by the Wildcat
-SX door on Doc's Place, and there was _no_ final CR/LF... I don't think it
-used to do that, but anyway, this fixes it.)
+Removed the distinction between Bulletins and New file lists, so there's 
+only one prompt to bother you with now.
 
-ANSI viewer: Allowed right arrow to exit even in lynxNav mode -- makes
-more sense with new Hello/Goodbye behavior; fewer false positives when
-interpreting AT codes; better handling of chars 0-31 and some others,
-under ncurses; no more overlapping of screens when a screen clear command
-is rendered.
-
-Some code simplification.
+Minor code cleanup.

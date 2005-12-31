@@ -1,22 +1,36 @@
-First, an apology: This version probably should've come out in July, when
-most of these changes were done... though there was a bug in one of the
-new features that didn't show up until Halloween.
+Added support for Microsoft Visual C++, MinGW, and Open Watcom. I highly 
+recommend Watcom, and I'm now using it for the OS/2 port. I'd use it for 
+the Win32 port, but sadly the directory scan (used in the packet list) 
+is using the slow POSIX-emulation method rather the fast native method, 
+and I haven't got that sorted out yet. MinGW is also very nice, and I'd 
+use that, except that it needs MSVCRT.DLL, which doesn't come with old 
+Windows 95. So -- rather than continuing with the 5-year-old Borland 5.5 
+(although it still works) -- I'm delivering an MSVC-built version. This 
+version doesn't support set_new_handler(), but no one is likely to 
+notice (famous last words). Also, I've finally dropped the pretense of 
+supporting RSX/NT.
 
-MultiMail now displays the appropriate screens (when it can determine
-them) on opening and closing a packet, instead of just adding them to the 
-bulletin list. This is more like the way most other OLRs work (though not, 
-e.g., Blue Wave). I hope you like it. :-) I had to adjust to it myself, 
-but now I wouldn't go back.
+The starting directory and home directory are now added to the PATH 
+searched for archivers and editors, so you can include them in the same 
+directory with mm.exe. I'm taking advantage of this to bundle InfoZip's 
+zip and unzip, hugely bloating the Windows zip, but hopefully stopping 
+the complaints I get from people who can't figure out how to set up 
+archiving themselves.
 
-The ANSI viewer now includes partial support for AVATAR (level 0) and 
-BSAVE (.BSV; text-only). As with the parsing of AT codes, these can be 
-toggled, via ^V and ^B respectively.
+Support for the "GreekQWK" variant, which uses 0x0C instead of 0xE3 as 
+the line delimiter. Reported by Dimitris Mandalidis. Note that there's 
+still no particular support for the Greek _character set_, but you can 
+probably make it work by disabling character set conversion.
 
-The lower portion of the area list display has been redesigned. It now
-includes the name of the Door and BBS that created the packet, if
-available, and omits the duplicate description. The field formerly
-labelled "BBS:" is now "Name:"; "BBS:" is used for the software type
-instead. In the upper portion, there's a little more room for the
-descriptions. Door type in OPX mode is not entirely satisfactory; some SX
-doors seem to use the field for BBS version instead. Neither of the new
-fields is available in Blue Wave mode.
+A mouse click in the lower half of the screen, in the ANSI viewer, now 
+counts as if the spacebar had been pressed, instead of PgDn. Also, when 
+the screen is at the start, even clicking in the top half counts as a 
+space. This makes for easier mouse-only navigation with the new welcome 
+screen display.
+
+Included Makefile.wid for wide-character ncurses. This doesn't really do 
+anything yet, except give you the proper background character instead of 
+the octothorpe, and work semi-decently in a UTF-8 Linux VT. For now,I 
+don't recommend using it, nor distributing binaries based on it.
+
+Various documentation updates.

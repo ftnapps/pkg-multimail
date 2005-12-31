@@ -13,61 +13,16 @@ procedure, and the man page (mm.1) for information on usage.
 What is MultiMail?
 ------------------
 
-MultiMail is an offline mail packet reader for Unix and other systems.  
-(This version also compiles under MSDOS, with DJGPP or Turbo C++; OS/2,
-with EMX; Win32, with RSX/NT or Borland C++; BeOS and AtheOS.) It currently
-supports the Blue Wave, QWK, OMEN, SOUP and OPX formats. It uses a simple
-curses-based interface.
+MultiMail is an offline mail packet reader for Unix/Linux, MS-DOS, OS/2, 
+Windows, Mac OS X, and other systems, using a curses-based interface. It 
+supports the Blue Wave, QWK, OMEN, SOUP and OPX formats.
 
-MultiMail is free, \"open source\" software, distributed under the GNU
-General Public License (q.v.).
+MultiMail is free, open source software, distributed under the GNU
+General Public License.
 
-You can get the latest version by anonymous ftp from: 
-
-\040ftp://download.sourceforge.net/pub/sourceforge/multimail/mmail-${VER}.tar.gz
-
-or at the MultiMail home page:
+You can get the latest version at:
 
 \040http://multimail.sourceforge.net/
-
-
-Features
---------
-
-${bullet}auto-decompression of packets with external compress programs
-${bullet}user-friendly menus to select packet, area, letter, etc.
-${bullet}save whole area or one letter in a text file
-${bullet}enter mail in any area (using external editor)
-${bullet}insert tagline from a tagline file
-${bullet}reply with quote
-${bullet}write netmail
-${bullet}netmail addressbook
-
-
-Requirements for compiling
---------------------------
-
-${bullet}Unix-compatible (POSIX) API, or Borland/Turbo C++
-${bullet}curses -- tested with ncurses 1.9.3+, Solaris curses, and PDCurses
-${bullet}GNU make *may* be required on some systems
-
-
-Tested Systems
---------------
-
-I'd like to get MultiMail tested on as many platforms as possible. I've
-personally used it on:
-
-Operating Systems:  Linux, Solaris, NetBSD, DOS, OS/2, Windows, BeOS,
-\040                   FreeBSD, AtheOS, MacOS X
-Processors:         i386, Sparc, m68k, Alpha, i86, PPC, ARM, MIPS, AMD64
-Compilers:          GCC (including DJGPP, EMX, and RSXNT), Compaq Alpha
-\040                   (w/ GNU make), Borland/Turbo C++, Sun C++ (w/ GNU make)
-Libraries:          ncurses, Solaris curses, PDCurses
-
-If you get it going on a dissimilar system, please let me know (along with
-any necessary patches). Or, let me telnet to your machine, and I'll try
-porting it myself. :-)
 
 
 Credits

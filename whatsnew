@@ -1,9 +1,13 @@
-New opening/closing behavior -- screens shown automatically
+Added support for Microsoft Visual C++, MinGW, and Open Watcom
 
-AVATAR and BSAVE support in the ANSI viewer, plus some bug fixes
+OS/2 port now built with Watcom
 
-Door and BBS info added to area list
+Win32 port now built with MSVC
 
-Fix for missing tear lines in OPX mode
+Starting and MMAIL directories now searched for archivers and editors
 
-Code simplification, etc.
+Bundled zip and unzip with Win32 port
+
+Support for "GreekQWK"
+
+Other minor stuff
