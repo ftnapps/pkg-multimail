@@ -1,9 +1,19 @@
+multimail (0.47-1) unstable; urgency=low
+
+  * New upstream release (see upstream ChangeLog for further details):
+   - Starting and MMAIL directories now searched for archivers and editors.
+   - Support for "GreekQWK".
+   - Other minor stuff.
+  * Updated to policy 3.6.2.
+
+ -- Peter Karlsson <peterk@debian.org>  Tue,  3 Jan 2006 21:30:00 +0100
+
 multimail (0.46-1) unstable; urgency=low
 
   * New upstream release (see upstream ChangeLog for further details):
    - Displays hello and goodbye screens from packages properly.
    - ANSI viewer now has basic AVATAR level 0 and BSAVE support.
-   - Lower portion of the ara list display has been redesigned.
+   - Lower portion of the area list display has been redesigned.
    - Various bugfixes.
 
  -- Peter Karlsson <peterk@debian.org>  Fri,  9 Jan 2004 22:00:00 +0100

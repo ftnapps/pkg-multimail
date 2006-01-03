@@ -3,7 +3,7 @@
  * mmail class
 
  Copyright (c) 1996 Toth Istvan <stoty@vma.bme.hu>
- Copyright (c) 2003 William McBrine <wmcbrine@users.sf.net>
+ Copyright (c) 2004 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -522,7 +522,6 @@ class specific_driver
 	virtual const char *getDoorProg() = 0;
 	virtual file_header *getHello() = 0;
 	virtual file_header *getGoodbye() = 0;
-	virtual file_header *getFileList() = 0;
 	virtual file_header **getBulletins() = 0;
 	virtual const char *getTear(int) = 0;
 };

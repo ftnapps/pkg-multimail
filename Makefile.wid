@@ -7,34 +7,15 @@ include version
 # General options (passed to mmail/Makefile and interfac/Makefile):
 
 # With debug:
-#OPTS = -g -Wall -pedantic -Wno-deprecated -Wno-char-subscripts
+#OPTS = -g -Wall -pedantic -Wno-deprecated -Wno-char-subscripts -DMM_WIDE
 
 # Optimized, no debug:
-# OPTS = -O2 -Wall -pedantic -Wno-deprecated -Wno-char-subscripts
-
-# Edited for Debian - build with debugging symbols; make it possible to
-# build without optimization
-OPTS = -g -Wall -pedantic -Wno-deprecated -Wno-char-subscripts
-ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
-OPTS += -O0
-else
-OPTS += -O2
-endif
-
-# Edited for Debian - make it possible to install unstripped binaries
-ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
-INSTALL_OPTS = -s
-else
-INSTALL_OPTS =
-endif
-
-# Edited for Debian
-DESTDIR =
+OPTS = -O2 -Wall -pedantic -Wno-deprecated -Wno-char-subscripts -DMM_WIDE
 
 # PREFIX is the base directory under which to install the binary and man 
 # page; generally either /usr/local or /usr (or perhaps /opt...):
 
-PREFIX = $(DESTDIR)/usr
+PREFIX = /usr/local
 
 # Delete command ("rm" or "del", as appropriate):
 
@@ -56,7 +37,7 @@ POST =
 # brackets (<, >) should be preceded by backslashes. Quotes (") should
 # be preceded by *three* backslashes:
 
-CURS_INC = \<curses.h\>
+CURS_INC = \<ncursesw/curses.h\>
 
 # CURS_DIR may also be necessary in some cases:
 
@@ -69,7 +50,7 @@ CURS_LIB = .
 
 # LIBS lists any "extra" libraries that need to be linked in:
 
-LIBS = -lcurses
+LIBS = -lncursesw
 
 #--------------------------------------------------------------
 # With ncurses installed beside the original curses, rather than
@@ -95,21 +76,20 @@ LIBS = -lcurses
 #LIBS = -lncurses
 
 #--------------------------------------------------------------
-# With XCurses (PDCurses 2.7) in my home directory:
+# With XCurses (PDCurses 2.6) in my home directory:
 
-#CURS_INC = \\\"/home/wmcbrine/pdcurs27/curses.h\\\"
+#CURS_INC = \\\"/home/wmcbrine/PDCurses-2.6/curses.h\\\"
 # Sneak some extra defines in through the back door:
-#CURS_DIR = /home/wmcbrine/pdcurs27 -DXCURSES -DHAVE_PROTO
-#CURS_LIB = /home/wmcbrine/pdcurs27/pdcurses
+#CURS_DIR = /home/wmcbrine/PDCurses-2.6 -DXCURSES -DHAVE_PROTO
+#CURS_LIB = /home/wmcbrine/PDCurses-2.6/pdcurses
 #LIBS = -L/usr/X11R6/lib \
-#/home/wmcbrine/pdcurs27/pdcurses/libXCurses.a \
+#/home/wmcbrine/PDCurses-2.6/pdcurses/libXCurses.a \
 #-lXaw -lXmu -lXt -lX11 -lSM -lICE -lXext
 
 #--------------------------------------------------------------
 #--------------------------------------------------------------
 
-HELPDIR = $(PREFIX)/share/man/man1
-DOCDIR = $(PREFIX)/share/doc/multimail
+HELPDIR = $(PREFIX)/man/man1
 
 all:	mm
 
@@ -139,13 +119,7 @@ modclean:
 	cd mmail $(SEP) $(MAKE) RM="$(RM)" modclean $(SEP) cd ..
 
 install:
-	install -d $(PREFIX)/bin $(HELPDIR) $(DOCDIR)
-	install -c $(INSTALL_OPTS) mm $(PREFIX)/bin
+	install -c -s mm $(PREFIX)/bin
 	install -c -m 644 mm.1 $(HELPDIR)
 	$(RM) $(HELPDIR)/mmail.1
-#	ln $(HELPDIR)/mm.1 $(HELPDIR)/mmail.1
-	install -m 644 README $(DOCDIR)
-	install -m 644 TODO $(DOCDIR)
-	install -m 644 FAQ $(DOCDIR)
-	install -d $(DOCDIR)/colors
-	cp -a colors/* $(DOCDIR)/colors
+	ln $(HELPDIR)/mm.1 $(HELPDIR)/mmail.1

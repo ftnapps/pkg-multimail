@@ -2,7 +2,7 @@
  * MultiMail offline mail reader
  * Packet base class
 
- Copyright (c) 2003 William McBrine <wmcbrine@users.sf.net>
+ Copyright (c) 2004 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -82,7 +82,6 @@ class pktbase : public specific_driver
 	const char *getDoorProg();
 	file_header *getHello();
 	file_header *getGoodbye();
-	virtual file_header *getFileList();
 	file_header **getBulletins();
 	virtual const char *getTear(int);
 	const char *getBaseName();
