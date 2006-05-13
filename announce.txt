@@ -1,42 +1,39 @@
 MultiMail is a free, open source (GPL) offline mail packet reader for
-Unix, DOS, OS/2, Win32, BeOS and AtheOS. It currently supports the Blue
-Wave, QWK, OMEN and SOUP formats. It uses a simple curses-based interface.
+Unix/Linux, MS-DOS, OS/2, Windows and Mac OS X, using a curses-based
+interface. It supports the Blue Wave, QWK, OMEN, SOUP and OPX formats.
 
 The MultiMail home page is:
 
  http://multimail.sourceforge.net/
 
-Alternately, you can get it via FTP:
 
- ftp://download.sourceforge.net/pub/sourceforge/multimail/
-
-Binaries for several platforms are available, along with the source code.
-
-
-What's New in version 0.46?
+What's New in version 0.47?
 ---------------------------
 
- * New opening/closing behavior -- screens shown automatically
- * AVATAR and BSAVE support in the ANSI viewer, plus some bug fixes
- * Door and BBS info added to area list
- * Fix for missing tear lines in OPX mode
- * Code simplification, etc.
+ * Added support for Microsoft Visual C++, MinGW, and Open Watcom
+ * OS/2 port now built with Watcom
+ * Win32 port now built with MSVC
+ * Starting and MMAIL directories now searched for archivers and editors
+ * Bundled zip and unzip with Win32 port
+ * Support for "GreekQWK"
+ * Other minor stuff
+
 
 
 Begin3
-Title:          MultiMail (source)
-Version:        0.46
-Entered-date:   31DEC03
-Description:    MultiMail is a curses-based Blue Wave, QWK, OMEN and SOUP
-                offline mail reader for Unix and other systems.
-Keywords:       mail bluewave omen qwk soup bbs fido offline reader
-Author:         wmcbrine@users.sf.net (William McBrine) et al.
-Maintained-by:  wmcbrine@users.sf.net (William McBrine)
-Primary-site:   download.sourceforge.net /pub/sourceforge/multimail
-                221184  mmail-0.46.tar.gz
+Title:		MultiMail (source)
+Version:	0.47
+Entered-date:	31DEC05
+Description:	MultiMail is a curses-based Blue Wave, QWK, OMEN and SOUP
+		offline mail reader for Unix and other systems.
+Keywords:	mail bluewave omen qwk soup bbs fido offline reader
+Author:		wmcbrine@users.sf.net (William McBrine) et al.
+Maintained-by:	wmcbrine@users.sf.net (William McBrine)
+Primary-site:	prdownloads.sourceforge.net /multimail
+		221731	mmail-0.47.tar.gz
 Alternate-site: sunsite.unc.edu /pub/Linux/system/bbs/mail
 Original-site:
-Platforms:      C++, curses and InfoZip or PKZIP. Tested on Linux, Solaris,
-                NetBSD, MS-DOS, OS/2, Win32, BeOS, AtheOS, FreeBSD, MacOS X, QNX
+Platforms:	C++, curses and InfoZip or PKZIP. Tested on Linux, Solaris,
+		NetBSD, MS-DOS, OS/2, Win32, BeOS, AtheOS, FreeBSD, MacOS X, QNX
 Copying-policy: GPL 2.0
 End
