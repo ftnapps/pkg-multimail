@@ -1,3 +1,13 @@
+multimail (0.48-1) unstable; urgency=low
+
+  * New upstream release (see upstream ChangeLog for further details):
+   - New keyword "Mouse", to toggle mouse support.
+   - Better display in UTF-8 terminals.
+   - Documentation cleanup.
+  * Updated to policy 3.7.2.
+
+ -- Peter Karlsson <peterk@debian.org>  Fri,  6 Apr 2007 21:45:00 +0100
+
 multimail (0.47-1) unstable; urgency=low
 
   * New upstream release (see upstream ChangeLog for further details):

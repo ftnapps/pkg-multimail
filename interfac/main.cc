@@ -3,7 +3,7 @@
  * main, error
 
  Copyright (c) 1996 Kolossvary Tamas <thomas@vma.bme.hu>
- Copyright (c) 2005 William McBrine <wmcbrine@users.sf.net>
+ Copyright (c) 2007 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -14,9 +14,8 @@
 #ifdef USE_NEWHANDLER
 # include <new.h>
 #endif
-#ifdef MM_WIDE
-# include <locale.h>
-#endif
+
+#include <locale.h>
 
 Interface *ui = 0;
 const chtype *ColorArray = 0;
@@ -25,11 +24,7 @@ ErrorType error;
 mmail mm;
 
 #ifdef USE_MOUSE
-MEVENT mouse_event;
-#endif
-
-#ifdef PDCURSKLUDGE
-int curs_start, curs_end;
+MEVENT mm_mouse_event;
 #endif
 
 #ifdef USE_NEWHANDLER
@@ -87,13 +82,9 @@ void memError()
 void mm_mouse_get()
 {
 # ifdef NCURSES_MOUSE_VERSION
-	getmouse(&mouse_event);
+	getmouse(&mm_mouse_event);
 # else
-	request_mouse_pos();
-	mouse_event.x = Mouse_status.x;
-	mouse_event.y = Mouse_status.y;
-	mouse_event.bstate = (Mouse_status.button[0] ? BUTTON1_CLICKED : 0) |
-		(Mouse_status.button[2] ? BUTTON3_CLICKED : 0);
+	nc_getmouse(&mm_mouse_event);
 # endif
 }
 #endif
@@ -103,9 +94,7 @@ int main(int argc, char **argv)
 	char **ARGV = argv;
 	int ARGC = argc;
 
-#ifdef MM_WIDE
 	setlocale(LC_ALL, "");
-#endif
 
 	while ((ARGC > 2) && ('-' == ARGV[1][0])) {
 		char *resName = ARGV[1] + 1;

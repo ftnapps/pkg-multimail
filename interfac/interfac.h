@@ -4,7 +4,7 @@
 
  Copyright (c) 1996 Kolossvary Tamas <thomas@tvnet.hu>
  Copyright (c) 1997 John Zero <john@graphisoft.hu>
- Copyright (c) 2005 William McBrine <wmcbrine@users.sf.net>
+ Copyright (c) 2007 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -15,21 +15,16 @@
 #include "../mmail/mmail.h"
 
 extern "C" {
+#include <curses.h>
 #include <signal.h>
-
-#include CURS_INC
 }
 
-#if defined(__PDCURSES__) && (PDC_BUILD < 2700)
-# error Please upgrade to PDCurses 2.7 or later
+#if defined(PDCURSES) && (PDC_BUILD < 3001)
+# error Please upgrade to PDCurses 3.0 or later
 #endif
 
-#if defined(NCURSES_MOUSE_VERSION) && (NCURSES_MOUSE_VERSION == 1)
+#if defined(NCURSES_MOUSE_VERSION) || defined(PDCURSES)
 # define USE_MOUSE
-#else
-# if (defined(__PDCURSES__) && defined(__WIN32__)) || defined(XCURSES)
-#  define USE_MOUSE
-# endif
 #endif
 
 /* The following assumes that Ncurses' internal SIGWINCH handler is enabled
@@ -76,7 +71,7 @@ extern "C" void sigwinchHandler(int);
 
 /* Include Keypad keys for PDCurses */
 
-#ifdef __PDCURSES__
+#ifdef PDCURSES
 # define MM_PLUS	'+': case PADPLUS
 # define MM_MINUS	'-': case PADMINUS
 # define MM_ENTER	'\r': case '\n': case PADENTER
@@ -743,26 +738,9 @@ extern Interface *ui;
 extern time_t starttime;
 
 #ifdef USE_MOUSE
-# ifndef NCURSES_MOUSE_VERSION
-
-typedef struct {
-	int x, y;
-	unsigned long bstate;
-} MEVENT;
-
-# endif
-
-extern MEVENT mouse_event;
+extern MEVENT mm_mouse_event;
 
 void mm_mouse_get();
-#endif
-
-#ifdef PDCURSKLUDGE
-extern "C" {
-int PDC_get_cursor_mode();
-int PDC_set_cursor_mode(int, int);
-}
-extern int curs_start, curs_end;
 #endif
 
 #endif

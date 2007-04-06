@@ -2,7 +2,7 @@ Source: multimail
 Section: mail
 Priority: optional
 Maintainer: Peter Karlsson <peterk@debian.org>
-Standards-Version: 3.6.2
+Standards-Version: 3.7.2
 Build-Depends: libncurses5-dev, debhelper (>= 5.0)
 
 Package: multimail

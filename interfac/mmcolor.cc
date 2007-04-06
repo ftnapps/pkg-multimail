@@ -2,7 +2,7 @@
  * MultiMail offline mail reader
  * color handling, and default colors
 
- Copyright (c) 2005 William McBrine <wmcbrine@users.sf.net>,
+ Copyright (c) 2006 William McBrine <wmcbrine@users.sf.net>,
                     Ingo Brueckl <ib@wupperonline.de>
 
  Distributed under the GNU General Public License.
@@ -280,14 +280,5 @@ void ColorClass::Init()
 		if (parseConfig(configname))
 			newConfig(configname);
 
-#ifdef __PDCURSES__
-
-// Here is the implementation of monochrome mode for PDCurses.
-	if (!usecol)
-		for (int x = 0; x < numColors; x++)
-			allcolors[x] = (allcolors[x] & (~A_COLOR)) | 
-				COL(COLOR_WHITE, COLOR_BLACK);
-#endif
-	
 	ColorArray = allcolors;
 }
