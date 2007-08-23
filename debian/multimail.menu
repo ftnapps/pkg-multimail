@@ -1,3 +1,7 @@
-?package(multimail):needs="text" section="Apps/Net"\
-  title="MultiMail" longtitle="MultiMail Offline Mail Reader"\
-  command="/usr/bin/mm" hints="Offline"
+?package(multimail):\
+ section="Applications/Network/Communication"\
+ needs="text"\
+ title="MultiMail"\
+ longtitle="MultiMail Offline Mail Reader"\
+ command="/usr/bin/mm"\
+ hints="Offline"

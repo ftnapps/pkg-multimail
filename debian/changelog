@@ -1,3 +1,13 @@
+multimail (0.49-1) unstable; urgency=low
+
+  * New upstream release (see upstream ChangeLog for further details):
+   - Added pauses when displaying ANSI animations.
+   - No longer abort if the config file cannot be written to.
+   - Now licensed under version 3 of the GPL.
+  * Updated for new menu structure for menu 2.1.35.
+
+ -- Peter Karlsson <peterk@debian.org>  Thu, 23 Aug 2007 07:15:00 +0100
+
 multimail (0.48-1) unstable; urgency=low
 
   * New upstream release (see upstream ChangeLog for further details):
