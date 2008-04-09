@@ -12,7 +12,7 @@
 #include "interfac.h"
 
 #ifdef USE_NEWHANDLER
-# include <new.h>
+# include <new>
 #endif
 
 #include <locale.h>
@@ -40,7 +40,7 @@ ErrorType::ErrorType()
 	srand((unsigned) starttime);
 
 #ifdef USE_NEWHANDLER
-	set_new_handler(memError);
+	std::set_new_handler(memError);
 #endif
 	origdir = mygetcwd();
 }
