@@ -1,5 +1,9 @@
+#define STRingize(x) #x
+#define STR(x) STRingize(x)
+
 #define MM_NAME "MultiMail"
-#define MM_TOPHEADER "%s offline reader v%d.%d"
+#define MM_VERNUM STR(MM_MAJOR) "." STR(MM_MINOR)
+#define MM_TOPHEADER MM_NAME "/%.16s v" MM_VERNUM
 
 #define USE_SHADOWS     // "Shadowed" windows
 #define VANITY_PLATE    // Author info -- undefine for longer packet list
@@ -25,7 +29,7 @@
    from the uname() function, or is hardwired. Turbo and Borland C++ don't
    have it, and it's broken in RSX/NT.
 */
-#if !defined (__RSXNT__) && !defined (__TURBOC__)
+#if !defined(__RSXNT__) && !defined(__TURBOC__)
 # define HAS_UNAME
 #endif
 
@@ -34,7 +38,7 @@
    it, so if you wanted to distinguish them, you'd also have to check for
    the presence or absence of "__WIN32__".)
 */
-#if defined (__MSDOS__) || defined (__WIN32__) || defined (__EMX__)
+#if defined(__MSDOS__) || defined(__WIN32__) || defined(__EMX__)
 # define DOSCHARS
 # define DOSNAMES
 # define USE_SHELL
@@ -53,18 +57,9 @@
 */
 # define ALLCHARSOK
 
-/* With the RSXNT port, the keyboard check after printing each line makes
-   output very slow, unless line break optimization is disabled. It also
-   causes problems with the BCC port when the mouse is used.
-*/
-# ifdef __WIN32__
-#  define NOTYPEAHEAD
-# endif
+/* For the ugly cursor-toggling routines */
 
-/* For the ugly cursor-toggling routines -- no longer needed with PDCurses
-   2.4?
-*/
-# if 0
+# ifndef __WIN32__
 #  define PDCURSKLUDGE
 # endif
 
@@ -76,18 +71,22 @@
 
 #endif
 
+/* One remaining PDCurses platform not covered by the above */
+
+#ifdef XCURSES
+# define NOREVERSE
+#endif
+
 /* Also, see the NCURSES_SIGWINCH definition in interfac/interfac.h -- it
    should be fine as is, but may need manual adjustment in some cases.
 */
 
 /* I use strcasecmp() and strncasecmp() throughout, but some systems call
    these functions stricmp() and strincmp(). I haven't yet dealt with the
-   case where neither is defined. TEMP_RELATIVE is for tmpnam() implemen-
-   tations that return a relative path rather than an absolute one.
+   case where neither is defined.
 */
-#if defined (__EMX__) || defined (__TURBOC__)
+#if defined(__EMX__) || defined(__TURBOC__)
 # define USE_STRICMP
-# define TEMP_RELATIVE
 #endif
 
 /* unistd.h is the POSIX header file. Borland/Turbo C doesn't have it.
@@ -103,7 +102,7 @@
    Also, this version lacks the "bool" and "off_t" types. (Check should be
    more restrictive.)
 */
-#if defined (__TURBOC__) && defined (__MSDOS__)
+#if defined(__TURBOC__) && defined(__MSDOS__)
 # define USE_SPAWNO
 # define LIMIT_MEM
 # define MAXBLOCK 0x0FFE0L
@@ -118,7 +117,7 @@
    the top-level directory. Also, utime(), though implemented, doesn't work
    right.
 */
-#if defined (__TURBOC__) && defined (__WIN32__)
+#if defined(__TURBOC__) && defined(__WIN32__)
 # define TIMEKLUDGE
 # define USE_SETFTIME
 #endif
@@ -135,7 +134,7 @@
 /* In Borland/Turbo C++ and in DJGPP, using findfirst()/findnext() is
    faster than using readdir()/stat().
 */
-#if defined (__MSDOS__) || defined (__TURBOC__)
+#if defined(__MSDOS__) || defined(__TURBOC__)
 # define USE_DIRH
 # define USE_FINDFIRST
 #endif

@@ -1,6 +1,192 @@
 Revision History
 ================
 
+0.46 - 2003/12/31:
+
+New features:
+
+- First, an apology: This version probably should've come out in July, when
+  most of these changes were done... though there was a bug in one of the
+  new features that didn't show up until Halloween.
+
+- MultiMail now displays the appropriate screens (when it can determine
+  them) on opening and closing a packet, instead of just adding them to the
+  bulletin list. This is more like the way most other OLRs work (though not,
+  e.g., Blue Wave). I hope you like it. :-) I had to adjust to it myself,
+  but now I wouldn't go back.
+
+- The ANSI viewer now includes partial support for AVATAR (level 0) and
+  BSAVE (.BSV; text-only). As with the parsing of AT codes, these can be
+  toggled, via ^V and ^B respectively.
+
+- The lower portion of the area list display has been redesigned. It now
+  includes the name of the Door and BBS that created the packet, if
+  available, and omits the duplicate description. The field formerly
+  labelled "BBS:" is now "Name:"; "BBS:" is used for the software type
+  instead. In the upper portion, there's a little more room for the
+  descriptions. Door type in OPX mode is not entirely satisfactory; some SX
+  doors seem to use the field for BBS version instead. Neither of the new
+  fields is available in Blue Wave mode.
+
+Bug fixes and such:
+
+- With this version, I've added MIPS and AMD64 to my list of tested systems
+  (no mods needed). However, I'm not including those binaries, because a)
+  the MIPS binary I built is only for a Tivo, and doesn't display onscreen
+  anyway, so you'd have to telnet in or use a serial console; and b) there's
+  a small but annoying bug in the (beta) version of ncurses used on SF.net's
+  AMD64 compile farm machine, such that the window borders all show up with
+  the wrong color. (The problem is not actually 64-bit related. Also, please
+  note that MultiMail itself has been 64-bit ready for a long time, since
+  being ported to the Alpha processor.)
+
+- Fix for some incorrect CONTROL.DAT files -- a failed read (because a file
+  was too short) was returning a dupe of the last line; now returns a blank.
+
+- Make reply endings in OPX conform better to what SX does -- CR/LF, and a
+  trailing zero. (I noticed that the tearline was being eaten by the Wildcat
+  SX door on Doc's Place, and there was _no_ final CR/LF... I don't think it
+  used to do that, but anyway, this fixes it.)
+
+- ANSI viewer: Allowed right arrow to exit even in lynxNav mode -- makes
+  more sense with new Hello/Goodbye behavior; fewer false positives when
+  interpreting AT codes; better handling of chars 0-31 and some others,
+  under ncurses; no more overlapping of screens when a screen clear command
+  is rendered.
+
+- Some code simplification.
+
+0.45 - 2003/06/08:
+
+New features:
+
+- New temporary directory and file system: Instead of using tmpnam() --
+  which frankly never worked properly outside of Unix, and is sometimes
+  regarded as a security risk there -- MultiMail now generates temp
+  directories of the form "workNNNN", where NNNN is a random number, under
+  the directory specified by the new .mmailrc keyword "TempDir". By default,
+  TempDir is set to the same value as mmHomeDir. NOTE THAT IF YOU'VE BEEN
+  USING ENVIRONMENT VARAIBLES TO SPECIFY A TEMP DIR, IT WILL NO LONGER WORK.
+  They aren't even used to set the default (as with EDITOR). In the XT port,
+  TempDir also now specifies the location of the swap file, if that feature
+  is enabled. And temporary files are now created as "tmpNNNNN.txt" under
+  the workNNNN directory, where NNNNN is a serial number; so they no longer
+  clutter the base temp directory, they have the ".txt" extension some
+  editors depend on, and there's no longer a problem with editor-created
+  backup files being cleared out.
+
+- Big improvements in the ANSI viewer under Unix: For those terminals (like
+  the Linux console) that support the "smpch" terminfo capability, the IBM
+  PC characters are passed through directly. For other terminals (like
+  xterm), the use of the widely unimplemented ACS_BLOCK and ACS_BOARD has
+  been replaced with an inverse space and ACS_CKBOARD, respectively. (In
+  ncurses' curses.h, ACS_BLOCK and ACS_BOARD are identified as "Teletype
+  5410v1 symbols", while ACS_CKBOARD is in the "VT100 symbols" group.
+  Everything supports VT100, but few terminals support the other class.)
+  Note that the use of the inverse space does present a problem when
+  characters have the A_BOLD attribute, as it's interpreted differently by
+  different terminals, so that some will make the cell "bright", and some
+  won't; but this seems to look best on the greatest number of terminals.
+  Also note that "xterm -fn vga -tn linux" is still the best way to view
+  ANSI under X. ;-)
+
+- A new method for setting mmHomeDir: If it's based on the environment
+  variable "HOME", add "mmail" to the end, as before; but if it's based on
+  "MMAIL" or the start directory, don't. Practically speaking, this should
+  make it apply "mmail" under Unix and not under DOS-ish systems, in most
+  cases. That means that if you create a directory like "C:\MMAIL" and run
+  mm.exe from there, it will no longer create "C:\MMAIL\MMAIL\DOWN", etc.,
+  but simply "C:\MMAIL\DOWN". Note that this (unlike the new temp system)
+  applies only to new installations; upgrades will not alter existing
+  MMAIL.RC pathnames.
+
+- The name shown at the top of the screen is now "MultiMail/Sysname vX.X" --
+  i.e., the same as would appear in a QWK reply tearline -- instead of
+  "MultiMail offline reader vX.X". Shorter, yet more informative. :-)
+
+Bug fixes and such:
+
+- Doing a ^X during a bulletin would cause a segfault.
+
+- A malformed 'H' command (e.g., using "0" as a parameter) in ANSI could
+  cause a segfault.
+
+- The window title is explicitly set to "MultiMail" in the Win32 and XCurses
+  ports. This eliminates the problem where "UNZIP" would remain in the title
+  after unarchiving a packet under Win 9x.
+
+- Revived cursor mode save/restore routines for PDCurses (except for Win32,
+  where it doesn't work); moved cursor restoration after endwin() call in
+  mysystem() (this is why it didn't do the job before).
+
+- Updated Makefiles for PDCurses 2.6, and GCC 3.2.1 (in the case of EMX). I
+  strongly recommend upgrading to PDCurses 2.6, in most cases, as it already
+  incorporates my patch for halfdelay(); however, there's a fatal bug in the
+  OS/2 version. (Write me for a patch.) I also recommend ncurses 5.3 over
+  5.2 -- for one thing, it fixes the problem with the bool declaration that
+  broke searching and animation in some installations -- but I've left it as
+  5.2 in the Makefile, for now, because I have too many systems to recompile
+  it for. :-)
+
+- Remaining compilation warnings eliminated for most platforms: Got rid of
+  tmpnam() (see above), moved "%y" strftime() strings outside the calls
+  (copied this from Ingo Brueckl), and added "-Wno-deprecated" to the
+  Makefile options for the latest versions of gcc.
+
+- Useless .mmailrc keyword "homeDir" removed. (It specified the base value
+  for mmHomeDir, but in most cases that was already specified explicitly on
+  the very next line.)
+
+- Stronger attempts to use backslash characters instead of slash where
+  appropriate in MMAIL.RC (depending on the platform). But again, this is
+  cosmetic.
+
+- Optimizations, comments, etc.
+
+0.44 - 2003/05/07:
+
+New features:
+
+- Added the pipe character, '|', as an alternative to '^' for invoking the
+  filter function. It turns out that '^' is a poor choice for many non-U.S.
+  keyboards; sorry. The pipe character is also somewhat more consistent with
+  other programs with similar functions. Problem reported by Peter Karlsson.
+
+Bug fixes and such:
+
+- Changed the way that the length of QWK replies is calculated. This is a
+  speculative fix for a reported problem with corrupt replies that I
+  couldn't reproduce; but from what was described, this _should_ do it. At
+  any rate, the new code is simpler and cleaner. Reported by Jimmy Day et
+  al.
+
+- Pressing the "END" key in string input fields now works corrrectly, taking
+  the cursor to the end of the field instead of ending the edit. Reported by
+  Touko Rajala.
+
+- Bogus/unintentional '@' color code sequences could cause segfaults in the
+  ANSI viewer. Reported by Neall Mercado.
+
+- In the Win32 version, under NT (though not 9x), the temporary directories
+  were not being deleted.
+
+- The filter was not working correctly in the LittleAreaListWindow.
+
+- Junk could appear in the LetterList on a resort if some messages were
+  read.
+
+- Narrowed the width of some windows as a workaround for display bugs in
+  xterm.
+
+- Added "-inul" to the default command lines for RAR to supress the output.
+
+- Minor internal changes to allow compilation and remove warnings under
+  Sun's SUNWspro C++ compiler. This also entailed the elimination of the
+  sillier of the "set_Letter_Params()" functions, which was long overdue.
+  :-)
+
+- Miscellaneous small changes for efficiency.
+
 0.43 - 2002/03/09:
 
 New features:

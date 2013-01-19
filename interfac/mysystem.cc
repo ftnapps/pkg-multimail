@@ -2,7 +2,7 @@
  * MultiMail offline mail reader
  * some low-level routines common to both sides
 
- Copyright (c) 2001 William McBrine <wmcbrine@users.sourceforge.net>
+ Copyright (c) 2003 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -84,26 +84,17 @@ char *myfgets(char *s, size_t size, FILE *stream)
 
 int mysystem(const char *cmd)
 {
-	if (ui) {
-#ifdef PDCURSKLUDGE
-		// Restore original cursor
-		PDC_set_cursor_mode(curs_start, curs_end);
-#endif
-		if (!isendwin())
+	if (ui && !isendwin()) {
 			endwin();
+#ifdef PDCURSKLUDGE
+			// Restore original cursor
+			PDC_set_cursor_mode(curs_start, curs_end);
+#endif
 	}
 
 #ifdef USE_SPAWNO
-	const char *tmp = getenv("TEMP");
-
-	if (!tmp) {
-		tmp = getenv("TMP");
-		if (!tmp)
-			tmp = error.getOrigDir();
-	}
-
 	int result = mm.resourceObject->getInt(swapOut) ?
-		systemo(tmp, cmd) : -1;
+		systemo(mm.resourceObject->get(BaseDir), cmd) : -1;
 
 	if (-1 == result)
 		result = system(cmd);
@@ -118,13 +109,17 @@ int mysystem(const char *cmd)
 #endif
 
 	if (ui) {
-#if defined(__PDCURSES__) && defined(__WIN32__) // Force scroll bars off
-		resize_term(LINES, COLS);	// in Windows 2000, XP
-#endif
-		keypad(stdscr, TRUE);
-#ifdef NOTYPEAHEAD
+#ifdef __PDCURSES__
+# ifdef __WIN32__
+		// Force scroll bars off in Windows 2000, XP
+		resize_term(LINES, COLS);
+# endif
+# if defined(__WIN32__) || defined(XCURSES)
+		PDC_set_title(MM_NAME);
+# endif
 		typeahead(-1);
 #endif
+		keypad(stdscr, TRUE);
 	}
 
 	return result;
@@ -145,34 +140,32 @@ int mysystem2(const char *cmd, const char *args)
 	return result;
 }
 
+char *mytmpdir(const char *home)
+{
+	mystat st;
+	char name[9];
+
+	if (mychdir(home))
+		fatalError("Could not change to temp dir");
+	
+	do
+		sprintf(name, "work%04x", (rand() & 0xffff));
+	while (st.init(name));
+	
+	return canonize(fullpath(home, name));
+}
+
 char *mytmpnam()
 {
-/* EMX, RSX/NT and Borland/Turbo C++ don't return an absolute pathname
-   from tmpnam(), so we create one ourselves. Otherwise, use the system's
-   version, and make sure it hasn't run out of names.
-*/
-	const char *name = tmpnam(0);
-	if (!name)
+	static long tcount = 1;
+	char name[13];
+
+	if (tcount > 99999L)
 		fatalError("Out of temporary filenames");
-#ifdef TEMP_RELATIVE
-	const char *tmppath = getenv("TEMP");
 
-	if (!tmppath) {
-		tmppath = getenv("TMP");
-		if (!tmppath)
-			tmppath = error.getOrigDir();
-	}
-	size_t lentmp = strlen(tmppath);
-	char end = tmppath[lentmp - 1];
-	bool endslash = ('/' == end) || ('\\' == end);
-	char *newname = new char[lentmp + strlen(name) + (endslash ? 1 : 2)];
-	
-	sprintf(newname, endslash ? "%s%s" : "%s/%s", tmppath, name);
+	sprintf(name, "tmp%05ld.txt", tcount++);
 
-	return newname;
-#else
-	return strdupplus(name);
-#endif
+	return canonize(fullpath(mm.resourceObject->get(BaseDir), name));
 }
 
 void edit(const char *reply_filename)
@@ -262,6 +255,9 @@ const char *myreaddir(mystat &st)
                 result = findnext(&blk);
 
 	if (result) {
+# ifdef __WIN32__
+		findclose(&blk);
+# endif
 		first = true;
 		return 0;
 	} else {
@@ -290,10 +286,15 @@ void clearDirectory(const char *DirName)
 	mystat st;
 	const char *fname;
 
-	if (myopendir(DirName))
+	if (myopendir(DirName)) {
 		while ((fname = myreaddir(st)) != 0)
 			if (!st.isdir())
 				remove(fname);
+	} else {
+		char tmp[512];
+		sprintf(tmp, "Could not change to %.491s", DirName);
+		fatalError(tmp);
+	}
 }
 
 #ifdef USE_SETFTIME
@@ -391,9 +392,9 @@ const char *homify(const char *raw)
 
 	if (home && raw && (raw[0] == '~') &&
 	    ((raw[1] == '/') || (raw[1] == '\0'))) {
-		static char expanded[256];
+		static char expanded[512];
 
-		sprintf(expanded, "%s/%s", home, raw + 1);
+		sprintf(expanded, "%.255s/%.255s", home, raw + 1);
 		return expanded;
 	} else
 		return raw;
@@ -451,11 +452,15 @@ bool mystat::init(const char *fname)
 	struct ffblk blk;
 	bool retval = !findfirst(fname, &blk, FA_DIREC);
 
-	if (retval) {
+	if (retval)
 		init(blk.ff_fsize, ((long) blk.ff_ftime << 16) +
 			(long) blk.ff_fdate, blk.ff_attrib);
-	} else
+	else
 		init();
+
+# ifdef __WIN32__
+	findclose(&blk);
+# endif
 #else
 	struct stat fileStat;
 	bool retval = !stat((char *) fname, &fileStat);

@@ -2,7 +2,7 @@
  * MultiMail offline mail reader
  * ANSI image/text viewer
 
- Copyright (c) 2002 William McBrine <wmcbrine@users.sourceforge.net>
+ Copyright (c) 2003 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -56,10 +56,11 @@ int AnsiWindow::AnsiLine::unpack(chtype *tmp)
 		for (i = 0; i < (int) length; i++)
 			tmp[i] = att | atext[i];
 	else
-		memcpy(tmp, text, length * sizeof(chtype));
+		if (length)
+			memcpy(tmp, text, length * sizeof(chtype));
 
 	for (i = length; i < COLS; i++)
-		tmp[i] = ' ' | C_ANSIBACK;
+		tmp[i] = ' ' | (C_ANSIBACK);
 
 	return length;
 }
@@ -74,19 +75,20 @@ void AnsiWindow::AnsiLine::pack(chtype *tmp, int newlen)
 		delete[] text;
 
 	isasc = true;
-	att = *tmp & ~(A_CHARTEXT);
+	att = newlen ? (*tmp & ~(A_CHARTEXT)) : C_ANSIBACK;
 
 	for (i = 0; (i < newlen) && isasc; i++)
 		if ((tmp[i] & ~(A_CHARTEXT)) != att)
 			isasc = false;
 
 	if (isasc) {
-		atext = new char[newlen];
+		atext = newlen ? new unsigned char[newlen] : 0;
 		for (i = 0; i < newlen; i++)
 			atext[i] = tmp[i] & (A_CHARTEXT);
 	} else {
-		text = new chtype[newlen];
-		memcpy(text, tmp, newlen * sizeof(chtype));
+		text = newlen ? new chtype[newlen] : 0;
+		if (newlen)
+			memcpy(text, tmp, newlen * sizeof(chtype));
 	}
 
 	length = newlen;
@@ -97,7 +99,7 @@ void AnsiWindow::AnsiLine::show(Win *win, int i)
 	if (length)
 		if (isasc) {
 			win->attrib(att);
-			win->put(i, 0, atext, length);
+			win->put(i, 0, (char *) atext, length);
 		} else {
 			win->attrib(0);
 			win->put(i, 0, text, length);
@@ -110,7 +112,8 @@ void AnsiWindow::AnsiLine::show(Win *win, int i)
 void AnsiWindow::AnsiLine::unpacktext(char *tmp)
 {
 	if (isasc) {
-		memcpy(tmp, atext, length);
+		if (length)
+			memcpy((unsigned char *) tmp, atext, length);
 		tmp += length;
 	} else
 		for (unsigned i = 0; i < length; i++)
@@ -236,6 +239,26 @@ bool StringFile::anyleft()
 // AnsiWindow methods
 //--------------------
 
+const int AnsiWindow::ansi_colortable[8] = {COLOR_BLACK, COLOR_RED,
+	COLOR_GREEN, COLOR_YELLOW, COLOR_BLUE, COLOR_MAGENTA,
+	COLOR_CYAN, COLOR_WHITE};
+
+const int AnsiWindow::pc_colortable[8] = {COLOR_BLACK, COLOR_BLUE,
+	COLOR_GREEN, COLOR_CYAN, COLOR_RED, COLOR_MAGENTA,
+	COLOR_YELLOW, COLOR_WHITE};
+
+void AnsiWindow::Init()
+{
+#ifdef NCURSES_VERSION
+	// Is the "PC" character set available?
+	char *result = tigetstr("smpch");
+	useAltCharset = (result && (result != ((char *) -1)));
+#endif
+	atparse = 1;
+	avtparse = true;
+	bsvparse = true;
+}
+
 void AnsiWindow::DestroyChain()
 {
 	while (NumOfLines--)
@@ -270,7 +293,7 @@ void AnsiWindow::cls()
 	if (anim)
 		animtext->Clear(C_ANSIBACK);
 	else {
-		cpy = NumOfLines - baseline - 1;
+		cpy = NumOfLines - baseline - !cpy;
 		checkpos();
 
 		if (baseline < (NumOfLines - 1))
@@ -286,13 +309,13 @@ void AnsiWindow::colreset()
 	ccb = COLOR_BLACK;
 }
 
-void AnsiWindow::colorcore()
+chtype AnsiWindow::colorcore()
 {
 	// Attribute set
 
 	// Check bold and blinking:
 
-	attrib = (cbr ? A_BOLD : 0) | (cfl ? A_BLINK : 0) |
+	chtype tmpattrib = (cbr ? A_BOLD : 0) | (cfl ? A_BLINK : 0) |
 
 	// If animating, check for color pair 0 (assumes COLOR_BLACK == 0),
 	// and for remapped black-on-black:
@@ -313,13 +336,12 @@ void AnsiWindow::colorcore()
 		else
 #endif
 			colorsused[(ccf << 3) + ccb] = true;
+
+	return tmpattrib;
 }
 
 void AnsiWindow::colorset()
 {
-	static const int colortable[8] = {COLOR_BLACK, COLOR_RED,
-		COLOR_GREEN, COLOR_YELLOW, COLOR_BLUE, COLOR_MAGENTA,
-		COLOR_CYAN, COLOR_WHITE};
 	int tmp;
 
 	while(escparm[0]) {
@@ -339,23 +361,33 @@ void AnsiWindow::colorset()
 			break;
 		default:
 			if ((tmp > 29) && (tmp < 38))		// foreground
-				ccf = colortable[tmp - 30];
+				ccf = ansi_colortable[tmp - 30];
 			else if ((tmp > 39) && (tmp < 48))	// background
-				ccb = colortable[tmp - 40];
+				ccb = ansi_colortable[tmp - 40];
 		}
 	}
 
-	colorcore();
+	attrib = colorcore();
+}
+
+void AnsiWindow::pc_colorset(unsigned char c)
+{
+	cfl = !(!(c & 0x80));	// or should it be cleared for AVATAR?
+	cbr = !(!(c & 8));
+	crv = 0;
+
+	ccf = pc_colortable[c & 7];
+	ccb = pc_colortable[(c & 0x70) >> 4];
+
+	attrib = colorcore();
 }
 
 void AnsiWindow::athandle()
 {
-	static const int colortable[8] = {COLOR_BLACK, COLOR_BLUE,
-		COLOR_GREEN, COLOR_CYAN, COLOR_RED, COLOR_MAGENTA,
-		COLOR_YELLOW, COLOR_WHITE};
 	static int oldccf = -1, oldccb, oldcbr, oldcfl;
-	unsigned fg, bg;
-	char c[2];
+	unsigned fg = 0, bg = 0;
+	int result;
+	char c[2], bgc[2], fgc[2];
 
 	bool xmode = false;
 
@@ -368,42 +400,65 @@ void AnsiWindow::athandle()
 		c[0] = source.nextchar();
 	case '0': case '1': case '2': case '3': case '4':
 	case '5': case '6': case '7': case '8': case '9':
-		sscanf(c, "%x", &bg);
+		bgc[0] = c[0];
+		bgc[1] = '\0';
+		result = sscanf(bgc, "%x", &bg);
 
-		c[0] = source.nextchar();
-		sscanf(c, "%x", &fg);
+		if (1 == result) {
+		    fgc[0] = source.nextchar();
+		    fgc[1] = '\0';
+		    result = sscanf(fgc, "%x", &fg);
 
-		if (1 == atparse)
-			if (!fg && !bg) {
-				oldccf = ccf;
-				oldccb = ccb;
-				oldcbr = cbr;
-				oldcfl = cfl;
-			} else {
-				if ((15 == fg) && (15 == bg)) {
-					if (-1 != oldccf) {
-						ccf = oldccf;
-						ccb = oldccb;
-						cbr = oldcbr;
-						cfl = oldcfl;
-
-						colorcore();
-					}
-				} else {
-					cbr = (fg > 7);
-					cfl = (bg > 7);
-
-					ccf = colortable[cbr ? (fg - 8) : fg];
-					ccb = colortable[cfl ? (bg - 8) : bg];
-
-					colorcore();
-				}
+		    if (1 == result) {
+			if (!xmode) {
+				c[0] = source.nextchar();
+				result = ('@' == c[0]);
 			}
+			if (1 == result) {
+			    if (1 == atparse)
+				if (!fg && !bg) {
+					oldccf = ccf;
+					oldccb = ccb;
+					oldcbr = cbr;
+					oldcfl = cfl;
+				} else {
+					if ((15 == fg) && (15 == bg)) {
+						if (-1 != oldccf) {
+							ccf = oldccf;
+							ccb = oldccb;
+							cbr = oldcbr;
+							cfl = oldcfl;
 
-		if (!xmode) {
-			c[0] = source.nextchar();
-			if ('@' != c[0])
+							attrib = colorcore();
+						}
+					} else {
+						cbr = (fg > 7);
+						cfl = (bg > 7);
+
+						ccf = pc_colortable[fg & 7];
+						ccb = pc_colortable[bg & 7];
+
+						attrib = colorcore();
+					}
+				}
+			} else {
+				update('@');
+				update(bgc[0]);
+				update(fgc[0]);
 				source.backup(c[0]);
+			}
+		    } else {
+			    update('@');
+			    if (xmode)
+				    update('X');
+			    update(bgc[0]);
+			    source.backup(fgc[0]);
+		    }
+		} else {
+			update('@');
+			if (xmode)
+				update('X');
+			source.backup(c[0]);
 		}
 		break;
 	case 'C':
@@ -426,6 +481,30 @@ void AnsiWindow::athandle()
 	}
 }
 
+void AnsiWindow::cpylow()
+{
+	if (cpy < 0)
+		cpy = 0;
+}
+
+void AnsiWindow::cpyhigh()
+{
+	if (anim && (cpy > (LINES - 2)))
+		cpy = LINES - 2;
+}
+
+void AnsiWindow::cpxhigh()
+{
+	if (cpx > (COLS - 1))
+		cpx = COLS - 1;
+}
+
+void AnsiWindow::cpxlow()
+{
+	if (cpx < 0)
+		cpx = 0;
+}
+
 void AnsiWindow::escfig()
 {
 	char a[2];
@@ -436,23 +515,19 @@ void AnsiWindow::escfig()
 	switch (a[0]) {
 	case 'A':			// cursor up
 		cpy -= getparm();
-		if (cpy < 0)
-			cpy = 0;
+		cpylow();
 		break;
 	case 'B':			// cursor down
 		cpy += getparm();
-		if (anim && (cpy > (LINES - 2)))
-			cpy = LINES - 2;
+		cpyhigh();
 		break;
 	case 'C':			// cursor right
 		cpx += getparm();
-		if (cpx > (COLS - 1))
-			cpx = COLS - 1;
+		cpxhigh();
 		break;
 	case 'D':			// cursor left
 		cpx -= getparm();
-		if (cpx < 0)
-			cpx = 0;
+		cpxlow();
 		break;
 	case 'J':			// clear screen
 		if (getparm() == 2)
@@ -461,7 +536,9 @@ void AnsiWindow::escfig()
 	case 'H':			// set cursor position
 	case 'f':
 		cpy = getparm() - 1;
+		cpylow(); cpyhigh();
 		cpx = getparm() - 1;
+		cpxlow(); cpxhigh();
 		break;
 	case 's':			// save position
 		spx = cpx;
@@ -496,6 +573,47 @@ void AnsiWindow::escfig()
 	}
 }
 
+void AnsiWindow::avatar()
+{
+	unsigned char c = source.nextchar();
+
+	switch (c) {
+	case 1:				// attribute set
+		pc_colorset(source.nextchar());
+		break;
+	case 2:				// blink on
+		cfl = 1;
+		break;
+	case 3:				// cursor up
+		cpy--;
+		cpylow();
+		break;
+	case 4:				// cursor down
+		cpy++;
+		cpyhigh();
+		break;
+	case 5:				// cursor left
+		cpx--;
+		cpxlow();
+		break;
+	case 6:				// cursor right
+		cpx++;
+		cpxhigh();
+		break;
+	case 7:				// clrtoeol() TODO
+		break;
+	case 8:				// set cursor position
+		cpy = source.nextchar();
+		cpyhigh();
+		cpx = source.nextchar();
+		cpxhigh();
+		break;
+	default:
+		update(22);
+		source.backup(c);
+	}
+}
+
 void AnsiWindow::posreset()
 {
 	cpx = cpy = lpy = spx = spy = 0;
@@ -524,8 +642,18 @@ void AnsiWindow::checkpos()
 
 void AnsiWindow::update(unsigned char c)
 {
+	// Characters 0 - 31
+	static const chtype lowtrans[] = {
+		' ', '0', '*', 'V', ACS_DIAMOND, ACS_PLUS, ACS_PLMINUS,
+		ACS_DEGREE, ACS_BLOCK, 'O', ACS_BLOCK, 'Q', 't', 'd',
+		'd', '*', 187, 171, ACS_VLINE, '!', 182, 167, ACS_BULLET,
+		ACS_PLMINUS, ACS_UARROW, ACS_DARROW, ACS_LARROW, ACS_RARROW,
+		ACS_LLCORNER, ACS_HLINE, ACS_UARROW, ACS_DARROW
+	};
+
+	// Characters 176 - 223
 	static const chtype acstrans[] = {
-		ACS_BOARD, ACS_BOARD, ACS_CKBOARD, ACS_VLINE, ACS_RTEE,
+		ACS_CKBOARD, ACS_CKBOARD, ACS_CKBOARD, ACS_VLINE, ACS_RTEE,
 		ACS_RTEE, ACS_RTEE, ACS_URCORNER, ACS_URCORNER, ACS_RTEE,
 		ACS_VLINE, ACS_URCORNER, ACS_LRCORNER, ACS_LRCORNER,
 		ACS_LRCORNER, ACS_URCORNER, ACS_LLCORNER, ACS_BTEE,
@@ -543,22 +671,67 @@ void AnsiWindow::update(unsigned char c)
 		//ACS_BULLET, ACS_VLINE, ACS_VLINE, ACS_BULLET
 	};
 
-
 	if (!ansiAbort) {
-		chtype ouch;
+		chtype ouch, localattrib = attrib;
 
+#ifndef ALLCHARSOK			// unprintable control codes
+		switch (c) {		// double musical note
+		case 14:
+			c = 19;
+			break;
+		case 15:		// much like an asterisk
+			c = '*';
+			break;
+		case 155:		// ESC + high-bit = slash-o,
+			c = 'o';	// except in CP 437
+		}
+#endif
 		if (isoConsole && !isLatin) {
-			if ((c > 175) && (c < 224)) {
-				ouch = acstrans[c - 176];
-
-				// suppress or'ing of A_ALTCHARSET:
-				c = ' ';
-
-			} else {
-				if (c & 0x80)
-					c = (unsigned char)
-						dos2isotab[c & 0x7f];
+#ifdef NCURSES_VERSION
+			if (useAltCharset) {
 				ouch = c;
+				if (c > 159)
+					ouch |= A_ALTCHARSET;
+			} else
+#endif
+			{
+				if ((c > 175) && (c < 224)) {
+					ouch = acstrans[c - 176];
+
+					// IBM character 219 should map to
+					// ACS_BLOCK, but since that's
+					// widely unimplemented, we map it
+					// to a reverse space instead. Note
+					// that some terminals (like PuTTY)
+					// would also like cfl and cbr
+					// swapped, but XFree86's xterm
+					// prefers otherwise.
+
+					if (c == 219) {
+						ouch = ' ';
+
+						crv = !crv;
+						localattrib = colorcore();
+						crv = !crv;
+					}
+
+					// suppress or'ing of A_ALTCHARSET:
+					c = ' ';
+
+				} else {
+					if (c < 32) {
+						ouch = lowtrans[c];
+						c = ' ';
+					} else {
+						if (c == 127)
+							c = 'A';
+						else
+						    if (c & 0x80)
+							c = (unsigned char)
+							  dos2isotab[c & 0x7f];
+						ouch = c;
+					}
+				}
 			}
 		} else {
 			if (!isoConsole && isLatin)
@@ -571,7 +744,7 @@ void AnsiWindow::update(unsigned char c)
 		if ((c < ' ') || ((c > 126) && (c < 160)))
 			ouch |= A_ALTCHARSET;
 
-		ouch |= attrib;
+		ouch |= localattrib;
 
 		int limit = LINES - 2;
 
@@ -614,6 +787,7 @@ void AnsiWindow::ResetChain()
 void AnsiWindow::MakeChain()
 {
 	unsigned char c;
+	unsigned int blen = 1;
 
 	ansiAbort = false;
 	if (!anim) {
@@ -626,78 +800,104 @@ void AnsiWindow::MakeChain()
 
 	source.reset();
 
+	if (bsvparse && isbsv) {
+		c = source.nextchar();
+		if (0xfd != c) {
+			source.backup(c);
+			isbsv = false;
+		}
+		for (blen = 0; blen < 5; blen++)
+			c = source.nextchar();
+		blen = source.nextchar();
+		blen <<= 8;
+		blen += c;
+	}
+
 	do {
 		c = source.nextchar();
 #ifdef LIMIT_MEM
 		if (coreleft() < ((unsigned long) NumOfLines *
-		    sizeof(AnsiLine *) + 0x200))
+		    sizeof(AnsiLine *) + 0x200)) {
 			c = 0;
-#endif
-
-		switch (c) {
-		case 1:			// hidden lines (only in pos 0)
-			if (!cpx) {
-				do
-					c = source.nextchar();
-				while (source.anyleft() && (c != '\n'));
-			}
-		case 0:
-			break;
-		case 8:			// backspace
-			if (cpx)
-				cpx--;
-			break;
-		case 10:
-			cpy++;
-		case 13:
-			cpx = 0;
-		case 7:			// ^G: beep
-		case 26:		// ^Z: EOF for DOS
-			break;
-		case 12:		// form feed
-			if (anim) {
-				animtext->Clear(C_ANSIBACK);
-				posreset();
-			}
-			break;
-#ifndef ALLCHARSOK			// unprintable control codes
-		case 14:		// double musical note
-			update(19);
-			break;
-		case 15:		// much like an asterisk
-			update('*');
-			break;
-		case 155:		// ESC + high bit = slash-o,
-			update('o');	// except in CP 437
-			break;
-#endif
-		case '`':
-		case 27:		// ESC
-			c = source.nextchar();
-			if ('[' == c) {
-				escparm[0] = '\0';
-				escfig();
-			} else {
-				source.backup(c);
-				update('`');
-			}
-			break;
-		case '\t':		// TAB
-			cpx = ((cpx / 8) + 1) * 8;
-			while (cpx >= COLS) {
-				cpx -= COLS;
-				cpy++;
-			}
-			break;
-		case '@':
-			if (atparse) {
-				athandle();
-				break;
-			}
-		default:
-			update(c);
+			blen = 2;
 		}
-	} while (c && !ansiAbort);
+#endif
+		if (bsvparse && isbsv) {
+			pc_colorset(source.nextchar());
+			if (!c)
+				c = ' ';
+			update(c);
+
+			blen -= 2;
+		} else
+			switch (c) {
+			case 1:			// hidden lines (in pos 0)
+				if (!cpx) {
+				    do
+					c = source.nextchar();
+				    while (source.anyleft() && (c != '\n'));
+				}
+			case 0:
+				break;
+			case 8:			// backspace
+				if (cpx)
+					cpx--;
+				break;
+			case 10:
+				cpy++;
+			case 13:
+				cpx = 0;
+			case 7:			// ^G: beep
+			case 26:		// ^Z: EOF for DOS
+				break;
+			case 12:		// form feed
+				cls();
+				break;
+			case 22:		// Main Avatar code
+				if (avtparse)
+					avatar();
+				else
+					update(c);
+				break;
+			case 25:		// Avatar RLE code
+				if (avtparse) {
+					unsigned char x;
+					c = source.nextchar();
+					x = source.nextchar();
+
+					while (x--)
+						update(c);
+				} else
+					update(c);
+				break;
+			case '`':
+			case 27:		// ESC
+				c = source.nextchar();
+				if ('[' == c) {
+					escparm[0] = '\0';
+					escfig();
+				} else {
+					source.backup(c);
+					update('`');
+				}
+				break;
+			case '\t':		// TAB
+				cpx = ((cpx / 8) + 1) * 8;
+				while (cpx >= COLS) {
+					cpx -= COLS;
+					cpy++;
+				}
+				break;
+			case '@':
+				if (atparse) {
+					athandle();
+					break;
+				}
+			default:
+				update(c);
+			}
+		
+	} while (c && !ansiAbort && blen);
 
 	if (!anim) {
 		curr->pack(chtmp, tlen);
@@ -721,7 +921,7 @@ void AnsiWindow::statupdate(const char *intro)
 {
 	static const char *helpmsg = "F1 or ? - Help ",
 		*mainstat = " ANSI View";
-	char format[30], *tmp = new char[COLS + 1];
+	char *tmp = new char[COLS + 1];
 	const char *pn = mm.resourceObject->get(PacketName);
 	bool expert = mm.resourceObject->getInt(ExpertMode);
 	
@@ -730,9 +930,9 @@ void AnsiWindow::statupdate(const char *intro)
 		pnlen = 20;
 
 	int maxw = COLS - pnlen - (expert ? 16 : 31);
-	sprintf(format, " %%.%ds |%%s: %%-%d.%ds %%s", pnlen, maxw, maxw);
-	sprintf(tmp, format, pn, (intro ? intro : mainstat), title,
-		expert ? "" : helpmsg);
+	sprintf(tmp, " %.*s |%s: %-*.*s %s", pnlen, pn,
+		(intro ? intro : mainstat),
+		maxw, maxw, title, expert ? "" : helpmsg);
 
 	statbar->cursor_on();
 	statbar->put(0, 0, tmp);
@@ -783,7 +983,7 @@ void AnsiWindow::lineCount()
 
 	sprintf(tmp, "Lines: %6d/%-6d %3d%%", position + 1, NumOfLines,
 		percent);
-	header->put(0, COLS-26, tmp);
+	header->put(0, COLS - 26, tmp);
 	header->delay_update();
 }
 
@@ -806,7 +1006,7 @@ void AnsiWindow::set(letter_body *ansiSource, const char *winTitle,
 	position = 0;
 	isLatin = latin;
 	title = winTitle;
-	atparse = 1;
+	isbsv = false;
 }
 
 void AnsiWindow::set(file_header *f, const char *winTitle, bool latin)
@@ -816,7 +1016,10 @@ void AnsiWindow::set(file_header *f, const char *winTitle, bool latin)
 	position = 0;
 	isLatin = latin;
 	title = winTitle;
-	atparse = 1;
+
+	const char *fname = f->getName();
+	size_t i = strlen(fname);
+	isbsv = (i > 4) && !strcasecmp(fname + i - 4, ".bsv");
 }
 
 void AnsiWindow::MakeActive()
@@ -832,7 +1035,7 @@ void AnsiWindow::MakeActive()
 	oldAbort = ansiAbort;
 
 	char *tmp = new char[COLS + 1];
-	i = sprintf(tmp, " " MM_TOPHEADER, MM_NAME, MM_MAJOR, MM_MINOR);
+	i = sprintf(tmp, " " MM_TOPHEADER, sysname());
 	for (; i < COLS; i++)
 		tmp[i] = ' ';
 	tmp[i] = '\0';
@@ -906,9 +1109,9 @@ void AnsiWindow::Delete()
 	source.close();
 }
 
-void AnsiWindow::setPos(int x)
+void AnsiWindow::setPos(int n)
 {
-	position = x;
+	position = n;
 }
 
 int AnsiWindow::getPos()
@@ -922,19 +1125,19 @@ searchret AnsiWindow::search(const char *item)
 
 	char *buffer = new char[COLS + 1];
 
-	for (int x = position + 1; (x < NumOfLines) && (found == False);
-	    x++) {
+	for (int n = position + 1; (n < NumOfLines) && (found == False);
+	    n++) {
 
 		if (text->keypressed() == 27) {
 			found = Abort;
 			break;
 		}
 
-		linelist[x]->unpacktext(buffer);
+		linelist[n]->unpacktext(buffer);
 		found = searchstr(buffer, item) ? True : False;
 
 		if (found == True) {
-			position = x;
+			position = n;
 			DrawBody();
 			text->delay_update();
 		}
@@ -1048,8 +1251,8 @@ void AnsiWindow::KeyHandle(int key)
 		}
 		break;
 	case 'V':
+	case 'A':
 	case 1:
-	case 22:
 		animate();
 		break;
 	case 'S':
@@ -1060,6 +1263,14 @@ void AnsiWindow::KeyHandle(int key)
 		atparse++;
 		if (3 == atparse)
 			atparse = 0;
+		ui->redraw();
+		break;
+	case 22:
+		avtparse = !avtparse;
+		ui->redraw();
+		break;
+	case 2:
+		bsvparse = !bsvparse;
 		ui->redraw();
 		break;
 	case MM_F1:

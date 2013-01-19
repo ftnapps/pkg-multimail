@@ -2,7 +2,7 @@
  * MultiMail offline mail reader
  * SOUP
 
- Copyright (c) 2002 William McBrine <wmcbrine@users.sourceforge.net>
+ Copyright (c) 2003 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -184,8 +184,8 @@ void sheader::output(FILE *msg, const char *cset, bool useQPHead,
 	if (has8bit)
 		fprintf(msg, MIMEhead, cset, useQPBody ? QP : eightbit);
 
-	fprintf(msg, "User-Agent: " MM_NAME "/%d.%d (SOUP; %s)\n\n",
-		MM_MAJOR, MM_MINOR, sysname());
+	fprintf(msg, "User-Agent: " MM_NAME "/" MM_VERNUM " (SOUP; %s)\n\n",
+		sysname());
 }
 
 const char *sheader::From()
@@ -237,14 +237,8 @@ const char *sheader::Refs()
 // The SOUP methods
 // -----------------------------------------------------------------
 
-soup::soup(mmail *mmA)
+soup::soup(mmail *mmA) : pktbase(mmA)
 {
-	mm = mmA;
-	ID = 0;
-	bodyString = 0;
-
-	infile = 0;
-
 	strncpy(packetBaseName, findBaseName(mm->resourceObject->
 		get(PacketName)), 8);
 	packetBaseName[8] = '\0';
@@ -267,12 +261,7 @@ soup::~soup()
 		delete[] areas[maxConf]->name;
 		delete areas[maxConf];
 	}
-	delete[] body;
 	delete[] areas;
-	delete bodyString;
-
-	if (infile)
-		fclose(infile);
 }
 
 bool soup::msgopen(int area)
@@ -311,8 +300,7 @@ area_header *soup::getNextArea()
 {
 	int cMsgNum = areas[ID]->nummsgs;
 
-	area_header *tmp = new area_header(mm,
-		ID + mm->driverList->getOffset(this), areas[ID]->numA,
+	area_header *tmp = new area_header(mm, ID + 1, areas[ID]->numA,
 		areas[ID]->msgfile, areas[ID]->name, "SOUP",
 		areas[ID]->attr | (cMsgNum ? ACTIVE : 0), cMsgNum,
 		0, 99, 511);
@@ -545,7 +533,7 @@ letter_body *soup::getBody(letter_header &mhead)
 	long length, offset;
 	letter_body head(0, 0), *currblk = &head;
 
-	AreaID = mhead.getAreaID() - mm->driverList->getOffset(this);
+	AreaID = mhead.getAreaID() - 1;
 	LetterID = mhead.getLetterID();
 
 	delete bodyString;
@@ -644,25 +632,18 @@ void soup::readAreas()
 
 	// Info not available in SOUP:
 
-	char *tmp;
 	const char *defName = mm->resourceObject->get(UserName);
 	const char *defAddr = mm->resourceObject->get(InetAddr);
 
 	if (defAddr) {
 		if (defName && *defName && strcmp(defName, defAddr)) {
-			tmp = new char[strlen(defName) +
+			LoginName = new char[strlen(defName) +
 				strlen(defAddr) + 6];
-			sprintf(tmp, quoteIt(defName) ?
+			sprintf(LoginName, quoteIt(defName) ?
 				"\"%s\" <%s>" : "%s <%s>", defName, defAddr);
 		} else
-			tmp = strdupplus(defAddr);
-	} else
-		tmp = strdupplus("");
-
-	mm->resourceObject->set_noalloc(LoginName, tmp);
-	mm->resourceObject->set(AliasName, "");
-	mm->resourceObject->set(BBSName, (char *) 0);
-	mm->resourceObject->set(SysOpName, (char *) 0);
+			LoginName = strdupplus(defAddr);
+	}
 
 	// AREAS:
 
@@ -751,20 +732,13 @@ souprep::upl_soup::upl_soup(const char *name) : pktreply::upl_base(name)
 {
 }
 
-souprep::souprep(mmail *mmA, specific_driver *baseClassA)
+souprep::souprep(mmail *mmA, specific_driver *baseClassA) :
+	pktreply(mmA, baseClassA)
 {
-	mm = mmA;
-	baseClass = (pktbase *) baseClassA;
-
-	replyText = 0;
-	uplListHead = 0;
-
-	replyExists = false;
 }
 
 souprep::~souprep()
 {
-	cleanup();
 }
 
 // convert one reply to MultiMail's internal format

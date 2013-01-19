@@ -3,7 +3,7 @@
  * help windows
 
  Copyright (c) 1996 Kolossvary Tamas <thomas@vma.bme.hu>
- Copyright (c) 2001 William McBrine <wmcbrine@users.sourceforge.net>
+ Copyright (c) 2003 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -77,7 +77,7 @@ void HelpWindow::h_packetlist()
 
 		"A", "^T", "^Z",
 		"B", "Space, F", "^X",
-		"T", "^"
+		"T", "|, ^"
 	}, *func[] = {
 		"Quit", "select packet", "change Sort type", 
 		"Kill packet", "search / next", "Go to directory",
@@ -145,7 +145,7 @@ void HelpWindow::h_letterlist()
 void HelpWindow::h_letter(bool isAnsi)
 {
 	enum {width = 60, citems = 18, regitems = 7, repitems = 3,
-		ansitems = 10};
+		ansitems = 12};
 
 	static const char *common[citems] = {
 		"S - Save letter",
@@ -181,42 +181,44 @@ void HelpWindow::h_letter(bool isAnsi)
 	}, *ansi[] = {
 		"S - Save to file",
 		"C - toggle Character set",
-		"V, ^V, ^A - Animate",
+		"V, A, ^A - Animate",
 		"/ - start a search",
 		". - repeat last search",
 		"Space - page down/next",
 		"- - previous",
 		"+ - next",
 		"@ - toggle at-code parsing",
+		"^V - toggle AVATAR parsing",
+		"^B - toggle BSAVE parsing",
 		"Q - Quit ANSI viewer"
 	};
 
-	int base = isAnsi ? ansitems : mm.areaList->isReplyArea() ?
+	int extras = isAnsi ? ansitems : mm.areaList->isReplyArea() ?
 		repitems : regitems;
 	int usecommon = isAnsi ? 0 : citems;
-	int height = ((base + usecommon + 1) >> 1) + 4;
+	int height = ((extras + usecommon + 1) >> 1) + 4;
 
 	menu = new ShadowedWin(height, width, (LINES - height) >> 1,
 		C_HELP3);
 	menu->attrib(C_HELP4);
 
-	const char **basechar = isAnsi ? ansi :
-		((base == 7) ? regular : reply);
+	const char **extchar = isAnsi ? ansi :
+		((extras == 7) ? regular : reply);
 
 	int x, line = 0;
 
-	for (x = 0; x < base; x++) {
+	for (x = 0; x < extras; x++) {
 		if (!(x & 1))
 			line++;
 		menu->put(line, (x & 1) ? (width >> 1) + 2 : 2,
-			basechar[x]);
+			extchar[x]);
 	}
 
-	for (x = base; x < usecommon + base; x++) {
+	for (x = extras; x < usecommon + extras; x++) {
 		if (!(x & 1))
 			line++;
 		menu->put(line, (x & 1) ? (width >> 1) + 2 : 2,
-			common[x - base]);
+			common[x - extras]);
 	}
 
 	menu->put(line + 2, 2,

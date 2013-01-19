@@ -4,7 +4,7 @@
 
  Copyright (c) 1996 Kolossvary Tamas <thomas@tvnet.hu>
  Copyright (c) 1997 John Zero <john@graphisoft.hu>
- Copyright (c) 2001 William McBrine <wmcbrine@users.sourceforge.net>
+ Copyright (c) 2003 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -18,18 +18,12 @@ void LetterWindow::set_Letter_Params(net_address &nm, const char *to)
 	To = strdupplus(to);
 }
 
-void LetterWindow::set_Letter_Params(int area, char param_key)
-{
-	key = param_key;
-	replyto_area = area;
-}
-
 void LetterWindow::QuoteText(FILE *reply)
 {
 	char TMP[81];
 	int i;
 	bool inet = !(!(mm.areaList->getType() & INTERNET));
-	const char *TMP2 = mm.letterList->getFrom();
+	const char *From = mm.letterList->getFrom();
 
 	int width = mm.resourceObject->getInt(QuoteWrapCols);
 	if ((width < 20) || (width > 80))
@@ -49,7 +43,7 @@ void LetterWindow::QuoteText(FILE *reply)
 			s = 0;
 			switch (tolower(*quotestr)) {
 			case 'f':
-				s = TMP2;
+				s = From;
 				break;
 			case 't':
 				s = mm.letterList->getTo();
@@ -82,27 +76,30 @@ void LetterWindow::QuoteText(FILE *reply)
 	// Set quote initials if necessary:
 
 	if (!inet) {
-		char mg[4];
+		char initials[4];
 
-		strncpy(mg, TMP2, 2);
-		mg[2] = '\0';
-		mg[3] = '\0';
+		// Start off with the first two letters of the name
+		strncpy(initials, From, 2);
+		initials[2] = '\0';
+		initials[3] = '\0';
 
+		// Find the first letters of each of the second and last
+		// words in the name, if available
 		i = 1;
 		for (int j = 1; j < 3; j++) {
 			bool end = false;
-			while (TMP2[i] && !end) {
-				if ((TMP2[i - 1] == ' ') && (TMP2[i] != ' ')) {
-					mg[j] = TMP2[i];
+			while (From[i] && !end) {
+				if ((From[i - 1] == ' ') && (From[i] != ' ')) {
+					initials[j] = From[i];
 					if (j == 1)
 						end = true;
 				}
 				i++;
 			}
 		}
-		letterconv_in(mg);
 
-		sprintf(TMP, " %s> ", mg);
+		letterconv_in(initials);
+		sprintf(TMP, " %s> ", initials);
 	} else
 		strcpy(TMP, "> ");
 
@@ -158,7 +155,7 @@ int LetterWindow::EnterHeader(char *FROM, char *TO, char *SUBJ, bool &privat)
 	if (hasTo)
 		maxitems++;
 
-	ShadowedWin rep_header(maxitems + 2, COLS - 2, (LINES / 2) - 3,
+	ShadowedWin rep_header(maxitems + 2, COLS - 4, (LINES / 2) - 3,
 		C_LETEXT);
 
 	rep_header.put(1, 2, "From:");
@@ -292,19 +289,22 @@ long LetterWindow::reconvert(const char *reply_filename)
 	return replen;
 }
 
-void LetterWindow::setToFrom(char *TO, char *FROM)
+void LetterWindow::setToFrom(char key, char *TO, char *FROM)
 {
 	char format[7];
 	sprintf(format, "%%.%ds", mm.areaList->maxToLen());
 
 	bool usealias = mm.areaList->getUseAlias();
 	if (usealias) {
-		sprintf(FROM, format, mm.resourceObject->get(AliasName));
+		const char *name = mm.packet->getAliasName();
+		sprintf(FROM, format, name ? name : "");
 		if (!FROM[0])
 			usealias = false;
 	}
-	if (!usealias)
-		sprintf(FROM, format, mm.resourceObject->get(LoginName));
+	if (!usealias) {
+		const char *name = mm.packet->getLoginName();
+		sprintf(FROM, format, name ? name : "");
+	}
 
 	if (mm.areaList->isUsenet()) {
 		const char *newsgrps = 0;
@@ -342,7 +342,7 @@ void LetterWindow::setToFrom(char *TO, char *FROM)
 					mm.letterList->getFrom());
 }
 
-void LetterWindow::EnterLetter()
+void LetterWindow::EnterLetter(int replyto_area, char key)
 {
 	FILE *reply;
 	char FROM[74], TO[514], SUBJ[514];
@@ -361,7 +361,7 @@ void LetterWindow::EnterLetter()
 
 	// HEADER
 
-	setToFrom(TO, FROM);
+	setToFrom(key, TO, FROM);
 
 	if (key == 'E')
 		SUBJ[0] = '\0';	//we don't have subject yet
@@ -577,8 +577,7 @@ void LetterWindow::EditLetter(bool forwarding)
 			NM.isSet = false;
 			newsflag = mm.areaList->isUsenet();
 		}
-		key = 'E';
-		setToFrom(TO, FROM);
+		setToFrom('E', TO, FROM);
 		sprintf(SUBJ, "%.513s", mm.letterList->getSubject());
 		privat = false;
 	} else {
@@ -693,7 +692,7 @@ bool LetterWindow::SplitLetter(int lines)
 	int replyto_area = mm.letterList->getAreaID();
 	int replyto_num = mm.letterList->getReplyTo();
 
-	char ORGSUBJ[514], format[15], *from, *to, *msgid, *newsgrps;
+	char ORGSUBJ[514], *from, *to, *msgid, *newsgrps;
 
 	from = strdupplus(mm.letterList->getFrom());
 	to = strdupplus(mm.letterList->getTo());
@@ -702,10 +701,11 @@ bool LetterWindow::SplitLetter(int lines)
 
 	sprintf(ORGSUBJ, "%.510s", mm.letterList->getSubject());
 
-	sprintf(format, "%d", parts);
-	int padsize = strlen(format);
-	sprintf(format, "%%s (%%0%dd/%%d)", padsize);
-
+	int x = parts;
+	int padsize = 1;
+	while (x /= 10)
+		padsize++;
+	
 	bool privat = mm.letterList->getPrivate();
 
 	int clines = 0;
@@ -728,7 +728,7 @@ bool LetterWindow::SplitLetter(int lines)
 		}
 		fclose(reply);
 
-		sprintf(SUBJ, format, ORGSUBJ, partno, parts);
+		sprintf(SUBJ, "%s (%0*d/%d)", ORGSUBJ, padsize, partno, parts);
 
 		mm.areaList->enterLetter(replyto_area, from, to, SUBJ, msgid,
 			newsgrps, replyto_num, privat, NM, reply_filename,

@@ -4,7 +4,7 @@
 
  Copyright (c) 1996 Kolossvary Tamas <thomas@tvnet.hu>
  Copyright (c) 1997 John Zero <john@graphisoft.hu>
- Copyright (c) 2002 William McBrine <wmcbrine@users.sourceforge.net>
+ Copyright (c) 2003 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -28,14 +28,14 @@ void LetterListWindow::listSave()
 	if (status) {
 		bool saveok = ui->letterwindow.Save(status);
 		if ((status == 1) && saveok)
-			Move(DOWN);
+			Move(KEY_DOWN);
 	}
 }
 
 void LetterListWindow::Next()
 {
 	do {
-		Move(DOWN);
+		Move(KEY_DOWN);
 		mm.letterList->gotoActive(active);
 	} while (mm.letterList->getRead() && ((active + 1) < NumOfItems()));
 }
@@ -49,7 +49,7 @@ void LetterListWindow::FirstUnread()
 void LetterListWindow::Prev()
 {
 	do {
-		Move(UP);
+		Move(KEY_UP);
 		mm.letterList->gotoActive(active);
 	} while (mm.letterList->getRead() && (active > 0));
 }
@@ -132,10 +132,7 @@ void LetterListWindow::setFormat()
 		maxFromLen, maxFromLen, maxToLen, maxToLen,
 			maxSubjLen, maxSubjLen);
 
-	sprintf(topformat, "   Msg#  %%-%d.%ds %%-%d.%ds %%-%d.%ds",
-		maxFromLen, maxFromLen, maxToLen, maxToLen,
-			maxSubjLen, maxSubjLen);
-
+	sprintf(topformat, "   Msg#%s", format + 10);
 	sprintf(topline, topformat, "From", "To", "Subject");
 }
 
@@ -143,7 +140,6 @@ void LetterListWindow::MakeActiveCore()
 {
 	static const char *llmodes[] = {"All", "Unread", "Marked"},
 		*llsorts[] = {"subject", "number", "from", "to"};
-	char tmpformat[50];
 
 	int maxbott = LINES -
 		(mm.resourceObject->getInt(ExpertMode) ? 7 : 11);
@@ -168,18 +164,14 @@ void LetterListWindow::MakeActiveCore()
 
 	char *title = new char[COLS + 1];
 
-	sprintf(tmpformat, "%%.%ds | %%s in %%.%ds", pnlen, nwidth);
-	char *end = title + sprintf(title, tmpformat,
-		pn, modestr, mm.areaList->getDescription());
+	char *end = title + sprintf(title, "%.*s | %s in %.*s",
+		pnlen, pn, modestr, nwidth, mm.areaList->getDescription());
 
 	char *newend = end + sprintf(end, ", by %s", sortstr);
 	if (too_many)
 		newend += sprintf(newend, " (%d)", NumOfItems());
-	if (flen) {
-		flen -= 3;
-		sprintf(tmpformat, " | %%.%ds", flen);
-		sprintf(newend, tmpformat, filter);
-	}
+	if (flen)
+		sprintf(newend, " | %.*s", flen - 3, filter);
 
 	areaconv_in(title);
 
@@ -261,7 +253,7 @@ bool LetterListWindow::extrakeys(int key)
 		mm.letterList->setStatus(mm.letterList->getStatus() ^
 			((key == 'U') ? MS_READ : MS_MARKED));
 		ui->setAnyRead();
-		Move(DOWN);
+		Move(KEY_DOWN);
 		Draw();
 		break;
 	case 5:
@@ -272,9 +264,8 @@ bool LetterListWindow::extrakeys(int key)
 		    if (!(mm.areaList->getType() & (COLLECTION | READONLY))) {
 			    if ((5 == key) || mm.areaList->isEmail())
 				ui->addressbook();
-			    ui->letterwindow.set_Letter_Params(
+			    ui->letterwindow.EnterLetter(
 				mm.areaList->getAreaNo(), 'E');
-			    ui->letterwindow.EnterLetter();
 		    } else
 			    ui->nonFatalError("Cannot reply there");
 		break;
@@ -292,17 +283,6 @@ bool LetterListWindow::extrakeys(int key)
 		break;
 	case '$':
 		mm.letterList->resort();
-		delete list;
-		MakeActiveCore();
-		break;
-	case '^':
-		{
-			char item[80];
-			*item = '\0';
-
-			if (ui->savePrompt("Filter on:", item))
-				mm.letterList->setFilter(item);
-		}
 		ui->redraw();
 		break;
 	case 'S':
@@ -310,4 +290,9 @@ bool LetterListWindow::extrakeys(int key)
 		ui->redraw();
 	}
 	return false;
+}
+
+void LetterListWindow::setFilter(const char *item)
+{
+	mm.letterList->setFilter(item);
 }

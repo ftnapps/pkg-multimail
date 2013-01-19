@@ -33,7 +33,10 @@ precompiled binaries, see the README files that accompany them instead.
     libraries, not just C.
 
     Note that although DJGPP 2.01 comes with PDCurses 2.2, I've made some
-    changes that depend on 2.3.
+    changes that depend on 2.3. In general, you should use PDCurses 2.6
+    or later, since it incorporates my patch to make halfdelay() work
+    correctly (instead of hogging the CPU); however, the OS/2 port of 2.6
+    has a fatal bug. (Write me if you want a patch for that.)
 
     The 16-bit MS-DOS port also uses Ralf Brown's SPAWNO library:
 
@@ -89,9 +92,9 @@ Be sure to try out the window resizing; the SIGWINCH handling in XCurses
 is much smoother than under an xterm (with ncurses or another
 implementation).
 
-You should use PDCurses beta 2.4 or later. Earlier versions don't support
-the use of a black (or dark grey) foreground color on a black background
-(the default color for the shadows, also found in many ANSI pics).
+You need PDCurses 2.5 or later. Earlier versions expected an external
+define, "XCursesProgramName", which is no longer used, and hence no longer
+included in the MultiMail source.
 
 
 Compile notes: Win32, MS-DOS, and OS/2
@@ -150,22 +153,6 @@ This one looks more serious:
 
 But as far as I can tell, it too is harmless. Apparently it arises on
 systems with mismatched header files.
-
-Newer versions of gcc (2.7.2.3 or later?) give the following warning in an
-attempt to alert you to possible Y2K problems:
-
-  qwk.cc: In method `void qwkreply::enterLetter(class letter_header &,
-  const char *, int)':
-  qwk.cc:696: warning: `%y' yields only last 2 digits of year
-
-(This refers to an invocation of strftime() with that parameter.) In this
-case, the two-digit year is mandated by the QWK format. Don't worry; it
-still works in 2000. :-) This warning will also appear for the OPX module.
-
-On linking, some versions of gcc give a warning that reads, in part,
-"tmpnam() may be used unsafely". However, it says this for *any* usage of
-the tmpnam() function; and its suggested substitute is not really relevant
-to the way MultiMail works.
 
 Finally, some versions of the system header files (notably, those included
 with Red Hat 6.0) define toupper() and tolower() as multi-statement

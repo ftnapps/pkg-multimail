@@ -4,7 +4,7 @@
 
  Copyright (c) 1996 Kolossvary Tamas <thomas@tvnet.hu>
  Copyright (c) 1997 John Zero <john@graphisoft.hu>
- Copyright (c) 2002 William McBrine <wmcbrine@users.sourceforge.net>
+ Copyright (c) 2003 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -41,7 +41,7 @@ void Win::init(int height, int width, int topline)
 
 void Win::Clear(chtype backg)
 {
-	wbkgdset(win, backg | ' ');
+	wbkgdset(win, backg);
 	werase(win);
 	wbkgdset(win, ' ');
 	attrib(backg);
@@ -49,7 +49,10 @@ void Win::Clear(chtype backg)
 
 void Win::Clear(coltype backg)
 {
-	Clear(ColorArray[backg]);
+	wbkgdset(win, ColorArray[backg] | ' ');
+	werase(win);
+	wbkgdset(win, ' ');
+	attrib(ColorArray[backg]);
 }
 
 void Win::put(int y, int x, chtype z)
@@ -140,10 +143,10 @@ void Win::attrib(coltype z)
 	attrib(ColorArray[z]);
 }
 
-void Win::horizline(int y, int len)
+void Win::horizline(int y)
 {
 	wmove(win, y, 1);
-	whline(win, ACS_HLINE, len);
+	whline(win, ACS_HLINE, getmaxx(win) - 2);
 }
 
 void Win::update()
@@ -429,6 +432,7 @@ int ShadowedWin::getstring(int y, int x, char *string, int maxlen,
 			break;
 		case MM_END:
 			i = strlen(tmp);
+			break;
 #ifdef USE_MOUSE
 		case MM_MOUSE:
 			mm_mouse_get();
@@ -578,13 +582,8 @@ chtype ListWindow::setHighlight(chtype ch)
 
 void ListWindow::Draw()
 {
-#ifdef __PDCURSES__
-	const chtype current = ACS_DIAMOND | A_ALTCHARSET;
-	const chtype old = ACS_BOARD;
-#else
 	const chtype current = ACS_DIAMOND;
 	const chtype old = ACS_CKBOARD;
-#endif
 	int i, j, limit = NumOfItems();
 
 	checkPos(limit);
@@ -660,29 +659,29 @@ void ListWindow::DrawAll()
 	Draw();
 }
 
-void ListWindow::Move(direction dir)
+void ListWindow::Move(int dir)
 {
 	int limit = NumOfItems();
 
 	switch (dir) {
-	case UP:
+	case KEY_UP:
 		active--;
 		break;
-	case DOWN:
+	case KEY_DOWN:
 		active++;
 		break;
-	case PGUP:
+	case KEY_PPAGE:
 		position -= list_max_y;
 		active -= list_max_y;
 		break;
-	case PGDN:
+	case KEY_NPAGE:
 		position += list_max_y;
 		active += list_max_y;
 		break;
-	case HOME:
+	case KEY_HOME:
 		active = 0;
 		break;
-	case END:
+	case KEY_END:
 		active = limit - 1;
 		break;
 	}
@@ -723,12 +722,12 @@ searchret ListWindow::search(const char *item, int mode)
 
 void ListWindow::Prev()
 {
-	Move(UP);
+	Move(KEY_UP);
 }
 
 void ListWindow::Next()
 {
-	Move(DOWN);
+	Move(KEY_DOWN);
 }
 
 
@@ -751,18 +750,18 @@ bool ListWindow::KeyHandle(int key)
 		    } else {
 			mouse_event.y -= begy;
 			if (-1 == mouse_event.y)
-			    Move(UP);
+			    Move(KEY_UP);
 			else
 			    if (list_max_y == mouse_event.y)
-				Move(DOWN);
+				Move(KEY_DOWN);
 			    else
 				if ((begx + list_max_x) ==
 				    mouse_event.x) {
 					if (mouse_event.y > oldHigh)
-					    Move(PGDN);
+					    Move(KEY_NPAGE);
 					else
 					    if (mouse_event.y < oldHigh)
-						Move(PGUP);
+						Move(KEY_PPAGE);
 				} else {
 					bool select = (mouse_event.bstate &
 					    BUTTON1_DOUBLE_CLICKED) || (active
@@ -797,25 +796,37 @@ bool ListWindow::KeyHandle(int key)
 		Next();
 		break;
 	case MM_DOWN:
-		Move(DOWN);
+		Move(KEY_DOWN);
 		break;
 	case MM_UP:
-		Move(UP);
+		Move(KEY_UP);
 		break;
 	case MM_HOME:
-		Move(HOME);
+		Move(KEY_HOME);
 		break;
 	case MM_END:
-		Move(END);
+		Move(KEY_END);
 		break;
 	case 'B':
 	case MM_PPAGE:
-		Move(PGUP);
+		Move(KEY_PPAGE);
 		break;
 	case ' ':
 	case 'F':
 	case MM_NPAGE:
-		Move(PGDN);
+		Move(KEY_NPAGE);
+		break;
+	case '|':
+	case '^':
+		draw = false;
+		{
+			char item[80];
+			*item = '\0';
+
+			if (ui->savePrompt("Filter on:", item))
+				setFilter(item);
+		}
+		ui->redraw();
 		break;
 	default:
 		draw = false;

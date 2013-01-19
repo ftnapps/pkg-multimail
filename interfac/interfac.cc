@@ -4,7 +4,7 @@
 
  Copyright (c) 1996 Kolossvary Tamas <thomas@tvnet.hu>
  Copyright (c) 1997 John Zero <john@graphisoft.hu>
- Copyright (c) 2002 William McBrine <wmcbrine@users.sourceforge.net>
+ Copyright (c) 2003 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -12,15 +12,12 @@
 #include "error.h"
 #include "interfac.h"
 
-#ifdef XCURSES
-const char *XCursesProgramName = MM_NAME;
-#endif
-
 Interface::Interface()
 {
         isoConsole = mm.resourceObject->getInt(Charset);
 	lynxNav = mm.resourceObject->getInt(UseLynxNav);
 	searchItem = 0;
+	goodbye = 0;
 #ifdef SIGWINCH
 	resized = false;
 # if !defined(XCURSES) && !defined(NCURSES_SIGWINCH)
@@ -42,6 +39,7 @@ void Interface::init()
 	addresses.Init();
 	alive();
 	screen_init();
+	ansiwindow.Init();
 }
 
 void Interface::main()
@@ -131,7 +129,7 @@ void Interface::alive()
 # endif
 #endif
 
-#ifdef NOTYPEAHEAD
+#ifdef __PDCURSES__
 	typeahead(-1);
 #endif
 }
@@ -153,14 +151,17 @@ void Interface::screen_init()
 
 	// Border and title:
 
-	sprintf(tmp, MM_TOPHEADER, MM_NAME, MM_MAJOR, MM_MINOR);
+#if (defined(__PDCURSES__) && defined(__WIN32__)) || defined(XCURSES)
+	PDC_set_title(MM_NAME);
+#endif
+	sprintf(tmp, MM_TOPHEADER, sysname());
 	screen->boxtitle(C_SBORDER, tmp, emph(C_SBACK));
 
 	// Help window area:
 
 	if (!mm.resourceObject->getInt(ExpertMode)) {
 		screen->attrib(C_SSEPBOTT);
-		screen->horizline(LINES - 5, COLS - 2);
+		screen->horizline(LINES - 5);
 	}
 	screen->delay_update();
 }
@@ -429,6 +430,7 @@ void Interface::redraw()
 
 void Interface::newpacket()
 {
+	file_header *hello, *newFiles, **bulletins;
 	static const char *keepers[] = {"Save", "Kill"};
 	unsaved_reply = any_read = false;
 
@@ -449,13 +451,24 @@ void Interface::newpacket()
 		mm.areaList->setMode(0);
 		mm.areaList->relist();
 	}
-	areas.FirstUnread();
-	changestate(arealist);
 
-	bool latin = mm.isLatin();
+	bool latin = mm.packet->isLatin();
 
-	bulletins = mm.getBulletins();
-	if (bulletins)
+	hello = mm.packet->getHello();
+	goodbye = mm.packet->getGoodbye();
+	newFiles = mm.packet->getFileList();
+
+	bulletins = mm.packet->getBulletins();
+
+	if (hello)
+		ansiFile(hello, hello->getName(), latin);
+
+	if (!abortNow) {
+		areas.FirstUnread();
+		changestate(arealist);
+	}
+
+	if (!abortNow && bulletins) {
 		if (WarningWindow("View bulletins?")) {
 			file_header **a = bulletins;
 			while (a && *a) {
@@ -472,14 +485,15 @@ void Interface::newpacket()
 				}
 			}
 		} else
-			changestate(arealist);
+			redraw();
+	}
 
-	newFiles = mm.getFileList();
-	if (newFiles)
+	if (!abortNow && newFiles) {
 		if (WarningWindow("View new files list?"))
 			ansiFile(newFiles, "New files", latin);
 		else
-			changestate(arealist);
+			redraw();
+	}
 }
 
 bool Interface::select()
@@ -557,6 +571,11 @@ bool Interface::back()
 				redraw();
 				create_reply_packet();
 			}
+		if (!abortNow && goodbye) {
+			ansiFile(goodbye, goodbye->getName(),
+				mm.packet->isLatin());
+			goodbye = 0;
+		}
 		mm.Delete();
 		if (abortNow || commandline) {
 			oldstate(state);
@@ -578,7 +597,7 @@ bool Interface::back()
 	case tagwin:
 	case ansiwin:
 		changestate(prevstate);
-		return abortNow ? back() : true;
+		return (abortNow && (state != arealist)) ? back() : true;
 	default:;
 	}
 	return false;
@@ -951,6 +970,9 @@ void Interface::KeyHandle()		// Main loop
 				case address:
 				case tagwin:
 					currList->KeyHandle(Key);
+					break;
+				case ansiwin:
+					ansiwindow.KeyHandle(Key);
 				default:;
 				}
 				break;
@@ -1012,8 +1034,6 @@ void Interface::KeyHandle()		// Main loop
 				case ansiwin:
 					switch (Key) {
 					case MM_RIGHT:
-						if (lynxNav)
-							break;
 					case MM_LEFT:
 					case MM_PLUS:
 					case MM_MINUS:

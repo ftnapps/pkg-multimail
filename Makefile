@@ -12,9 +12,9 @@ include version
 # Optimized, no debug:
 #OPTS = -O2 -Wall -pedantic
 
-# Optimized for egcs -- since MultiMail does not (yet) use exceptions, we
-# can save a little space in the executable:
-OPTS = -O2 -Wall -pedantic -fno-exceptions -fno-rtti -fconserve-space
+# Optimized for recent versions of gcc:
+OPTS = -O2 -Wall -pedantic -fno-exceptions -fno-rtti -fconserve-space \
+-Wno-deprecated
 
 # PREFIX is the base directory under which to install the binary and man 
 # page; generally either /usr/local or /usr (or perhaps /opt...):
@@ -65,9 +65,10 @@ LIBS = -lcurses
 #CURS_LIB = /usr/local/lib
 #LIBS = -lncurses
 
-# For static linking:
+# For static linking (examples):
 
 #LIBS = /usr/lib/libncurses.a
+#LIBS = /opt/sfw/lib/libncurses.a
 
 #--------------------------------------------------------------
 # With ncurses installed in the user's home directory:
@@ -79,13 +80,15 @@ LIBS = -lcurses
 #LIBS = -lncurses
 
 #--------------------------------------------------------------
-# With XCurses (PDCurses 2.5) in my home directory:
+# With XCurses (PDCurses 2.6) in my home directory:
 
-#CURS_INC = \\\"/home/wmcbrine/PDCurses-2.5/curses.h\\\"
+#CURS_INC = \\\"/home/wmcbrine/PDCurses-2.6/curses.h\\\"
 # Sneak some extra defines in through the back door:
-#CURS_DIR = /home/wmcbrine/PDCurses-2.5 -DXCURSES -DHAVE_PROTO
-#CURS_LIB = /home/wmcbrine/PDCurses-2.5/pdcurses
-#LIBS = -L/usr/X11R6/lib -lXCurses -lXaw -lXmu -lXt -lX11 -lSM -lICE -lXext
+#CURS_DIR = /home/wmcbrine/PDCurses-2.6 -DXCURSES -DHAVE_PROTO
+#CURS_LIB = /home/wmcbrine/PDCurses-2.6/pdcurses
+#LIBS = -L/usr/X11R6/lib \
+#/home/wmcbrine/PDCurses-2.6/pdcurses/libXCurses.a \
+#-lXaw -lXmu -lXt -lX11 -lSM -lICE -lXext
 
 #--------------------------------------------------------------
 #--------------------------------------------------------------

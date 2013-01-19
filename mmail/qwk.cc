@@ -3,7 +3,7 @@
  * QWK
 
  Copyright (c) 1997 John Zero <john@graphisoft.hu>
- Copyright (c) 2001 William McBrine <wmcbrine@users.sourceforge.net>
+ Copyright (c) 2003 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -105,24 +105,18 @@ bool qheader::init_short(FILE *datFile)
 	return true;
 }
 
+// Write the header to a file, except for the length:
 void qheader::output(FILE *repFile)
 {
 	qwkmsg_header qh;
 	char buf[10];
-	long chunks, length;
 	int sublen;
 
-	length = msglen;
 	sublen = strlen(subject);
-	if (sublen > 25) {
-		length += sublen + 11;
+	if (sublen > 25)
 		sublen = 25;
-	}
 
 	memset(&qh, ' ', sizeof qh);
-
-	length++;
-	chunks = length / 128 + ((length % 128) != 0);
 
 	sprintf(buf, " %-6ld", msgnum);
 	strncpy(qh.msgnum, buf, 7);
@@ -142,31 +136,37 @@ void qheader::output(FILE *repFile)
 	strncpy(qh.date, date, 8);
 	strncpy(qh.time, &date[9], 5);
 
-	sprintf(buf, "%-6ld", chunks + 1);
-	strncpy(qh.chunks, buf, 6);
 	if (privat)
 		qh.status = '*';
 
 	fwrite(&qh, 1, sizeof qh, repFile);
 }
 
+// Pad out with spaces, as necessary, and write the length to the header:
+void qheader::set_length(FILE *repFile, long headerpos, long curpos)
+{
+	long length;
+
+	for (length = curpos - headerpos; (length & 0x7f); length++)
+		fputc(' ', repFile);
+
+	fseek(repFile, headerpos + CHUNK_OFFSET, SEEK_SET);
+	fprintf(repFile, "%-6ld", (length >> 7));
+	fseek(repFile, headerpos + length, SEEK_SET);
+}
+
 // -----------------------------------------------------------------
 // The QWK methods
 // -----------------------------------------------------------------
 
-qwkpack::qwkpack(mmail *mmA)
+qwkpack::qwkpack(mmail *mmA) : pktbase(mmA)
 {
-	mm = mmA;
-	ID = 0;
-	bodyString = 0;
-
 	qwke = !(!mm->workList->exists("toreader.ext"));
 
 	readControlDat();
+	readDoorId();
 	if (qwke)
 		readToReader();
-	else
-		readDoorId();
 
 	infile = mm->workList->ftryopen("messages.dat");
 	if (!infile)
@@ -174,7 +174,7 @@ qwkpack::qwkpack(mmail *mmA)
 
 	readIndices();
 
-	listBulletins(textfiles, 3);
+	listBulletins(newsfile, 1);
 }
 
 qwkpack::~qwkpack()
@@ -195,8 +195,7 @@ area_header *qwkpack::getNextArea()
 	bool x = (areas[ID].num == -1);
 
 	area_header *tmp = new area_header(mm,
-		ID + mm->driverList->getOffset(this),
-		areas[ID].numA, areas[ID].name,
+		ID + 1, areas[ID].numA, areas[ID].name,
 		(x ? "Letters addressed to you" : areas[ID].name),
 		(qwke ? (x ? "QWKE personal" : "QWKE") :
 		(x ? "QWK personal" : "QWK")),
@@ -332,8 +331,6 @@ void qwkpack::readIndices()
 
 		long counter;
 		int personal = 0;
-		const char *name = mm->resourceObject->get(LoginName);
-		const char *alias = mm->resourceObject->get(AliasName);
 
 		qheader qHead;
 
@@ -349,8 +346,8 @@ void qwkpack::readIndices()
 
 				tmpndx->confnum = x;
 
-				if (!strcasecmp(qHead.to, name) ||
-				    (qwke && !strcasecmp(qHead.to, alias))) {
+				if (!strcasecmp(qHead.to, LoginName) || (qwke
+				    && !strcasecmp(qHead.to, AliasName))) {
 					tmpndx->pers = true;
 					personal++;
 				} else
@@ -492,7 +489,7 @@ void qwkpack::readControlDat()
 	if (!infile)
 		fatalError("Could not open CONTROL.DAT");
 
-	mm->resourceObject->set(BBSName, nextLine());	// 1: BBS name
+	BBSName = strdupplus(nextLine());		// 1: BBS name
 	nextLine();					// 2: city/state
 	nextLine();					// 3: phone#
 
@@ -507,7 +504,7 @@ void qwkpack::readControlDat()
 				*p = '\0';
 		}
 	}
-	mm->resourceObject->set(SysOpName, q);
+	SysOpName = strdupplus(q);
 
 	q = nextLine();					// 5: doorserno,BBSid
 	strtok(q, ",");
@@ -519,8 +516,8 @@ void qwkpack::readControlDat()
 
 	p = nextLine();					// 7: user's name
 	cropesp(p);
-	mm->resourceObject->set(LoginName, p);
-	mm->resourceObject->set(AliasName, p);
+	LoginName = strdupplus(p);
+	AliasName = strdupplus(p);
 
 	nextLine();					// 8: blank/any
 	nextLine();					// 9: anyth.
@@ -543,22 +540,36 @@ void qwkpack::readControlDat()
 		areas[c].attr = PUBLIC | PRIVATE;
 	}
 
-	for (c = 0; c < 3; c++)
-		strncpy(textfiles[c], nextLine(), 12);
+	hello = strdupplus(nextLine());
+	strncpy(newsfile[0], nextLine(), 12);
+	goodbye = strdupplus(nextLine());
 
 	fclose(infile);
 }
 
 void qwkpack::readDoorId()
 {
-	const char *s;
 	bool hasAdd = false, hasDrop = false;
 
-	strcpy(controlname, "QMAIL");
+	if (!qwke)
+		strcpy(controlname, "QMAIL");
 
 	infile = mm->workList->ftryopen("door.id");
 	if (infile) {
-		while (!feof(infile)) {
+		const char *s;
+		char tmp[80], *t;
+
+		t = strdupplus(nextLine());	// DOOR =
+		s = nextLine();			// VERSION =
+		sprintf(tmp, "%s %s", strchr(t, '=') + 2,
+			strchr(s, '=') + 2);
+		delete[] t;
+		DoorProg = strdupplus(tmp);
+
+		s = nextLine();			// SYSTEM =
+		BBSProg = strdupplus(strchr(s, '=') + 2);
+
+		while (!qwke && !feof(infile)) {
 			s = nextLine();
 			if (!strcasecmp(s, "CONTROLTYPE = ADD"))
 			    hasAdd = true;
@@ -571,7 +582,8 @@ void qwkpack::readDoorId()
 		}
 		fclose(infile);
 	}
-	hasOffConfig = (hasAdd && hasDrop) ? OFFCONFIG : 0;
+	if (!qwke)
+		hasOffConfig = (hasAdd && hasDrop) ? OFFCONFIG : 0;
 }
 
 // Read the QWKE file TOREADER.EXT
@@ -635,8 +647,8 @@ void qwkpack::readToReader()
 			} else
 				if (!strncasecmp(s, "alias ", 6)) {
 					cropesp(s);
-					mm->resourceObject->set(AliasName,
-						s + 6);
+					delete[] AliasName;
+					AliasName = strdupplus(s + 6);
 				}
 		}
 		fclose(infile);
@@ -657,22 +669,14 @@ qwkreply::upl_qwk::upl_qwk(const char *name) : pktreply::upl_base(name)
 	memset(&qHead, 0, sizeof(qHead));
 }
 
-qwkreply::qwkreply(mmail *mmA, specific_driver *baseClassA)
+qwkreply::qwkreply(mmail *mmA, specific_driver *baseClassA) :
+	pktreply(mmA, baseClassA)
 {
-	mm = mmA;
-	baseClass = (pktbase *) baseClassA;
-
-	replyText = 0;
 	qwke = ((qwkpack *) baseClass)->isQWKE();
-
-	uplListHead = 0;
-
-	replyExists = false;
 }
 
 qwkreply::~qwkreply()
 {
-	cleanup();
 }
 
 bool qwkreply::getRep1(FILE *rep, upl_qwk *l)
@@ -768,22 +772,13 @@ letter_header *qwkreply::getNextLetter()
 	return newLetter;
 }
 
-int qwkreply::monthval(const char *abbr)
-{
-	static const char *month_abbr[] =
-		{"Jan", "Feb", "Mar", "Apr", "Mar", "Jun",
-	 	"Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
-	int c;
-
-	for (c = 0; c < 12; c++)
-		if (!strcmp(month_abbr[c], abbr))
-			break;
-	return c + 1;
-}
-
 void qwkreply::enterLetter(letter_header &newLetter,
 			const char *newLetterFileName, long length)
 {
+	// Specify the format separately from strftime() to supress
+	// GCC's Y2K warning:
+	const char *datefmt_qwk = "%m-%d-%y %H:%M";
+
 	upl_qwk *newList = new upl_qwk(newLetterFileName);
 
 	strncpy(newList->qHead.subject, newLetter.getSubject(), 71);
@@ -794,9 +789,8 @@ void qwkreply::enterLetter(letter_header &newLetter,
 	newList->qHead.privat = newLetter.getPrivate();
 	newList->qHead.refnum = newLetter.getReplyTo();
 
-	time_t tt = time(0);
-	strftime(newList->qHead.date, 15, "%m-%d-%y %H:%M",
-		localtime(&tt));
+	time_t now = time(0);
+	strftime(newList->qHead.date, 15, datefmt_qwk, localtime(&now));
 
 	newList->qHead.msglen = newList->msglen = length;
 
@@ -807,21 +801,14 @@ void qwkreply::addRep1(FILE *rep, upl_base *node, int)
 {
 	FILE *replyFile;
 	upl_qwk *l = (upl_qwk *) node;
-	long length, count = 0;
-	int sublen;
-	bool longsub;
+	long count = 0;
 
+	long headerpos = ftell(rep);
 	l->qHead.output(rep);
 
-	length = l->qHead.msglen;
-	sublen = strlen(l->qHead.subject);
-	longsub = (sublen > 25);
-
-	if (longsub) {
-		length += sublen + 11;
+	if (strlen(l->qHead.subject) > 25)
 		fprintf(rep, "Subject: %s%c%c", l->qHead.subject,
 			(char) 227, (char) 227);
-	}
 
 	replyFile = fopen(l->fname, "rt");
 	if (replyFile) {
@@ -849,12 +836,9 @@ void qwkreply::addRep1(FILE *rep, upl_base *node, int)
 	}
 
 	fputc((char) 227, rep);
-	length++;
 
-	length %= 128L;
-	if (length)
-		for (count = 0; count < (128L - length); count++)
-			fputc(' ', rep);
+	long curpos = ftell(rep);
+	l->qHead.set_length(rep, headerpos, curpos);
 }
 
 void qwkreply::addHeader(FILE *repFile)
@@ -936,7 +920,7 @@ bool qwkreply::makeOffConfig()
 		if (!todoor)
 			return false;
 	} else {
-		myname = mm->resourceObject->get(LoginName);
+		myname = baseClass->getLoginName();
 		ctrlName = ((qwkpack *) baseClass)->ctrlName();
 	}
 

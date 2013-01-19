@@ -2,7 +2,7 @@
  * MultiMail offline mail reader
  * OMEN
 
- Copyright (c) 2001 William McBrine <wmcbrine@users.sourceforge.net>
+ Copyright (c) 2003 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -18,12 +18,8 @@ enum {OM_WRITE = 1, OM_SYSOP = 2, OM_PRIVATE = 4, OM_PUBLIC = 8,
 // The OMEN methods
 // -----------------------------------------------------------------
 
-omen::omen(mmail *mmA)
+omen::omen(mmail *mmA) : pktbase(mmA)
 {
-	mm = mmA;
-	ID = 0;
-	bodyString = 0;
-
 	strcpy(extent, defExtent());
 
 	readSystemBBS();
@@ -53,8 +49,7 @@ area_header *omen::getNextArea()
 	int cMsgNum = areas[ID].nummsgs;
 	bool x = (areas[ID].num == -1);
 
-	area_header *tmp = new area_header(mm,
-		ID + mm->driverList->getOffset(this), areas[ID].numA,
+	area_header *tmp = new area_header(mm, ID + 1, areas[ID].numA,
 		areas[ID].name, (x ? "Letters addressed to you" :
 		areas[ID].name), (x ? "OMEN personal" : "OMEN"),
 		areas[ID].attr | (cMsgNum ? ACTIVE : 0), cMsgNum,
@@ -231,9 +226,9 @@ void omen::readSystemBBS()
 	// The following info is unavailable in OMEN:
 	const char *defName = mm->resourceObject->get(UserName);
 
-	mm->resourceObject->set(LoginName, (defName && *defName) ?
+	LoginName = strdupplus((defName && *defName) ?
 		defName: "(set on upload)");
-	mm->resourceObject->set(AliasName, "(set on upload)");
+	AliasName = strdupplus("(set on upload)");
 
 	// INFOxy.BBS:
 
@@ -242,17 +237,19 @@ void omen::readSystemBBS()
 		while (!feof(infile)) {
 			const char *line = nextLine();
 			if (!strncasecmp(line, "sysop:", 6))
-				mm->resourceObject->set(SysOpName, line + 6);
+			    SysOpName = strdupplus(line + 6);
 			else
-				if (!strcasecmp(line, "select:on"))
-					hasOffConfig = OFFCONFIG;
+			    if (!strcasecmp(line, "select:on"))
+				hasOffConfig = OFFCONFIG;
+			    else
+				if (!strcasecmp(line, "c_set:iso"))
+				    useLatin = LATINCHAR;
 				else
-					if (!strcasecmp(line, "c_set:iso"))
-						useLatin = LATINCHAR;
+				    if (!strncasecmp(line, "origin:", 7))
+					DoorProg = strdupplus(line + 7);
 		}
 		fclose(infile);
-	} else
-			mm->resourceObject->set(SysOpName, (char *) 0);
+	}
 
 	// SYSTEMxy.BBS, and BNAMESxy.BBS if available:
 
@@ -271,7 +268,7 @@ void omen::readSystemBBS()
 
 		fread(&b, 1, 41, infile);
 		b.name[b.len] = '\0';
-		mm->resourceObject->set(BBSName, b.name);
+		BBSName = strdupplus(b.name);
 
 		areas = new AREAs[maxConf];
 		areatmp = new ATMP[maxConf - 1];
@@ -393,20 +390,13 @@ void omenrep::upl_omen::output(FILE *rep)
 	fwrite(&omen_rec, sizeof omen_rec, 1, rep);
 }
 
-omenrep::omenrep(mmail *mmA, specific_driver *baseClassA)
+omenrep::omenrep(mmail *mmA, specific_driver *baseClassA) :
+	pktreply(mmA, baseClassA)
 {
-	mm = mmA;
-	baseClass = (pktbase *) baseClassA;
-
-	replyText = 0;
-	uplListHead = 0;
-
-	replyExists = false;
 }
 
 omenrep::~omenrep()
 {
-	cleanup();
 }
 
 // convert one reply to MultiMail's internal format

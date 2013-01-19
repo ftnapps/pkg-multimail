@@ -3,7 +3,7 @@
  * main, error
 
  Copyright (c) 1996 Kolossvary Tamas <thomas@vma.bme.hu>
- Copyright (c) 2002 William McBrine <wmcbrine@users.sourceforge.net>
+ Copyright (c) 2003 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -32,26 +32,15 @@ void fatalError(const char *description);
 
 ErrorType::ErrorType()
 {
+	starttime = time(0);
+	srand((unsigned) starttime);
+
 	set_new_handler(memError);
 	origdir = mygetcwd();
-#ifdef __DJGPP__
-	if (!getenv("TMP") && !getenv("DJGPP")) {
-		const char *temp = getenv("TEMP");
-		if (!temp)
-			temp = origdir;
-		newtmp = new char[strlen(temp) + 5];
-		sprintf(newtmp, "TMP=%s", temp);
-		putenv(newtmp);
-	} else
-		newtmp = 0;
-#endif
 }
 
 ErrorType::~ErrorType()
 {
-#ifdef __DJGPP__
-	delete[] newtmp;
-#endif
 	mychdir(origdir);
 	delete[] origdir;
 }
@@ -61,8 +50,8 @@ const char *ErrorType::getOrigDir()
 	return origdir;
 }
 
-#if defined (SIGWINCH) && !defined (XCURSES) && !defined(NCURSES_SIGWINCH)
-void sigwinchHandler(int sig)
+#if defined(SIGWINCH) && !defined(XCURSES) && !defined(NCURSES_SIGWINCH)
+extern "C" void sigwinchHandler(int sig)
 {
 	if (sig == SIGWINCH)
 		ungetch(KEY_RESIZE);
@@ -104,8 +93,6 @@ int main(int argc, char **argv)
 	char **ARGV = argv;
 	int ARGC = argc;
 
-	starttime = time(0);
-	
 	while ((ARGC > 2) && ('-' == ARGV[1][0])) {
 		char *resName = ARGV[1] + 1;
 		char *resValue = ARGV[2];
@@ -128,5 +115,7 @@ int main(int argc, char **argv)
 	else
 		ui->main();
 	delete ui;
+	ui = 0;		// some destructors, executed after this, may
+			// check for this
 	return EXIT_SUCCESS;
 }

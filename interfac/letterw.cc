@@ -4,7 +4,7 @@
 
  Copyright (c) 1996 Kolossvary Tamas <thomas@tvnet.hu>
  Copyright (c) 1997 John Zero <john@graphisoft.hu>
- Copyright (c) 2002 William McBrine <wmcbrine@users.sourceforge.net>
+ Copyright (c) 2003 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -458,13 +458,13 @@ void LetterWindow::lineCount()
 	header->attrib(C_LHMSGNUM);
 	sprintf(tmp, "%9d/%-10d%3d%%    ", position + 1, NumOfLines,
 		percent);
-	header->put(1, COLS-28, tmp);
+	header->put(1, COLS - 28, tmp);
 	header->delay_update();
 }
 
 void LetterWindow::UpdateHeader()
 {
-	char tmp[256], format[12], sformat[12], *p;
+	char tmp[256], *p;
 
 	int orgarea = -1;
 	if (mm.areaList->isCollection() && !mm.areaList->isReplyArea()) {
@@ -475,12 +475,10 @@ void LetterWindow::UpdateHeader()
 	int maxToFromWidth = COLS - 42;
 	if (maxToFromWidth > 255)
 		maxToFromWidth = 255;
-	sprintf(format, "%%.%ds", maxToFromWidth);
 
 	int maxSubjWidth = COLS - 9;
 	if (maxSubjWidth > 255)
 		maxSubjWidth = 255;
-	sprintf(sformat, "%%.%ds", maxSubjWidth);
 
 	if (orgarea != -1)
 		mm.areaList->gotoArea(orgarea);
@@ -494,7 +492,8 @@ void LetterWindow::UpdateHeader()
 		mm.areaList->gotoArea(mm.letterList->getAreaID());
 
 	header->attrib(C_LHFROM);
-	p = tmp + sprintf(tmp, format, mm.letterList->getFrom());
+	p = tmp + sprintf(tmp, "%.*s", maxToFromWidth,
+		mm.letterList->getFrom());
 	if (mm.areaList->isEmail())
 		netAdd(p);
 	letterconv_in(tmp);
@@ -504,20 +503,21 @@ void LetterWindow::UpdateHeader()
 	if (mm.areaList->hasTo()) {
 		p = (char *) mm.letterList->getTo();
 		if (*p) {
-			p = tmp + sprintf(tmp, format, p);
+			p = tmp + sprintf(tmp, "%.*s", maxToFromWidth, p);
 			if (mm.areaList->isReplyArea())
 				if (p != tmp)
 					netAdd(p);
 		}
 	} else
-		sprintf(tmp, format,
+		sprintf(tmp, "%.*s", maxToFromWidth,
 			(const char *) mm.letterList->getNetAddr());
 		
 	letterconv_in(tmp);
 	header->put(2, 8, tmp);
 
 	header->attrib(C_LHSUBJ);
-	int i = sprintf(tmp, sformat, mm.letterList->getSubject());
+	int i = sprintf(tmp, "%.*s", maxSubjWidth,
+		mm.letterList->getSubject());
 	letterconv_in(tmp);
 	header->put(3, 8, tmp);
 	header->clreol(3, i + 8);
@@ -560,9 +560,9 @@ void LetterWindow::DrawHeader()
 
 	header->put(3, 2, "Subj:");
 
+	//header->horizline(4);
 	//header->put(4, 0, ACS_LLCORNER);
-	//header->horizline(4, COLS-2);
-	//header->put(4, COLS-1, ACS_LRCORNER);
+	//header->put(4, COLS - 1, ACS_LRCORNER);
 
 	UpdateHeader();
 }
@@ -621,20 +621,19 @@ void LetterWindow::DrawStat()
 	if (mm.areaList->isCollection()) {
 		if (mm.areaList->isReplyArea()) {
 			maxw -= 10;
-			sprintf(format, " %%.%ds | REPLY in: %%-%d.%ds%%s",
-				pnlen, maxw, maxw);
+			sprintf(format, " %%.*s | REPLY in: %%-*.*s%%s");
 		} else {
 			maxw -= 13;
-			sprintf(format, " %%.%ds | PERSONAL in: %%-%d.%ds%%s",
-				pnlen, maxw, maxw);
+			sprintf(format, " %%.*s | PERSONAL in: %%-*.*s%%s");
 		}
 		mm.areaList->gotoArea(mm.letterList->getAreaID());
 		collflag = true;
 	} else
-		sprintf(format, " %%.%ds | %%-%d.%ds%%s", pnlen, maxw, maxw);
+		sprintf(format, " %%.*s | %%-*.*s%%s");
 
 	const char *s = mm.letterList->getNewsgrps();
-	sprintf(tmp, format, pn, s ? s : mm.areaList->getDescription(),
+	sprintf(tmp, format, pnlen, pn, maxw, maxw,
+		s ? s : mm.areaList->getDescription(),
 		expert ? "" : helpmsg);
 	areaconv_in(tmp);
 
@@ -685,8 +684,7 @@ void LetterWindow::MakeActive(bool redo)
 	statbar = new Win(1, COLS, LINES - 1, C_LBOTTSTAT);
 
 	char *tmp = new char[COLS + 1];
-	int i = sprintf(tmp, " " MM_TOPHEADER, MM_NAME, MM_MAJOR,
-		MM_MINOR);
+	int i = sprintf(tmp, " " MM_TOPHEADER, sysname());
 	tmp[i] = '\0';
 
 	headbar->put(0, 0, tmp);
@@ -704,7 +702,7 @@ void LetterWindow::MakeActive(bool redo)
 bool LetterWindow::Next()
 {
 	if (mm.letterList->getActive() < (mm.letterList->noOfActive() - 1)) {
-		ui->letters.Move(DOWN);
+		ui->letters.Move(KEY_DOWN);
 		mm.letterList->gotoActive(mm.letterList->getActive() + 1);
 		Draw(true);
 		return true;
@@ -721,7 +719,7 @@ bool LetterWindow::Next()
 bool LetterWindow::Previous()
 {
 	if (mm.letterList->getActive() > 0) {
-		ui->letters.Move(UP);
+		ui->letters.Move(KEY_UP);
 		mm.letterList->gotoActive(mm.letterList->getActive() - 1);
 		Draw(true);
 		return true;
@@ -894,7 +892,7 @@ void LetterWindow::write_header_to_file(FILE *fd)
 	mm.areaList->gotoArea(mm.letterList->getAreaID());
 
 	const char *head[items] = {
-		mm.resourceObject->get(BBSName),
+		mm.packet->getBBSName(),
 		mm.areaList->getDescription(),
 		mm.letterList->getNewsgrps(), mm.letterList->getDate(),
 		mm.letterList->getFrom(), mm.letterList->getTo(),
@@ -984,10 +982,11 @@ void LetterWindow::KeyHandle(int key)
 {
 	int t_area;
 
-	if (ui->active() == letter)
-		TimeUpdate();
-
 	switch (key) {
+	case ERR:			// no key pressed
+		if (ui->active() == letter)
+			TimeUpdate();
+		break;
 #ifdef USE_MOUSE
 	case MM_MOUSE:
 		if (0 == mouse_event.y)
@@ -1048,8 +1047,8 @@ void LetterWindow::KeyHandle(int key)
 		ui->changestate(letter_help);
 		break;
 	case 'V':
-	case 1: // CTRL-A
-	case 11: // CTRL-V
+	case 1:				// Ctrl-A
+	case 11:			// Ctrl-V
 		{
 			int nextAns;
 			bool cont = false;
@@ -1098,7 +1097,7 @@ void LetterWindow::KeyHandle(int key)
 		case 'K':
 			ui->kill_letter();
 			break;
-		case 2:				// Ctrl-B
+		case 2:			// Ctrl-B
 			SplitLetter();
 			ui->redraw();
 			break;
@@ -1115,7 +1114,7 @@ void LetterWindow::KeyHandle(int key)
 		case 'U':
 			StatToggle((key == 'M') ? MS_MARKED : MS_READ);
 			break;
-		case 'R':	// Allow re-editing from here:
+		case 'R':		// Allow re-editing from here:
 		case 'O':
 			if (mm.letterList->getStatus() & MS_REPLIED)
 				if (EditOriginal()) {
@@ -1127,8 +1126,6 @@ void LetterWindow::KeyHandle(int key)
 			t_area = ui->areaMenu();
 			if (t_area != -1) {
 				mm.areaList->gotoArea(t_area);
-				set_Letter_Params(t_area, (5 == key) ? 'E'
-					: key);
 
 				if ((5 == key) || mm.areaList->isEmail())
 					if ((5 == key) || ('E' == key))
@@ -1137,7 +1134,7 @@ void LetterWindow::KeyHandle(int key)
 						net_address nm = PickNetAddr();
 						set_Letter_Params(nm, 0);
 					}
-				EnterLetter();
+				EnterLetter(t_area, (5 == key) ? 'E' : key);
 			}
 			break;
 		case 'N':
@@ -1147,9 +1144,8 @@ void LetterWindow::KeyHandle(int key)
 			if (t_area != -1) {
 			    net_address nm = PickNetAddr();
 			    if (nm.isSet) {
-				set_Letter_Params(t_area, 'N');
 				set_Letter_Params(nm, 0);
-				EnterLetter();
+				EnterLetter(t_area, 'N');
 			    } else
 				ui->nonFatalError(
 					"No reply address");
