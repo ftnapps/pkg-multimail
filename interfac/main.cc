@@ -3,7 +3,7 @@
  * main, error
 
  Copyright (c) 1996 Kolossvary Tamas <thomas@vma.bme.hu>
- Copyright (c) 2003 William McBrine <wmcbrine@users.sf.net>
+ Copyright (c) 2005 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -11,7 +11,12 @@
 #include "error.h"
 #include "interfac.h"
 
-#include <new.h>
+#ifdef USE_NEWHANDLER
+# include <new.h>
+#endif
+#ifdef MM_WIDE
+# include <locale.h>
+#endif
 
 Interface *ui = 0;
 const chtype *ColorArray = 0;
@@ -27,7 +32,10 @@ MEVENT mouse_event;
 int curs_start, curs_end;
 #endif
 
+#ifdef USE_NEWHANDLER
 void memError();
+#endif
+
 void fatalError(const char *description);
 
 ErrorType::ErrorType()
@@ -35,7 +43,9 @@ ErrorType::ErrorType()
 	starttime = time(0);
 	srand((unsigned) starttime);
 
+#ifdef USE_NEWHANDLER
 	set_new_handler(memError);
+#endif
 	origdir = mygetcwd();
 }
 
@@ -66,32 +76,36 @@ void fatalError(const char *description)
 	exit(EXIT_FAILURE);
 }
 
+#ifdef USE_NEWHANDLER
 void memError()
 {
 	fatalError("Out of memory");
 }
+#endif
 
 #ifdef USE_MOUSE
-
 void mm_mouse_get()
 {
-# ifndef NCURSES_MOUSE_VERSION
+# ifdef NCURSES_MOUSE_VERSION
+	getmouse(&mouse_event);
+# else
 	request_mouse_pos();
 	mouse_event.x = Mouse_status.x;
 	mouse_event.y = Mouse_status.y;
 	mouse_event.bstate = (Mouse_status.button[0] ? BUTTON1_CLICKED : 0) |
 		(Mouse_status.button[2] ? BUTTON3_CLICKED : 0);
-# else
-	getmouse(&mouse_event);
 # endif
 }
-
 #endif
 
 int main(int argc, char **argv)
 {
 	char **ARGV = argv;
 	int ARGC = argc;
+
+#ifdef MM_WIDE
+	setlocale(LC_ALL, "");
+#endif
 
 	while ((ARGC > 2) && ('-' == ARGV[1][0])) {
 		char *resName = ARGV[1] + 1;

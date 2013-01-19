@@ -1,6 +1,6 @@
-#-----------------------------------
-# MultiMail Makefile (top) for DJGPP
-#-----------------------------------
+#----------------------------------------
+# MultiMail Makefile (top) for MinGW
+#----------------------------------------
 
 include version
 
@@ -13,17 +13,15 @@ include version
 OPTS = -O2 -fno-exceptions -fno-rtti -fconserve-space -Wno-deprecated
 
 #--------------------------------------------------------------
-# DJGPP (MSDOS), with PDCurses 2.7:
+# MinGW, with GCC 3.x, and PDCurses 2.7:
 
-CURS_INC = \<curses.h\>
-CURS_DIR = e:/home/pdcurs27
+CURS_INC = \\\"e:/home/pdcurs27/curses.h\\\"
+CURS_DIR = e:/home/pdcurs27 -DPDC_STATIC_BUILD
 CURS_LIB = .
-LIBS = e:/home/pdcurs27/dos/pdcurses.a
+LIBS = e:/home/pdcurs27/win32/pdcurses.a
 RM = del
-SEP = ;
-# Optional; attach pmode stub:
-POST = $(RM) mm.exe $(SEP) strip mm $(SEP) copy /b \
-	\djgpp\bin\pmodstub.exe+mm mm.exe $(SEP) $(RM) mm
+SEP = &&
+POST = strip mm.exe
 
 #--------------------------------------------------------------
 #--------------------------------------------------------------
@@ -50,8 +48,7 @@ dep:
 clean:
 	cd interfac $(SEP) $(MAKE) RM="$(RM)" clean $(SEP) cd ..
 	cd mmail $(SEP) $(MAKE) RM="$(RM)" clean $(SEP) cd ..
-	$(RM) mm
-	$(RM) mm.exe
+	$(RM) mm mm.exe
 
 modclean:
 	cd mmail $(SEP) $(MAKE) RM="$(RM)" modclean $(SEP) cd ..

@@ -3,7 +3,7 @@
  * resource class
 
  Copyright (c) 1996 Toth Istvan <stoty@vma.bme.hu>
- Copyright (c) 2003 William McBrine <wmcbrine@users.sf.net>
+ Copyright (c) 2005 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -23,7 +23,7 @@
 # ifdef __WIN32__
 #  define DEFEDIT "start /w notepad"
 # else
-#  ifdef __EMX__
+#  ifdef __OS2__
 #   define DEFEDIT "tedit"
 #  else
 #   define DEFEDIT "vi"

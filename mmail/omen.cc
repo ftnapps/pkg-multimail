@@ -2,7 +2,7 @@
  * MultiMail offline mail reader
  * OMEN
 
- Copyright (c) 2003 William McBrine <wmcbrine@users.sf.net>
+ Copyright (c) 2004 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -37,11 +37,6 @@ omen::omen(mmail *mmA) : pktbase(mmA)
 omen::~omen()
 {
 	cleanup();
-}
-
-file_header *omen::getFileList()
-{
-	return mm->workList->existsF("nfile");
 }
 
 area_header *omen::getNextArea()

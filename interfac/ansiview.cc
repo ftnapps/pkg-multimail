@@ -2,18 +2,12 @@
  * MultiMail offline mail reader
  * ANSI image/text viewer
 
- Copyright (c) 2003 William McBrine <wmcbrine@users.sf.net>
+ Copyright (c) 2005 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
 
 #include "interfac.h"
-
-#ifdef LIMIT_MEM
-extern "C" {
-#include <alloc.h>
-}
-#endif
 
 //------------------
 // AnsiLine methods
@@ -330,12 +324,7 @@ chtype AnsiWindow::colorcore()
 	// If not animating, mark color pair as used:
 
 	if (!anim)
-#ifdef NOREVERSE
-		if (crv)
-			colorsused[(ccb << 3) + ccf] = true;
-		else
-#endif
-			colorsused[(ccf << 3) + ccb] = true;
+		colorsused[(ccf << 3) + ccb] = true;
 
 	return tmpattrib;
 }
@@ -816,7 +805,7 @@ void AnsiWindow::MakeChain()
 	do {
 		c = source.nextchar();
 #ifdef LIMIT_MEM
-		if (coreleft() < ((unsigned long) NumOfLines *
+		if (maxfreemem() < ((long) NumOfLines *
 		    sizeof(AnsiLine *) + 0x200)) {
 			c = 0;
 			blen = 2;
@@ -1197,8 +1186,9 @@ void AnsiWindow::KeyHandle(int key)
 			if ((LINES - 1) == mouse_event.y)
 				KeyHandle(KEY_DOWN);
 			else
-				if (mouse_event.y > (LINES >> 1))
-					KeyHandle(KEY_NPAGE);
+				if ((mouse_event.y > (LINES >> 1)) ||
+				    (0 == position))
+					KeyHandle(' ');
 				else
 					KeyHandle(KEY_PPAGE);
 		break;

@@ -3,7 +3,7 @@
  * QWK
 
  Copyright (c) 1997 John Zero <john@graphisoft.hu>
- Copyright (c) 2003 William McBrine <wmcbrine@users.sf.net>
+ Copyright (c) 2004 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -56,7 +56,7 @@ class qwkpack : public pktbase
 {
 	char newsfile[1][13];
 	char controlname[26];
-	bool qwke;
+	bool qwke, greekqwk;
 
 	unsigned long MSBINtolong(unsigned const char *);
 	void readControlDat();
@@ -74,6 +74,7 @@ class qwkpack : public pktbase
 	area_header *getNextArea();
 	letter_header *getNextLetter();
 	bool isQWKE();
+	bool isGreekQWK();
 	const char *ctrlName();
 };
 
@@ -86,7 +87,7 @@ class qwkreply : public pktreply
 		upl_qwk(const char * = 0);
 	};
 
-	bool qwke;
+	bool qwke, greekqwk;
 
 	bool getRep1(FILE *, upl_qwk *);
 	void getReplies(FILE *);

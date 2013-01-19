@@ -7,12 +7,12 @@
 #--------------------------------------------------------------
 # Borland C++ 5.5:
 
-CURS_INC = \\"c:/pdcurs26/curses.h\\"
-CURS_DIR = c:\pdcurs26
-CURS_LIB = .
-LIBS = c:\pdcurs26\win32\pdcurses.lib
-RM = del
+#CURS_INC = \\"c:/Borland/BCC55/pdcurs26/curses.h\\"
+#LIBS = c:\Borland\BCC55\pdcurs26\win32\pdcurses.lib
+CURS_INC = \\"e:/home/pdcurs27/curses.h\\"
+LIBS = e:\home\pdcurs27\win32\pdcurses.lib
 LIST = list
+COMPILER = "$(CC) -c -P"
 
 #--------------------------------------------------------------
 #--------------------------------------------------------------
@@ -21,31 +21,26 @@ all:	mm
 
 mm-main:
 	cd mmail
-	$(MAKE) -fMakefile.bcc -DMM_MAJOR=$(MM_MAJOR) \
+	$(MAKE) -fMakefile.bcc -DCOMPILER=$(COMPILER) -DMM_MAJOR=$(MM_MAJOR) \
 		-DMM_MINOR=$(MM_MINOR) mm-main
 	cd ..
 
 intrfc:
 	cd interfac
-	$(MAKE) -fMakefile.bcc -DMM_MAJOR=$(MM_MAJOR) \
-		-DMM_MINOR=$(MM_MINOR) -DOPTS="-I$(CURS_DIR)" \
-		-DCURS_INC="$(CURS_INC)" intrfc
+	$(MAKE) -fMakefile.bcc -DCOMPILER=$(COMPILER) -DMM_MAJOR=$(MM_MAJOR) \
+		-DMM_MINOR=$(MM_MINOR) -DCURS_INC="$(CURS_INC)" intrfc
 	cd ..
 
 mm:	mm-main intrfc
 	$(CC) -emm @$(LIST) $(LIBS)
 
 clean:
-	cd interfac
-	$(MAKE) -fMakefile.bcc -DRM="$(RM)" clean
-	cd ..
-	cd mmail
-	$(MAKE) -fMakefile.bcc -DRM="$(RM)" clean
-	cd ..
-	$(RM) mm.exe
-	$(RM) mm.tds
+	del interfac\*.obj
+	del mmail\*.obj
+	del mm.exe
+	del mm.tds
 
 modclean:
 	cd mmail
-	$(MAKE) -fMakefile.bcc -DRM="$(RM)" modclean
+	$(MAKE) -fMakefile.bcc modclean
 	cd ..

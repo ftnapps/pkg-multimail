@@ -4,7 +4,7 @@
 
  Copyright (c) 1996 Kolossvary Tamas <thomas@tvnet.hu>
  Copyright (c) 1997 John Zero <john@graphisoft.hu>
- Copyright (c) 2003 William McBrine <wmcbrine@users.sf.net>
+ Copyright (c) 2005 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -128,20 +128,21 @@ void Interface::alive()
 		BUTTON3_CLICKED, 0);
 # endif
 #endif
-
-#ifdef __PDCURSES__
-	typeahead(-1);
-#endif
 }
 
 void Interface::screen_init()
 {
 	char tmp[80];
 
-	// Make a new background window, fill it with ACS_BOARD characters:
+	// Make a new background window, fill it with MM_BOARD characters:
 
-	screen = new Win(LINES, COLS, 0, ColorArray[C_SBACK] |
-		(mm.resourceObject->getInt(BackFill) ? ACS_BOARD : 0));
+	screen = new Win(LINES, COLS, 0, C_SBACK);
+
+	if (mm.resourceObject->getInt(BackFill)) {
+		for (int y = 1; y < (LINES - 1); y++)
+			for (int x = 1; x < (COLS - 1); x++)
+				screen->put(y, x, MM_BOARD);
+	}
 
 	if ((COLS < width_min) || (LINES < height_min)) {
 		sprintf(tmp, "A screen at least %dx%d is required",
@@ -430,7 +431,7 @@ void Interface::redraw()
 
 void Interface::newpacket()
 {
-	file_header *hello, *newFiles, **bulletins;
+	file_header *hello, **bulletins;
 	static const char *keepers[] = {"Save", "Kill"};
 	unsaved_reply = any_read = false;
 
@@ -456,8 +457,6 @@ void Interface::newpacket()
 
 	hello = mm.packet->getHello();
 	goodbye = mm.packet->getGoodbye();
-	newFiles = mm.packet->getFileList();
-
 	bulletins = mm.packet->getBulletins();
 
 	if (hello)
@@ -469,28 +468,8 @@ void Interface::newpacket()
 	}
 
 	if (!abortNow && bulletins) {
-		if (WarningWindow("View bulletins?")) {
-			file_header **a = bulletins;
-			while (a && *a) {
-				switch (ansiFile(*a, (*a)->getName(), latin)) {
-				case 1:
-					a++;
-					break;
-				case -1:
-					if (a != bulletins)
-						a--;
-					break;
-				default:
-					a = 0;
-				}
-			}
-		} else
-			redraw();
-	}
-
-	if (!abortNow && newFiles) {
-		if (WarningWindow("View new files list?"))
-			ansiFile(newFiles, "New files", latin);
+		if (WarningWindow("View bulletins / new files?"))
+			ansiList(bulletins, latin);
 		else
 			redraw();
 	}
@@ -697,6 +676,25 @@ int Interface::ansiFile(file_header *f, const char *title, bool latin)
 {
 	ansiwindow.set(f, title, latin);
 	return ansiCommon();
+}
+
+void Interface::ansiList(file_header **base, bool latin)
+{
+	file_header **a = base;
+
+	while (a && *a) {
+		switch (ansiFile(*a, (*a)->getName(), latin)) {
+		case 1:
+			a++;
+			break;
+		case -1:
+			if (a != base)
+				a--;
+			break;
+		default:
+			a = 0;
+		}
+	}
 }
 
 int Interface::ansiCommon()

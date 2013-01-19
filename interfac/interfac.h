@@ -4,7 +4,7 @@
 
  Copyright (c) 1996 Kolossvary Tamas <thomas@tvnet.hu>
  Copyright (c) 1997 John Zero <john@graphisoft.hu>
- Copyright (c) 2003 William McBrine <wmcbrine@users.sf.net>
+ Copyright (c) 2005 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -19,6 +19,10 @@ extern "C" {
 
 #include CURS_INC
 }
+
+#if defined(__PDCURSES__) && (PDC_BUILD < 2700)
+# error Please upgrade to PDCurses 2.7 or later
+#endif
 
 #if defined(NCURSES_MOUSE_VERSION) && (NCURSES_MOUSE_VERSION == 1)
 # define USE_MOUSE
@@ -104,17 +108,6 @@ extern "C" void sigwinchHandler(int);
 # define MM_DEL		KEY_DC
 #endif
 
-/* Deal with the latest PDCurses misfeature -- version 2.4, for Windows
-   or X, reports shift, control and alt as keys:
-*/
-#ifdef KEY_SHIFT_R
-# define MM_DISCARD	KEY_SHIFT_R: case KEY_SHIFT_L: case KEY_CONTROL_R: \
-			case KEY_CONTROL_L: case KEY_ALT_R: case KEY_ALT_L: \
-			case ERR
-#else
-# define MM_DISCARD	ERR
-#endif
-
 #define MM_BACKSP	KEY_BACKSPACE: case 8
 #define MM_ESC		27
 #define MM_F1		KEY_F(1)
@@ -122,6 +115,12 @@ extern "C" void sigwinchHandler(int);
 
 #ifdef USE_MOUSE
 # define MM_MOUSE	KEY_MOUSE
+#endif
+
+#ifdef MM_WIDE
+# define MM_BOARD	((wchar_t) 0x2591)
+#else
+# define MM_BOARD	(ACS_BOARD)
 #endif
 
 class ColorClass : public baseconfig
@@ -153,6 +152,9 @@ class Win
 	void Clear(coltype);
 	void put(int, int, chtype);
 	void put(int, int, char);
+#ifdef MM_WIDE
+	void put(int, int, wchar_t);
+#endif
 	void put(int, int, const chtype *, int = 0);
 	int put(int, int, const char *, int = -1);
 	void attrib(chtype);
@@ -664,6 +666,9 @@ class Interface
 #ifdef USE_SHELL
 	Shell shell;
 #endif
+#ifdef EXTRAPATH
+	ExtraPath extrapath;
+#endif
 	PacketListWindow packets;
 	AddressBook addresses;
 	HelpWindow helpwindow;
@@ -722,6 +727,7 @@ class Interface
 	bool Tagwin();
 	int ansiLoop(letter_body *, const char *, bool);
 	int ansiFile(file_header *, const char *, bool);
+	void ansiList(file_header **, bool);
 	int areaMenu();
 	void kill_letter();
 	void setUnsaved();

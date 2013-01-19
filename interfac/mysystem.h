@@ -2,7 +2,7 @@
  * MultiMail offline mail reader
  * protos for mysystem.cc
 
- Copyright (c) 2003 William McBrine <wmcbrine@users.sf.net>
+ Copyright (c) 2005 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -33,6 +33,7 @@ void clearDirectory(const char *);
 time_t touchFile(const char *);
 
 #ifdef LIMIT_MEM
+long maxfreemem();
 long limitmem(long);
 #else
 # define limitmem(x) x
@@ -57,18 +58,32 @@ class Shell
 };
 #endif
 
+#ifdef EXTRAPATH
+class ExtraPath
+{
+	char *newpath;
+ public:
+	ExtraPath();
+	~ExtraPath();
+};
+#endif
+
 class mystat
 {
 	int mode;
 	off_t size;
-	time_t date, adate;
+	time_t date;
  public:
 	mystat(const char *);
 	mystat();
 
 	bool init(const char *);
 #ifdef USE_FINDFIRST
+# ifdef USE_IOH
+	void init(long, time_t, unsigned);
+# else
 	void init(long, long, char);
+# endif
 #endif
 	void init();
 	bool isdir();

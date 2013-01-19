@@ -2,7 +2,7 @@
  * MultiMail offline mail reader
  * SOUP
 
- Copyright (c) 2003 William McBrine <wmcbrine@users.sf.net>
+ Copyright (c) 2004 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -289,11 +289,6 @@ bool soup::msgopen(int area)
 			fatalError("Could not open .MSG file");
 	}
 	return true;
-}
-
-file_header *soup::getFileList()
-{
-	return 0;
 }
 
 area_header *soup::getNextArea()

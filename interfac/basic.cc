@@ -4,7 +4,7 @@
 
  Copyright (c) 1996 Kolossvary Tamas <thomas@tvnet.hu>
  Copyright (c) 1997 John Zero <john@graphisoft.hu>
- Copyright (c) 2003 William McBrine <wmcbrine@users.sf.net>
+ Copyright (c) 2005 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -64,6 +64,18 @@ void Win::put(int y, int x, char z)
 {
 	mvwaddch(win, y, x, (unsigned char) z);
 }
+
+#ifdef MM_WIDE
+void Win::put(int y, int x, wchar_t z)
+{
+	wchar_t tmp[2];
+
+	tmp[0] = z;
+	tmp[1] = 0;
+
+	mvwaddwstr(win, y, x, tmp);
+}
+#endif
 
 void Win::put(int y, int x, const chtype *z, int len)
 {
@@ -442,7 +454,7 @@ int ShadowedWin::getstring(int y, int x, char *string, int maxlen,
 				end = 2;
 			break;
 #endif
-		case MM_DISCARD:
+		case ERR:
 			break;
 		default:
 			for (j = (maxlen - 1); j > i; j--)

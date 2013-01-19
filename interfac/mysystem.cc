@@ -2,7 +2,7 @@
  * MultiMail offline mail reader
  * some low-level routines common to both sides
 
- Copyright (c) 2003 William McBrine <wmcbrine@users.sf.net>
+ Copyright (c) 2005 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -13,8 +13,12 @@
 #include "error.h"
 
 extern "C" {
-#ifndef USE_FINDFIRST
-# include <dirent.h>
+#if defined(__WATCOMC__) || defined(_MSC_VER)
+# include <direct.h>
+#else
+# ifndef USE_FINDFIRST
+#  include <dirent.h>
+# endif
 #endif
 
 #ifdef USE_SPAWNO
@@ -22,7 +26,11 @@ extern "C" {
 #endif
 
 #ifdef LIMIT_MEM
-# include <alloc.h>
+# ifdef __WATCOMC__
+#  include <malloc.h>
+# else
+#  include <alloc.h>
+# endif
 #endif
 
 #ifdef HAS_UNISTD
@@ -41,9 +49,20 @@ extern "C" {
 
 #ifdef USE_SETFTIME
 # include <fcntl.h>
-# include <io.h>
 #else
-# include <utime.h>
+# if defined(__WATCOMC__) || defined(_MSC_VER)
+#  include <sys/utime.h>
+# else
+#  include <utime.h>
+# endif
+#endif
+
+#if defined(USE_IOH) || defined(USE_SETFTIME)
+# include <io.h>
+#endif
+
+#ifdef __WATCOMC__
+# include <dos.h>
 #endif
 
 #ifdef __EMX__
@@ -117,7 +136,6 @@ int mysystem(const char *cmd)
 # if defined(__WIN32__) || defined(XCURSES)
 		PDC_set_title(MM_NAME);
 # endif
-		typeahead(-1);
 #endif
 		keypad(stdscr, TRUE);
 	}
@@ -173,6 +191,15 @@ void edit(const char *reply_filename)
         mysystem2(mm.resourceObject->get(editor), reply_filename);
 }
 
+#ifdef __WATCOMC__
+void setdisk(int drive)
+{
+	unsigned total;	/* We don't care, but we have to feed it. */
+
+	_dos_setdrive((unsigned) ++drive, &total);
+}
+#endif
+
 int mychdir(const char *pathname)
 {
 #ifdef USE_SETDISK
@@ -223,10 +250,22 @@ const char *sysname()
 
 	return buf.sysname;
 #else
-# ifdef __WIN32__
-	return "Win32";
+# ifdef __OS2__
+	return "OS/2";
 # else
+#  ifdef __WIN32__
+	return "Win32";
+#  else
+#   ifdef __MSDOS__
+#    ifdef SIXTEENBIT
 	return "XT";
+#    else
+	return "DOS";
+#    endif
+#   else
+	return "?";
+#   endif
+#  endif
 # endif
 #endif
 }
@@ -244,6 +283,30 @@ bool myopendir(const char *dirname)
 const char *myreaddir(mystat &st)
 {
 #ifdef USE_FINDFIRST
+# ifdef USE_IOH				// Win32
+	static long handle = -1;
+	static bool first = true;
+	static struct _finddata_t blk;
+	long result;
+
+	if (first) {
+		result = _findfirst("*", &blk);
+		handle = result;
+		first = false;
+	} else
+		result = _findnext(handle, &blk);
+
+	if (-1 == result) {
+		if (-1 != handle)
+			_findclose(handle);
+
+		first = true;
+		return 0;
+	} else {
+		st.init((long) blk.size, blk.time_write, blk.attrib);
+		return blk.name;
+	}
+# else					// DOS(ish)
 	static struct ffblk blk;
 	static bool first = true;
 	int result;
@@ -255,9 +318,9 @@ const char *myreaddir(mystat &st)
                 result = findnext(&blk);
 
 	if (result) {
-# ifdef __WIN32__
+#  ifndef __MSDOS__
 		findclose(&blk);
-# endif
+#  endif
 		first = true;
 		return 0;
 	} else {
@@ -265,7 +328,8 @@ const char *myreaddir(mystat &st)
 			(long) blk.ff_fdate, blk.ff_attrib);
 		return blk.ff_name;
 	}
-#else
+# endif
+#else					// POSIX
 	static dirent *entry;
 	const char *result = 0;
 
@@ -337,9 +401,19 @@ time_t touchFile(const char *fname)
    memory remaining. Currently used only in the 16-bit MS-DOS port.
 */
 
+long maxfreemem()
+{
+	return
+# ifdef __WATCOMC__
+		(long) _memmax();
+# else	// Turbo C++
+		(long) coreleft();
+# endif
+}
+
 long limitmem(long wanted)
 {
-	long maxavail = (long) coreleft();
+	long maxavail = maxfreemem();
 
 	// Give it a 25% margin
 	maxavail -= (wanted >> 2);
@@ -436,6 +510,35 @@ void Shell::out()
 
 #endif
 
+#ifdef EXTRAPATH
+
+/* Add the starting directory and the MMAIL directory to the PATH, 
+   mainly for the benefit of Windows, where InfoZip is not standard. 
+   (But currently this is enabled for all the DOSish ports.)
+*/
+ExtraPath::ExtraPath()
+{
+	const char *oldpath = getenv("PATH");
+	if (!oldpath)
+		fatalError("No PATH defined!");
+
+	const char *orig = error.getOrigDir();
+	const char *home = mm.resourceObject->get(homeDir);
+
+	int len = strlen(oldpath) + strlen(orig) + strlen(home) + 8;
+	newpath = new char[len];
+
+	sprintf(newpath, "PATH=%s;%s;%s", oldpath, orig, home);
+	putenv(newpath);
+}
+
+ExtraPath::~ExtraPath()
+{
+	delete[] newpath;
+}
+
+#endif
+
 mystat::mystat(const char *fname)
 {
 	init(fname);
@@ -449,6 +552,18 @@ mystat::mystat()
 bool mystat::init(const char *fname)
 {
 #ifdef USE_FINDFIRST
+# ifdef USE_IOH				// Win32
+	struct _finddata_t blk;
+	long result = _findfirst((char *) fname, &blk);
+	bool retval = (-1 != result);
+
+	if (retval) {
+		init((long) blk.size, blk.time_write, blk.attrib);
+		_findclose(result);
+	} else
+		init();
+
+# else					// DOS(ish)
 	struct ffblk blk;
 	bool retval = !findfirst(fname, &blk, FA_DIREC);
 
@@ -458,17 +573,17 @@ bool mystat::init(const char *fname)
 	else
 		init();
 
-# ifdef __WIN32__
+#  ifndef __MSDOS__
 	findclose(&blk);
+#  endif
 # endif
-#else
+#else					// POSIX
 	struct stat fileStat;
 	bool retval = !stat((char *) fname, &fileStat);
 
 	if (retval) {
 		size = fileStat.st_size;
 		date = fileStat.st_mtime;
-		adate = fileStat.st_atime;
 		mode = fileStat.st_mode;
 	} else
 		init();
@@ -477,23 +592,33 @@ bool mystat::init(const char *fname)
 }
 
 #ifdef USE_FINDFIRST
+# ifdef USE_IOH
+
+void mystat::init(long sizeA, time_t dateA, unsigned attrib)
+{
+	size = sizeA;
+	date = dateA;
+	mode = S_IREAD | ((attrib & _A_RDONLY) ? 0 : S_IWRITE) |
+		((attrib & _A_SUBDIR) ? S_IFDIR : 0);
+}
+
+# else
 
 void mystat::init(long sizeA, long dateA, char ff_attrib)
 {
 	size = sizeA;
 	date = mktime(getdostime(dateA));
-	adate = date;
 	mode = S_IREAD | ((ff_attrib & FA_RDONLY) ? 0 : S_IWRITE) |
 		((ff_attrib & FA_DIREC) ? S_IFDIR : 0);
 }
 
+# endif
 #endif
 
 void mystat::init()
 {
 	size = -1;
 	date = (time_t) -1;
-	adate = date;
 	mode = 0;
 }
 
@@ -530,7 +655,7 @@ void mystat::reset_date(const char *fname)
 #else
 	{
 		struct utimbuf ut;
-		ut.actime = adate;
+		ut.actime = date;	// Should be current time
 		ut.modtime = date;
 		utime((char *) fname, &ut);
 	}
