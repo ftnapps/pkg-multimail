@@ -7,7 +7,7 @@ Build-Depends: libncurses5-dev, debhelper (>= 5.0)
 
 Package: multimail
 Architecture: any
-Depends: ${shlibs:Depends}
+Depends: ${shlibs:Depends}, {misc:Depends}
 Suggests: uqwk, zip, unzip
 Description: Offline reader for Blue Wave, QWK, OMEN and SOUP
  MultiMail is an offline mail packet reader for Unix and
