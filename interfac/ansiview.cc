@@ -134,17 +134,6 @@ void AnsiWindow::AnsiLine::remapzero(chtype newatt)
 // StringFile methods
 //--------------------
 
-/*
-void StringFile::init(const char *srcStrA)
-{
-	fromFile = 0;
-	msgBody = 0;
-	srcStr = (const unsigned char *) srcStrA;
-
-	reset();
-}
-*/
-
 void StringFile::init(file_header *fromFileA)
 {
 	fromFile = fromFileA;
@@ -748,6 +737,7 @@ void AnsiWindow::update(unsigned char c)
 			animtext->put(cpy, cpx++, ouch);
 			animtext->attrib(C_ANSIBACK);
 			animtext->update();
+			napms(12);
 			ansiAbort |= (animtext->keypressed() != ERR);
 		} else {
 			checkpos();

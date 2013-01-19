@@ -19,8 +19,8 @@ extern "C" {
 #include <signal.h>
 }
 
-#if defined(PDCURSES) && (PDC_BUILD < 3001)
-# error Please upgrade to PDCurses 3.0 or later
+#if defined(PDCURSES) && (PDC_BUILD < 3100)
+# error Please upgrade to PDCurses 3.1 or later
 #endif
 
 #if defined(NCURSES_MOUSE_VERSION) || defined(PDCURSES)
@@ -63,7 +63,7 @@ enum lineattr {Hidden, Origin, Tearline, Tagline, Sigline, Quoted,
 
 enum {s_fulltext = 1, s_headers, s_arealist, s_pktlist};
 
-#if defined(SIGWINCH) && !defined(XCURSES) && !defined(NCURSES_SIGWINCH)
+#if defined(SIGWINCH) && !defined(PDCURSES) && !defined(NCURSES_SIGWINCH)
 extern "C" void sigwinchHandler(int);
 #endif
 
@@ -677,7 +677,7 @@ class Interface
 	int Key, searchmode, s_oldpos, width_min, height_min;
 	bool unsaved_reply, any_read, addrparm, commandline, abortNow,
 		dontSetAsRead, lynxNav;
-#ifdef SIGWINCH
+#ifdef KEY_RESIZE
 	bool resized;
 
 	void sigwinch();

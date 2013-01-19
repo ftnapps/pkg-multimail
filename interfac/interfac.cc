@@ -18,9 +18,9 @@ Interface::Interface()
 	lynxNav = mm.resourceObject->getInt(UseLynxNav);
 	searchItem = 0;
 	goodbye = 0;
-#ifdef SIGWINCH
+#ifdef KEY_RESIZE
 	resized = false;
-# if !defined(XCURSES) && !defined(NCURSES_SIGWINCH)
+# if defined(SIGWINCH) && !defined(PDCURSES) && !defined(NCURSES_SIGWINCH)
 	signal(SIGWINCH, sigwinchHandler);
 # endif
 #endif
@@ -69,14 +69,14 @@ Interface::~Interface()
 
 void Interface::init_colors()
 {
-#if defined(NCURSES_VERSION) && defined(HAS_TRANS)
+#if defined(NCURSES_VERSION) || defined(PDCURSES)
 	bool trans = mm.resourceObject->getInt(Transparency);
 	int bkcol = PAIR_NUMBER(ColorArray[C_SBACK]) & 7;
 #endif
 	for (int back = COLOR_BLACK; back <= (COLOR_WHITE); back++)
 		for (int fore = COLOR_BLACK; fore <= (COLOR_WHITE); fore++)
 			init_pair((fore << 3) + back, fore,
-#if defined(NCURSES_VERSION) && defined(HAS_TRANS)
+#if defined(NCURSES_VERSION) || defined(PDCURSES)
 				(trans && (back == bkcol)) ? -1 :
 #endif
 				back);
@@ -97,7 +97,7 @@ void Interface::alive()
 	if (mm.resourceObject->getInt(UseColors))
 		start_color();
 
-#ifdef NCURSES_VERSION
+#if defined(NCURSES_VERSION) || defined(PDCURSES)
 	use_default_colors();
 #endif
 	init_colors();
@@ -135,7 +135,7 @@ void Interface::screen_init()
 
 	// Border and title:
 
-#if (defined(PDCURSES) && defined(__WIN32__)) || defined(XCURSES)
+#if defined(PDCURSES)
 	PDC_set_title(MM_NAME);
 #endif
 	sprintf(tmp, MM_TOPHEADER, sysname());
@@ -565,16 +565,16 @@ bool Interface::back()
 	return false;
 }
 
-#ifdef SIGWINCH
+#ifdef KEY_RESIZE
 void Interface::sigwinch()
 {
 	oldstate(state);
 
 	delete screen;
-# ifdef XCURSES
+# ifdef PDCURSES
 	resize_term(0, 0);
 # else
-#  ifndef NCURSES_SIGWINCH
+#  if defined(SIGWINCH) && !defined(NCURSES_SIGWINCH)
 	endwin();
 	initscr();
 	refresh();
@@ -885,21 +885,17 @@ void Interface::KeyHandle()		// Main loop
 	bool end = false;
 
 	while (!(end || abortNow)) {
-#ifdef SIGWINCH
+#ifdef KEY_RESIZE
 		if (resized)
 			sigwinch();
 #endif
 		doupdate();
 		Key = screen->inkey();
-#ifdef SIGWINCH
-# ifdef XCURSES
-		resized = is_termresized();
-# else
+#ifdef KEY_RESIZE
 		resized = (KEY_RESIZE == Key);
-# endif
 #endif
 		if (((state == letter_help) || (state == ansi_help))
-#ifdef SIGWINCH
+#ifdef KEY_RESIZE
 			&& !resized
 #endif
 			) {

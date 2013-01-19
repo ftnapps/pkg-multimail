@@ -54,6 +54,13 @@ LIBS = -lcurses
 #LIBS = -lXCurses
 
 #--------------------------------------------------------------
+# With PDCurses for SDL:
+
+#CURS_DIR = /home/wmcbrine/pdcurs33
+#CURS_LIB = /home/wmcbrine/pdcurs33/sdl1
+#LIBS = -lpdcurses `sdl-config --libs`
+
+#--------------------------------------------------------------
 #--------------------------------------------------------------
 
 HELPDIR = $(PREFIX)/man/man1

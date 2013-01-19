@@ -66,11 +66,9 @@
 
 #else
 
-/* Not a DOS-like system -- enable "Transparency" keyword and home
-   directory elision.
+/* Not a DOS-like system -- enable home directory elision.
 */
 
-# define HAS_TRANS
 # define HAS_HOME
 
 #endif
@@ -86,12 +84,10 @@
 # define USE_STRICMP
 #endif
 
-/* unistd.h is the POSIX header file. Borland/Turbo C doesn't have it.
-   The sleep() function is also defined there.
-*/
+/* unistd.h is the POSIX header file. Borland/Turbo C doesn't have it. */
+
 #if !defined(__TURBOC__) && !defined(__MINGW32__) && !defined(__WATCOMC__) && !defined(_MSC_VER)
 # define HAS_UNISTD
-# define HAS_SLEEP
 #endif
 
 /* Limit allocation sizes for 16-bit systems */

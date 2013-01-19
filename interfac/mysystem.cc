@@ -69,11 +69,6 @@ extern "C" {
 int _chdir2(const char *);
 char *_getcwd2(char *, int);
 #endif
-
-#if defined(PDCURSES) && defined(__WIN32__)
-# undef MOUSE_MOVED
-# include <windows.h>
-#endif
 }
 
 #ifndef S_IREAD
@@ -121,22 +116,13 @@ int mysystem(const char *cmd)
 	int result = system(cmd);
 #endif
 
-#ifdef HAS_SLEEP
 	// Non-zero result = error; pause so it can (maybe) be read
 	if (result)
-		sleep(2);
-#endif
+		napms(2000);
 
 	if (ui) {
 #ifdef PDCURSES
-# ifdef __WIN32__
-		// Force scroll bars off in Windows 2000, XP
-		if (!(GetVersion() & 0x80000000))
-			resize_term(LINES, COLS);
-# endif
-# if defined(__WIN32__) || defined(XCURSES)
 		PDC_set_title(MM_NAME);
-# endif
 #endif
 		keypad(stdscr, TRUE);
 	}

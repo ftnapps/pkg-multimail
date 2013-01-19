@@ -28,10 +28,11 @@ MEVENT mm_mouse_event;
 #endif
 
 #ifdef USE_NEWHANDLER
-void memError();
+void memError()
+{
+	fatalError("Memory allocation error");
+}
 #endif
-
-void fatalError(const char *description);
 
 ErrorType::ErrorType()
 {
@@ -55,7 +56,7 @@ const char *ErrorType::getOrigDir()
 	return origdir;
 }
 
-#if defined(SIGWINCH) && !defined(XCURSES) && !defined(NCURSES_SIGWINCH)
+#if defined(SIGWINCH) && !defined(PDCURSES) && !defined(NCURSES_SIGWINCH)
 extern "C" void sigwinchHandler(int sig)
 {
 	if (sig == SIGWINCH)
@@ -71,12 +72,11 @@ void fatalError(const char *description)
 	exit(EXIT_FAILURE);
 }
 
-#ifdef USE_NEWHANDLER
-void memError()
+void pauseError(const char *description)
 {
-	fatalError("Out of memory");
+	fprintf(stderr, "\n\n%s\n\n", description);
+	napms(2000);
 }
-#endif
 
 #ifdef USE_MOUSE
 void mm_mouse_get()
