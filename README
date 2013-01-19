@@ -1,0 +1,94 @@
+MultiMail version 0.32
+======================
+
+What is MultiMail?
+------------------
+
+MultiMail is an offline mail packet reader for Unix and other systems.
+(This version also compiles under MSDOS, with DJGPP; OS/2, with EMX; and
+Win32, with RSX/NT.) It currently supports the Blue Wave, QWK, OMEN, SOUP
+and OPX (Silver Xpress) formats. It has a full screen, color user
+interface, built with the curses library.
+
+MultiMail is free, "open source" software, distributed under the GNU
+General Public License (q.v.).
+
+You can get the latest version by anonymous ftp from:
+
+ ftp://ftp.clark.net/pub/wmcbrine/bbs/offline/mmail-0.32.tar.gz
+
+or at the MultiMail home page:
+
+ http://www.clark.net/~wmcbrine/multimail.html
+
+Sorry, but no official Fidonet netmail address or F'REQ site is available
+right now.
+
+
+What's New in version 0.32?
+---------------------------
+
+ * OPX (Silver Xpress) packet support
+ * "Personal" area for all packet types (except SOUP)
+ * Can generate .XTI files for Blue Wave
+ * Character set translation bug fixes
+ * Much more
+
+See the HISTORY file for other changes. See INSTALL for the installation
+procedure, and the man page (mm.1) for information on usage.
+
+
+Requirements for compiling
+--------------------------
+
+ * Unix-compatible (POSIX) system, MSDOS/DJGPP, OS/2/EMX or Win32/RSXNT
+ * curses -- tested with ncurses 1.9.3+, Solaris curses, and PDCurses 2.3
+ * gcc (g++) 2.7.0+ -- may work with other C++ compilers, not tested
+ * GNU make *may* be required on some systems
+
+
+Features
+--------
+
+ * auto-decompression of packets with external compress programs
+ * user-friendly menus to select packet, area, letter, etc.
+ * save whole area or one letter in a text file
+ * enter mail in any area (using external editor)
+ * insert tagline from a tagline file
+ * reply with quote
+ * write netmail
+ * netmail addressbook
+
+
+Tested Systems
+--------------
+
+I'd like to get MultiMail tested on as many platforms as possible. I've
+personally used it on:
+
+  Linux 2.0.29, Slackware-based, 486, gcc 2.7.2.1, ncurses 4.2
+  Linux 2.0.33, Red Hat, Pentium, gcc 2.7.2.1, ncurses 1.9.9e
+  Solaris 2.6, Sparc, gcc 2.8.1, standard curses
+  Solaris 2.6, Sparc, gcc 2.8.1, ncurses 4.2
+  NetBSD 1.3, Macintosh SE/30, gcc 2.7.2.2+myc1, ncurses 4.1
+  PCDOS 5.0, DOSEmu/Linux, 486, djgpp 2.01, PDCurses 2.3
+  MSDOS 6.2, 386sx, djgpp 2.01, PDCurses 2.3
+  OS/2 3.0, Pentium, EMX 0.9c, PDCurses 2.3
+  Windows 95, Pentium, RSX/NT 1.41, PDCurses 2.3
+
+If you get it going on a dissimilar system, please let me know (along with
+any necessary patches). Or, let me telnet to your machine, and I'll try
+porting it myself. :-)
+
+
+Credits
+-------
+
+MultiMail was originally developed under Linux by Kolossvary Tamas and
+Toth Istvan. John Zero was the maintainer for versions 0.2 through 0.6;
+since version 0.7, the maintainer is William McBrine <wmcbrine@clark.net>.
+
+Additional code has been contribued by Peter Karlsson, Mark D. Rejhon,
+Ingo Brueckl, and Robert Vukovic.
+
+Bug reports and suggestions are noted in the HISTORY file.

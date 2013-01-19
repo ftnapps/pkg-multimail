@@ -1,0 +1,45 @@
+addrbook.o: addrbook.cc interfac.h ../mmail/mmail.h ../mmail/misc.h \
+ ../mmail/resource.h ../mmail/../interfac/mysystem.h mmcolor.h \
+ isoconv.h
+ansiview.o: ansiview.cc interfac.h ../mmail/mmail.h ../mmail/misc.h \
+ ../mmail/resource.h ../mmail/../interfac/mysystem.h mmcolor.h \
+ isoconv.h
+arealist.o: arealist.cc interfac.h ../mmail/mmail.h ../mmail/misc.h \
+ ../mmail/resource.h ../mmail/../interfac/mysystem.h mmcolor.h \
+ isoconv.h
+basic.o: basic.cc interfac.h ../mmail/mmail.h ../mmail/misc.h \
+ ../mmail/resource.h ../mmail/../interfac/mysystem.h mmcolor.h \
+ isoconv.h
+help.o: help.cc interfac.h ../mmail/mmail.h ../mmail/misc.h \
+ ../mmail/resource.h ../mmail/../interfac/mysystem.h mmcolor.h \
+ isoconv.h
+interfac.o: interfac.cc interfac.h ../mmail/mmail.h ../mmail/misc.h \
+ ../mmail/resource.h ../mmail/../interfac/mysystem.h mmcolor.h \
+ isoconv.h
+isoconv.o: isoconv.cc interfac.h ../mmail/mmail.h ../mmail/misc.h \
+ ../mmail/resource.h ../mmail/../interfac/mysystem.h mmcolor.h \
+ isoconv.h
+letterl.o: letterl.cc interfac.h ../mmail/mmail.h ../mmail/misc.h \
+ ../mmail/resource.h ../mmail/../interfac/mysystem.h mmcolor.h \
+ isoconv.h
+letterw.o: letterw.cc interfac.h ../mmail/mmail.h ../mmail/misc.h \
+ ../mmail/resource.h ../mmail/../interfac/mysystem.h mmcolor.h \
+ isoconv.h
+lettpost.o: lettpost.cc interfac.h ../mmail/mmail.h ../mmail/misc.h \
+ ../mmail/resource.h ../mmail/../interfac/mysystem.h mmcolor.h \
+ isoconv.h
+main.o: main.cc error.h interfac.h ../mmail/mmail.h ../mmail/misc.h \
+ ../mmail/resource.h ../mmail/../interfac/mysystem.h mmcolor.h \
+ isoconv.h
+mmcolor.o: mmcolor.cc interfac.h ../mmail/mmail.h ../mmail/misc.h \
+ ../mmail/resource.h ../mmail/../interfac/mysystem.h mmcolor.h \
+ isoconv.h
+mysystem.o: mysystem.cc interfac.h ../mmail/mmail.h ../mmail/misc.h \
+ ../mmail/resource.h ../mmail/../interfac/mysystem.h mmcolor.h \
+ isoconv.h error.h
+packet.o: packet.cc interfac.h ../mmail/mmail.h ../mmail/misc.h \
+ ../mmail/resource.h ../mmail/../interfac/mysystem.h mmcolor.h \
+ isoconv.h
+tagline.o: tagline.cc interfac.h ../mmail/mmail.h ../mmail/misc.h \
+ ../mmail/resource.h ../mmail/../interfac/mysystem.h mmcolor.h \
+ isoconv.h tagline.h

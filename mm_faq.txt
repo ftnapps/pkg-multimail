@@ -1,0 +1,249 @@
+                             MultiMail FAQ v1.3
+     _________________________________________________________________
+   
+   Some frequently asked questions about the MultiMail Offline Reader,
+   and my answers.
+   
+  Topics covered in this FAQ:
+  
+    1. I get the error message "Packet type not recognized"
+    2. How do I set up my spell checker in MultiMail?
+    3. Is MultiMail Y2K compliant?
+    4. What are the differences between the MS-DOS and Win32 versions?
+    5. There are only eight colors to choose from in the color file.
+    6. I downloaded MMAIL030.ZIP, but there are no .EXE's in it.
+    7. I see by your tear line that you're using version 0.31...
+    8. I haven't actually tried MultiMail yet, but I have lots of
+       questions
+    9. How about adding X feature?
+   10. Will you port MultiMail to the XYZ system?
+   11. Did you know that "MultiMail" is also the name of a commercial...
+   12. I notice your accouncements say "Sorry, no Fidonet addresses...
+   13. I'm a programmer. How can I collaborate with you?
+   14. Is there an Internet mailing list for MultiMail?
+     _________________________________________________________________
+   
+    1.1: I get the error message "Packet type not recognized" when I try to
+    select a packet from the menu. But I know that the packets are OK.
+    
+   Are you using the Win32 version of MultiMail?
+   
+    1.2: Why yes, I am.
+    
+   The most likely explanation is that you haven't set up the command
+   lines for your ZIP archiver. When your MMAIL.RC was created, the
+   default commands for ZIP-compressed packets were set up to use
+   InfoZip. Odds are, you're trying to use the MS-DOS version of
+   PKZIP/PKUNZIP instead. So you need to alter the commands a little.
+   (Take out the "-j" and "-L" options, and make the commands "pkunzip"
+   and "pkzip".)
+   
+   Another possibility is that you're using 4DOS as your command shell.
+   For some reason, it appears to be incompatible with the system()
+   command in RSX/NT (the compiler used for the Win32 version). You can
+   set the COMSPEC variable to point to COMMAND.COM for just the
+   MultiMail session.
+   
+    1.3: Why the misleading error message?
+    
+   It should be saying "Could not uncompress packet". However -- again,
+   due to a problem with the system() call in RSX/NT -- it doesn't
+   recognize that the attempt to uncompress failed, and it only reports
+   an error when it tries to look at the (nonexistent) resulting files.
+   
+    1.4: So why didn't you make PKZIP the default archiver for the Win32
+    version? You did for the MS-DOS version.
+    
+   Because, until recently, PKZIP was only available as an MS-DOS
+   program. (The new Win32 versions would require a different command
+   line, in any case.) It's suboptimal to use an MS-DOS archiver with a
+   Win32 program -- though this confusion has surfaced so often that I've
+   considered changing the default. Unlike the other platforms MultiMail
+   is available for, in Win32, there's no clear winner among command-line
+   Zip-compatible archivers; the only de facto standard is the GUI
+   WinZip. So I just carried over the InfoZip settings, since InfoZip is
+   the de facto standard on Unix and OS/2, and is also available for
+   Win32.
+     _________________________________________________________________
+   
+    2.1: How do I set up my spell checker in MultiMail? There's no option for
+    it in MMAIL.RC.
+    
+   There won't be a separate option for spell checkers. But there are two
+   ways you can handle it:
+   
+   Call the spell checker from your text editor. This is what I
+   recommend.
+   
+   or
+   
+   Create a batch file that calls both the editor and the spell-checker,
+   and set the "editor:" keyword in mmail.rc to point to this batch file.
+   
+   I can't tell you exactly what the batch file should look like, since I
+   don't do this myself. (Anyone who uses one of the popular spell
+   checkers, feel free to flesh this answer out a bit.) But the general
+   idea would be something like this:
+   
+ editor %1
+ spell %1
+
+   (For Unix, substitute '$' for '%'.)
+     _________________________________________________________________
+   
+    3.1: Is MultiMail Y2K compliant?
+    
+   No. On January 1st, 2000, MultiMail will self-destruct, wiping out
+   your hard disk in the process. However, it will only do this to people
+   who ask if it's "Y2K compilant".
+   
+    3.2: Aw, c'mon, I'm serious.
+    
+   Hey, so am I. ;-) "Y2K compliant" is a meaningless phrase. But OK; you
+   want to know what will happen to MultiMail next year. The short and
+   incomplete answer is, "nothing special". The more accurate, yet less
+   satisfying answer is "it depends".
+ 
+   The source code of MultiMail itself contains no date-related bugs. It
+   achieves this, in part, by having rather simple-minded date handling.
+   :-) No message-sorting-by-date is available, for example.
+
+   Anyway, even though the source of MultiMail itself is OK, there's an
+   extremely remote possibility that one of the standard library date
+   functions it gets linked to when compiled will, on some platform, have
+   a bug. I consider this not worth worrying about, and so should you;
+   but there's always a chance. The MS-DOS binary has been specifically
+   tested and found to be OK. I haven't bothered testing the others,
+   because I trust the standard libraries; and because frankly, it's a
+   pain.
+   
+   But wait; there's more. Part of what I mean when I say "it depends" is
+   that MultiMail has to interact with other programs: QWK, Blue Wave and
+   OMEN doors, as well as SOUP handlers. And some of them are definitely
+   going to have problems, though I can't give you a list of which will
+   do what. (I'll only vouch for the correctness of my own QWK door,
+   Valence -- preferably version 1.6.) SOUP will probably be the least
+   affected.
+     _________________________________________________________________
+   
+    4.1: What are the differences between the MS-DOS and Win32 versions? They
+    look the same.
+    
+   They're quite different internally; but yes, they function nearly
+   identically. (So do the Unix and OS/2 versions.) The MS-DOS version is
+   a 32-bit DPMI client, so (depending on your settings) it can read
+   messages and packets just as large as the Win32 version. It even
+   understands long filenames under Windows 9x. About the only advantages
+   of the Win32 version are better multitasking with other Windows apps,
+   and support for long filenames under Windows NT.
+     _________________________________________________________________
+   
+    5.1: There are only eight colors to choose from in the color file. Why is
+    it so limited?
+    
+   No, there are really 16 foreground colors, and 8 background. The high
+   bit of the foreground color is set by using the "Bold" attribute in
+   the color file. These are all the colors available to you in text mode
+   on a standard PC-type display, with the exception of a special mode
+   (not supported by MultiMail) which lets you swap the "blinking"
+   attribute for 16 colors in the background, too.
+   
+    5.2: So why is it called "Bold", anyway?
+    
+   That's the ANSI name for it, and also the curses name (A_BOLD). On
+   some displays (e.g., an xterm), it actually boldfaces the text,
+   instead of (or in addition to) affecting the color.
+   
+    5.3: What's the purpose of the "Reverse" attribute? Why not just switch the
+    colors around? Isn't that the same?
+    
+   On a monochrome terminal, no. The "Reverse" and "Bold" attributes are
+   the only way to get highlighting on such a terminal. The color schemes
+   I've made (though not the contrib schemes) make use of these
+   attributes to ensure that they look OK when the program is run on a
+   monochrome screen.
+     _________________________________________________________________
+   
+    6.1: I downloaded MMAIL030.ZIP, but there are no .EXE's in it.
+    
+   That's a source code archive. Look under "Binaries" on the web page
+   for a pre-compiled version for your platform. (If you're coming in via
+   FTP, they're in:
+   ftp://ftp.clark.net/pub/wmcbrine/bbs/offline/mmail-bin/)
+     _________________________________________________________________
+   
+    7.1: I see by your tear line that you're using version 0.31, but your web
+    site only has 0.30. Where can I get 0.31?
+    
+   You should always ignore my tear lines. One of the first things I do
+   after releasing a new version is to increment the version number; so
+   I'm often using a version that's just ahead of the released one. It
+   doesn't mean that a new release is imminent, either. My web site will
+   always have the most current version.
+     _________________________________________________________________
+   
+    8.1: I haven't actually tried MultiMail yet, but I have lots of questions
+    about it.
+    
+   Try it first, then get back to me. That goes for individual features,
+   too. Don't ask me what will happen if you do something -- find out for
+   yourself.
+     _________________________________________________________________
+   
+    9.1: How about adding X feature?
+    
+   Please read the TODO file before asking for new features. If X is
+   listed there, you need not write me about it. (Otherwise, I don't
+   mind.)
+     _________________________________________________________________
+   
+    10.1: Will you port MultiMail to the XYZ system? [Where XYZ = 16-bit
+    MS-DOS, BeOS, etc.]
+    
+   Send me a C++ development system for XYZ, and I'll be happy to try.
+     _________________________________________________________________
+   
+    11.1: Did you know that "MultiMail" is also the name of a commercial
+    POP/IMAP/SMTP client for the Palm OS?
+    
+   Yes.
+   
+    11.2: So, couldn't you get in trouble for that?
+    
+   Actually, as far as I can tell, the subject of this FAQ predates the
+   Palm OS program. (Version 0.1 came out in January 1996.) There are a
+   number of other programs and products which also go by the name.
+   
+    11.3: Wow, 1996. Shouldn't you have hit version 1.0 by now?
+    
+   Yes. But bear in mind that MultiMail has had four maintainers (in
+   three groups), and essentially lain fallow for long periods in
+   bewteen. Also, none of us are getting paid for this. :-)
+     _________________________________________________________________
+   
+    12.1: I notice your accouncements say "Sorry, no Fidonet addresses at this
+    time." Would you like to make my BBS your official Fidonet F'REQ site?
+    
+   Thanks for the offer, but it's problematical for me. I don't feel that
+   I have adequate control over the process to ensure that new versions
+   will be promptly available. I'm still mulling over this, though. What
+   I might do is make a list of "unofficial" sites. ;-)
+     _________________________________________________________________
+   
+    13.1: I'm a programmer. How can I collaborate with you? I'm full of ideas.
+    
+   Use the source, Luke. Show me some actual code patches first, and
+   document them. Then we'll talk.
+     _________________________________________________________________
+   
+    14.1: Is there an Internet mailing list for MultiMail?
+    
+   Yes. Write to me to subscribe or unsubscribe to the discussion list.
+   (The process is not automated.) I'll then tell you the list address to
+   use. (To avoid spam, I won't put it here.)
+   
+   I also have an announce list; I automatically add anyone who writes to
+   me about MultiMail to that list, unless you ask otherwise.
+     _________________________________________________________________
+   
+    FAQ by William McBrine <wmcbrine@clark.net>. Last updated: Sep 29 1999
