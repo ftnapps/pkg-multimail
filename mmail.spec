@@ -1,7 +1,7 @@
 # Spec file originally by Greg Wildman <greg@techno.co.za>
 
 %define	name	mmail
-%define	version	0.47
+%define	version	0.48
 %define	release	1
 %define	prefix	/usr
 
@@ -40,6 +40,6 @@ ln -s %{_mandir}/man1/mm.1.gz %{_mandir}/man1/mmail.1.gz
 
 %files
 %defattr(-, root, root)
-%doc README COPYING HISTORY INSTALL TODO FAQ colors/*
+%doc README COPYING HISTORY INSTALL colors/*
 %{_bindir}/mm
 %{_mandir}/man1/*

@@ -10,15 +10,15 @@ include version
 #OPTS = -g -Wall -pedantic
 
 # Optimized for recent versions of gcc:
-OPTS = -O2 -fno-exceptions -fno-rtti -fconserve-space -Wno-deprecated
+OPTS = -O2 -fno-exceptions -fno-rtti -fconserve-space -Wno-deprecated \
+-DPDC_WIDE
 
 #--------------------------------------------------------------
-# MinGW, with GCC 3.x, and PDCurses 2.7:
+# MinGW, with GCC 3.x, and PDCurses:
 
-CURS_INC = \\\"e:/home/pdcurs27/curses.h\\\"
-CURS_DIR = e:/home/pdcurs27 -DPDC_STATIC_BUILD
+CURS_DIR = /pdcurses
 CURS_LIB = .
-LIBS = e:/home/pdcurs27/win32/pdcurses.a
+LIBS = /pdcurses/win32/pdcurses.a
 RM = del
 SEP = &&
 POST = strip mm.exe
@@ -34,15 +34,15 @@ mm-main:
 
 intrfc:
 	cd interfac $(SEP) $(MAKE) MM_MAJOR="$(MM_MAJOR)" \
-		MM_MINOR="$(MM_MINOR)" OPTS="$(OPTS) -I$(CURS_DIR)" \
-		CURS_INC="$(CURS_INC)" intrfc $(SEP) cd ..
+		MM_MINOR="$(MM_MINOR)" OPTS="$(OPTS)" \
+		CURS_DIR="$(CURS_DIR)" intrfc $(SEP) cd ..
 
 mm:	mm-main intrfc
 	$(CXX) -o mm mmail/*.o interfac/*.o -L$(CURS_LIB) $(LIBS)
 	$(POST)
 
 dep:
-	cd interfac $(SEP) $(MAKE) CURS_INC="$(CURS_INC)" dep $(SEP) cd ..
+	cd interfac $(SEP) $(MAKE) CURS_DIR="$(CURS_DIR)" dep $(SEP) cd ..
 	cd mmail $(SEP) $(MAKE) dep $(SEP) cd ..
 
 clean:

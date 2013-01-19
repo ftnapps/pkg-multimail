@@ -2,7 +2,7 @@
  * MultiMail offline mail reader
  * some low-level routines common to both sides
 
- Copyright (c) 2005 William McBrine <wmcbrine@users.sf.net>
+ Copyright (c) 2007 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -61,13 +61,18 @@ extern "C" {
 # include <io.h>
 #endif
 
-#ifdef __WATCOMC__
+#if defined(__WATCOMC__) || defined(TURBO16)
 # include <dos.h>
 #endif
 
 #ifdef __EMX__
 int _chdir2(const char *);
 char *_getcwd2(char *, int);
+#endif
+
+#if defined(PDCURSES) && defined(__WIN32__)
+# undef MOUSE_MOVED
+# include <windows.h>
 #endif
 }
 
@@ -103,13 +108,8 @@ char *myfgets(char *s, size_t size, FILE *stream)
 
 int mysystem(const char *cmd)
 {
-	if (ui && !isendwin()) {
-			endwin();
-#ifdef PDCURSKLUDGE
-			// Restore original cursor
-			PDC_set_cursor_mode(curs_start, curs_end);
-#endif
-	}
+	if (ui && !isendwin())
+		endwin();
 
 #ifdef USE_SPAWNO
 	int result = mm.resourceObject->getInt(swapOut) ?
@@ -128,10 +128,11 @@ int mysystem(const char *cmd)
 #endif
 
 	if (ui) {
-#ifdef __PDCURSES__
+#ifdef PDCURSES
 # ifdef __WIN32__
 		// Force scroll bars off in Windows 2000, XP
-		resize_term(LINES, COLS);
+		if (!(GetVersion() & 0x80000000))
+			resize_term(LINES, COLS);
 # endif
 # if defined(__WIN32__) || defined(XCURSES)
 		PDC_set_title(MM_NAME);

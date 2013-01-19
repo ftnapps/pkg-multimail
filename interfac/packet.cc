@@ -4,7 +4,7 @@
 
  Copyright (c) 1996 Kolossvary Tamas <thomas@vma.bme.hu>
  Copyright (c) 1997 John Zero <john@graphisoft.hu>
- Copyright (c) 2005 William McBrine <wmcbrine@users.sf.net>
+ Copyright (c) 2007 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -22,7 +22,7 @@ void Welcome::MakeActive()
 	//window->put(2, 13, "http://multimail.sf.net/");
 	window->attrib(C_WELCOME2);
 	window->put(3, 2,
-		"Copyright (c) 2005 William McBrine, Kolossvary"); 
+		"Copyright (c) 2007 William McBrine, Kolossvary"); 
 	window->put(4, 7,
 		"Tamas, Toth Istvan, John Zero, et al.");
 	window->touch();
@@ -323,8 +323,8 @@ bool PacketListWindow::extrakeys(int key)
 		{
 			int begx = list->xstart(), begy = list->ystart();
 
-			if ( (mouse_event.y != begy) ||
-			    ((mouse_event.x < (begx + 3)) || (mouse_event.x >
+			if ( (mm_mouse_event.y != begy) ||
+			    ((mm_mouse_event.x < (begx + 3)) || (mm_mouse_event.x >
 			    (begx + list_max_x))) )
 				break;
 		}

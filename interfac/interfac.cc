@@ -4,7 +4,7 @@
 
  Copyright (c) 1996 Kolossvary Tamas <thomas@tvnet.hu>
  Copyright (c) 1997 John Zero <john@graphisoft.hu>
- Copyright (c) 2005 William McBrine <wmcbrine@users.sf.net>
+ Copyright (c) 2007 William McBrine <wmcbrine@users.sf.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -65,12 +65,6 @@ Interface::~Interface()
 	leaveok(stdscr, FALSE);
 	echo();
 	endwin();
-#ifdef XCURSES
-	XCursesExit();
-#endif
-#ifdef PDCURSKLUDGE
-	PDC_set_cursor_mode(curs_start, curs_end);
-#endif
 }
 
 void Interface::init_colors()
@@ -97,19 +91,12 @@ void Interface::init_colors()
 
 void Interface::alive()
 {
-#ifdef PDCURSKLUDGE
-	// Preserve the startup cursor mode:
-
-	int curs_mode = PDC_get_cursor_mode();
-	curs_start = (curs_mode & 0xff00) >> 8;
-	curs_end = curs_mode & 0xff;
-#endif
 	initscr();
 	refresh();
-#ifndef __PDCURSES__
+
 	if (mm.resourceObject->getInt(UseColors))
-#endif
 		start_color();
+
 #ifdef NCURSES_VERSION
 	use_default_colors();
 #endif
@@ -120,13 +107,9 @@ void Interface::alive()
 	//raw();
 
 #ifdef USE_MOUSE
-# ifndef NCURSES_MOUSE_VERSION
-	mouse_set(BUTTON1_PRESSED | BUTTON3_PRESSED
-		| BUTTON1_DOUBLE_CLICKED | BUTTON3_DOUBLE_CLICKED);
-# else
-	mousemask(BUTTON1_CLICKED | BUTTON1_DOUBLE_CLICKED |
-		BUTTON3_CLICKED, 0);
-# endif
+	if (mm.resourceObject->getInt(Mouse))
+		mousemask(BUTTON1_CLICKED | BUTTON1_DOUBLE_CLICKED |
+			BUTTON3_CLICKED, 0);
 #endif
 }
 
@@ -152,7 +135,7 @@ void Interface::screen_init()
 
 	// Border and title:
 
-#if (defined(__PDCURSES__) && defined(__WIN32__)) || defined(XCURSES)
+#if (defined(PDCURSES) && defined(__WIN32__)) || defined(XCURSES)
 	PDC_set_title(MM_NAME);
 #endif
 	sprintf(tmp, MM_TOPHEADER, sysname());
@@ -252,7 +235,7 @@ int Interface::WarningWindow(const char *warning, const char **selectors,
 #ifdef USE_MOUSE
 			case MM_MOUSE:
 				mm_mouse_get();
-				if ((LINES >> 1) == mouse_event.y)
+				if ((LINES >> 1) == mm_mouse_event.y)
 				    for (p = selectors, curitem = 0;
 					(curitem < items) && !result;
 					curitem++, p++) {
@@ -260,8 +243,8 @@ int Interface::WarningWindow(const char *warning, const char **selectors,
 					    x = curitem * itemlen +
 						((itemlen - z + 5) >> 1) +
 						((COLS - width) / 2);
-					    if ((x <= mouse_event.x) &&
-					     (mouse_event.x <= (x + z))) {
+					    if ((x <= mm_mouse_event.x) &&
+					     (mm_mouse_event.x <= (x + z))) {
 						def_val = curitem;
 						result = true;
 					    }
@@ -753,11 +736,8 @@ void Interface::searchNext()
 		// We should only continue if the search was started in an
 		// appropriate state with respect to the current state.
 
-#ifdef BOGUS_WARNING
-		bool stateok = false;
-#else
 		bool stateok;
-#endif
+
 		switch (state) {
 		case letter:
 		case letterlist:
@@ -769,11 +749,8 @@ void Interface::searchNext()
 		}
 
 		if (stateok) {
-#ifdef BOGUS_WARNING
-			searchret result = False;
-#else
 			searchret result;
-#endif
+
 			dontSetAsRead = true;
 
 			bool restorepos = (s_oldpos == -1);
@@ -1019,7 +996,7 @@ void Interface::KeyHandle()		// Main loop
 #ifdef USE_MOUSE
 			case MM_MOUSE:
 				mm_mouse_get();
-				if (mouse_event.bstate & BUTTON3_CLICKED) {
+				if (mm_mouse_event.bstate & BUTTON3_CLICKED) {
 					end = back();
 					break;
 				}

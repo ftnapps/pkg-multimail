@@ -7,7 +7,7 @@ include version
 # General options (passed to mmail/Makefile and interfac/Makefile):
 
 # With debug:
-#OPTS = -g -Wall -pedantic -Wno-deprecated -Wno-char-subscripts
+#OPTS = -g -Wall -Wextra -pedantic -Wno-deprecated -Wno-char-subscripts
 
 # Optimized, no debug:
 OPTS = -O2 -Wall -pedantic -Wno-deprecated -Wno-char-subscripts
@@ -33,13 +33,8 @@ POST =
 #--------------------------------------------------------------
 # Defaults are for the standard curses setup:
 
-# CURS_INC specifies the location of your curses header file. Broken
-# brackets (<, >) should be preceded by backslashes. Quotes (") should
-# be preceded by *three* backslashes:
-
-CURS_INC = \<curses.h\>
-
-# CURS_DIR may also be necessary in some cases:
+# CURS_DIR specifies the directory with your curses header file, if it's 
+# not /usr/include/curses.h:
 
 CURS_DIR = .
 
@@ -53,38 +48,10 @@ CURS_LIB = .
 LIBS = -lcurses
 
 #--------------------------------------------------------------
-# With ncurses installed beside the original curses, rather than
-# replacing it -- for older Linux distros, etc.:
+# With PDCurses for X11:
 
-#CURS_INC = \<ncurses/curses.h\>
-#CURS_DIR = /usr/include/ncurses
-#CURS_LIB = /usr/local/lib
-#LIBS = -lncurses
-
-# For static linking (examples):
-
-#LIBS = /usr/lib/libncurses.a
-#LIBS = /opt/sfw/lib/libncurses.a
-
-#--------------------------------------------------------------
-# With ncurses installed in the user's home directory:
-
-# Example with quotes (relative pathnames start from ./interfac):
-#CURS_INC = \\\"../../ncurses-5.2/include/curses.h\\\"
-#CURS_DIR = ../../ncurses-5.2/include
-#CURS_LIB = ../ncurses-5.2/lib
-#LIBS = -lncurses
-
-#--------------------------------------------------------------
-# With XCurses (PDCurses 2.7) in my home directory:
-
-#CURS_INC = \\\"/home/wmcbrine/pdcurs27/curses.h\\\"
-# Sneak some extra defines in through the back door:
-#CURS_DIR = /home/wmcbrine/pdcurs27 -DXCURSES -DHAVE_PROTO
-#CURS_LIB = /home/wmcbrine/pdcurs27/pdcurses
-#LIBS = -L/usr/X11R6/lib \
-#/home/wmcbrine/pdcurs27/pdcurses/libXCurses.a \
-#-lXaw -lXmu -lXt -lX11 -lSM -lICE -lXext
+#CURS_DIR = /usr/local/include/xcurses
+#LIBS = -lXCurses
 
 #--------------------------------------------------------------
 #--------------------------------------------------------------
@@ -99,15 +66,15 @@ mm-main:
 
 intrfc:
 	cd interfac $(SEP) $(MAKE) MM_MAJOR="$(MM_MAJOR)" \
-		MM_MINOR="$(MM_MINOR)" OPTS="$(OPTS) -I$(CURS_DIR)" \
-		CURS_INC="$(CURS_INC)" intrfc $(SEP) cd ..
+		MM_MINOR="$(MM_MINOR)" OPTS="$(OPTS)" \
+		CURS_DIR="$(CURS_DIR)" intrfc $(SEP) cd ..
 
 mm:	mm-main intrfc
 	$(CXX) -o mm mmail/*.o interfac/*.o -L$(CURS_LIB) $(LIBS)
 	$(POST)
 
 dep:
-	cd interfac $(SEP) $(MAKE) CURS_INC="$(CURS_INC)" dep $(SEP) cd ..
+	cd interfac $(SEP) $(MAKE) CURS_DIR="$(CURS_DIR)" dep $(SEP) cd ..
 	cd mmail $(SEP) $(MAKE) dep $(SEP) cd ..
 
 clean:
@@ -118,7 +85,7 @@ clean:
 modclean:
 	cd mmail $(SEP) $(MAKE) RM="$(RM)" modclean $(SEP) cd ..
 
-install:
+install::
 	install -c -s mm $(PREFIX)/bin
 	install -c -m 644 mm.1 $(HELPDIR)
 	$(RM) $(HELPDIR)/mmail.1
