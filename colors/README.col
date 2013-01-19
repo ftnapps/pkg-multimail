@@ -60,13 +60,11 @@ here are:
 
   toutant.col -  Donated by David Toutant.
 
-  tradit.col  -  The standard color scheme since version 0.2, based on the
-                 version 0.1 scheme, with signifigant alterations by John
-                 Zero. Like the others (except aqua), it's rather day-glo
-                 for my taste, so I'll probably change the default colors
-                 in a future version. (This file will remain available.)
-                 In fact, I just changed *one*: the REPLY area line, which
-                 was hard to see as dark yellow, is now dark green.
+  tradit.col  -  The standard color scheme used in versions 0.2 through
+                 0.37, based on the version 0.1 scheme, with signifigant
+		 alterations by John Zero.
+
+  tuukka.col  -  A monochrome scheme, donated by Tuukka Lehtinen.
 
   ver01.col   -  Approximately, the original color scheme found in the
                  version 0.1 series, as devised by Kolossvary Tamas. (Some
@@ -74,4 +72,4 @@ here are:
                  screen layout.)
 
 I welcome additonal color schemes. If you have an interesting one, please
-send it to <wmcbrine@clark.net>.
+send it to <wmcbrine@users.sourceforge.net>.

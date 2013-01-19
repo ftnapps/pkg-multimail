@@ -1,8 +1,8 @@
 /*
  * MultiMail offline mail reader
- * OPX (Silver Xpress)
+ * OPX
 
- Copyright (c) 1999 William McBrine <wmcbrine@clark.net>
+ Copyright (c) 2001 William McBrine <wmcbrine@users.sourceforge.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -15,27 +15,36 @@
 
 class opxpack : public pktbase
 {
+	ocfgHeader confhead;
+
 	char *pstrget(void *);
 	void readBrdinfoDat();
 	void buildIndices();
+
+	void getblk(int, long &, long, unsigned char *&, unsigned char *&);
+	void endproc(letter_header &);
  public:
 	opxpack(mmail *);
 	~opxpack();
 	area_header *getNextArea();
 	letter_header *getNextLetter();
-	const char *getBody(letter_header &);
+	const char *getTear(int);
+	ocfgHeader *offhead();
+	const char *oldFlagsName();
+	bool readOldFlags();
+	bool saveOldFlags();
 };
 
 class opxreply : public pktreply
 {
 	class upl_opx : public upl_base {
 	 public:
-		repHead rhead;
+		fidoHead rhead;
 		net_address na;
 		char *msgid;
 		int area;
 
-		upl_opx();
+		upl_opx(const char * = 0);
 		~upl_opx();
 	};
 
@@ -52,7 +61,7 @@ class opxreply : public pktreply
 	~opxreply();
 	area_header *getNextArea();
 	letter_header *getNextLetter();
-	void enterLetter(letter_header &, const char *, int);
+	void enterLetter(letter_header &, const char *, long);
 	bool getOffConfig();
 	bool makeOffConfig();
 };

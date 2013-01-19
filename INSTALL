@@ -1,16 +1,19 @@
-MultiMail installation procedure
-================================
+MultiMail compilation and installation procedure
+================================================
+
+These instructions assume that you're compiling MultiMail from source. For
+precompiled binaries, see the README files that accompany them instead.
 
 1. Make sure any needed packages are installed --
     In addition to the MultiMail package itself, you'll also need InfoZip
     or PKZIP (and/or LHA, ARJ, etc.) to uncompress the packets and
     compress the replies. InfoZip is available from:
 
-    ftp://ftp.cdrom.com/pub/infozip/
+    http://www.info-zip.org/
 
     PKZIP is at:
 
-    ftp://ftp.pkware.com/
+    http://www.pkware.com/
 
     (PKZIP is the default for DOS; InfoZip is the default for other
     platforms.) The programs should be installed somewhere in the PATH;
@@ -19,25 +22,28 @@ MultiMail installation procedure
     To compile MultiMail, you'll need curses -- either ncurses, SysV
     curses (e.g., Solaris curses), or PDCurses. You can get ncurses from:
 
-    ftp://ftp.clark.net/pub/dickey/ncurses/
+    http://dickey.his.com/ncurses/
 
     PDCurses is available at:
 
-    http://www.lightlink.com/hessling/#PDCURSES
+    http://www.lightlink.com/hessling/PDCurses/
 
     (If you're using Linux, odds are that you already have ncurses and
     InfoZip.) Also, bear in mind that MultiMail needs the C++ standard 
     libraries, not just C.
 
-    Note that although DJGPP comes with PDCurses 2.2, I've made some
+    Note that although DJGPP 2.01 comes with PDCurses 2.2, I've made some
     changes that depend on 2.3.
+
+    The 16-bit MS-DOS port also uses Ralf Brown's SPAWNO library:
+
+    http://www.cs.cmu.edu/afs/cs.cmu.edu/user/ralf/pub/WWW/files.html
 
 2. Configure it (for compilation) --
     Check the options and paths in the Makefile. If your curses header
-    file is not in /usr/include/ncurses/curses.h, change CURS_INC and/or
-    CURS_DIR as appropriate. (CURS_DIR may need to be set even if curses
-    is installed in /usr/include/ncurses.) If the curses library is not
-    in the linker's search path, specify the directory in CURS_LIB.
+    file is not in /usr/include/curses.h, change CURS_INC and/or
+    CURS_DIR as appropriate. If the curses library is not in the linker's
+    search path, specify the directory in CURS_LIB.
 
 3. Compile MultiMail --
     At the base directory, type: make
@@ -88,28 +94,32 @@ the use of a black (or dark grey) foreground color on a black background
 (the default color for the shadows, also found in many ANSI pics).
 
 
-Compile notes: Win32
-====================
+Compile notes: Win32, MS-DOS, and OS/2
+======================================
 
-Win32 is officially supported via RSX/NT. Technically, it's a port of the
-EMX OS/2 port. :-)
+In the MultiMail source, separate makefiles are provided for these ports.
 
-First, you need a working curses library. There's no direct support for
-RSX/NT in PDCurses 2.3; but you can use the EMX support in the *OS/2*
-directory. Just edit "gccos2.mak" as appropriate, and compile it with the
-EMXVIDEO option, like so:
+Makefile.dj -  DJGPP (32-bit MS-DOS)
+Makefile.emx - EMX (32-bit OS/2)
+Makefile.rsx - RSX/NT (Win32)
+Makefile.bcc - Borland C++ (Win32)
+Makefile.tcc - Turbo C++ (16-bit MS-DOS)
+
+Edit the appropriate makefile to point to your installation of PDCurses,
+and compile with, e.g.:
+
+ make -f Makefile.rsx
+
+The RSX/NT port is technically a port of the EMX OS/2 port. :-) To compile
+with RSX/NT, you first need a working curses library. There's no direct
+support for RSX/NT in PDCurses; but you can use the EMX support in the
+*OS/2* directory. Just edit "gccos2.mak" as appropriate, and compile it
+with the EMXVIDEO option, like so:
 
  make -f gccos2.mak EMXVIDEO=Y
 
 The compilation will fail once it gets to the demos, but the library will
 work OK. (You can alter the makefile to compile the demos, too.)
-
-In the MultiMail source, a separate makefile is provided for this port,
-because I couldn't get the "cd interfac; make; cd .." stuff to work with
-RSX/NT. Compile it with:
-
- set cxx=gcc
- make -f Makefile.rsx
 
 
 Compile notes: Warnings to ignore
@@ -150,13 +160,12 @@ attempt to alert you to possible Y2K problems:
 
 (This refers to an invocation of strftime() with that parameter.) In this
 case, the two-digit year is mandated by the QWK format. Don't worry; it
-will still work in 2000. :-) This warning will also appear for the OPX
-module.
+still works in 2000. :-) This warning will also appear for the OPX module.
 
-When I link under NetBSD, I get a warning that reads, in part, "tmpnam()
-may be used unsafely". However, it says this for *any* usage of the
-tmpnam() function; and its suggested substitute is not really relevant to
-the way MultiMail works.
+On linking, some versions of gcc give a warning that reads, in part,
+"tmpnam() may be used unsafely". However, it says this for *any* usage of
+the tmpnam() function; and its suggested substitute is not really relevant
+to the way MultiMail works.
 
 Finally, some versions of the system header files (notably, those included
 with Red Hat 6.0) define toupper() and tolower() as multi-statement
@@ -166,4 +175,4 @@ macros, resulting in warnings like:
   misc.cc:98: warning: ANSI C++ forbids braced-groups within expressions
 
 for every place where one of them is used. (What this means is that it
-does work with gcc, but does not conform to strict ANSI.)
+_does_ work with gcc, but doesn't conform to strict ANSI.)

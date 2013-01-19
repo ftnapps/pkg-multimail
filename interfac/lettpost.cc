@@ -4,7 +4,7 @@
 
  Copyright (c) 1996 Kolossvary Tamas <thomas@tvnet.hu>
  Copyright (c) 1997 John Zero <john@graphisoft.hu>
- Copyright (c) 1999 William McBrine <wmcbrine@clark.net>
+ Copyright (c) 2001 William McBrine <wmcbrine@users.sourceforge.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -14,7 +14,8 @@
 void LetterWindow::set_Letter_Params(net_address &nm, const char *to)
 {
 	NM = nm;
-	strncpy(To, to ? to : "", 29);
+	delete[] To;
+	To = strdupplus(to);
 }
 
 void LetterWindow::set_Letter_Params(int area, char param_key)
@@ -27,7 +28,7 @@ void LetterWindow::QuoteText(FILE *reply)
 {
 	char TMP[81];
 	int i;
-	bool inet = mm.areaList->isInternet() || mm.areaList->isUsenet();
+	bool inet = !(!(mm.areaList->getType() & INTERNET));
 	const char *TMP2 = mm.letterList->getFrom();
 
 	int width = mm.resourceObject->getInt(QuoteWrapCols);
@@ -39,7 +40,9 @@ void LetterWindow::QuoteText(FILE *reply)
 	const char *s, *quotestr = mm.resourceObject->get(inet ? InetQuote
 		: QuoteHead);
 
-	while ((c = *quotestr++)) {
+	// Format header:
+
+	while ((c = *quotestr++) != 0) {
 		if (c != '%')
 			fputc(c, reply);
 		else {
@@ -76,6 +79,8 @@ void LetterWindow::QuoteText(FILE *reply)
 	}
 	fputs("\n\n", reply);
 
+	// Set quote initials if necessary:
+
 	if (!inet) {
 		char mg[4];
 
@@ -97,28 +102,35 @@ void LetterWindow::QuoteText(FILE *reply)
 		}
 		letterconv_in(mg);
 
-		sprintf(TMP, " %s> %%s\n", mg);
+		sprintf(TMP, " %s> ", mg);
 	} else
-		strcpy(TMP, "> %s\n");
+		strcpy(TMP, "> ");
+
+	// Output quoted text:
 
 	MakeChain(width, true);
 
 	for (i = 0; i < NumOfLines; i++) {
 		Line *curr = linelist[i];
 
-		if (!(curr->sigline || (!curr->length &&
-		    (i < (NumOfLines - 1)) && linelist[i + 1]->sigline)))
-			fprintf(reply, curr->length ? (curr->quoted ? (inet ?
-				">%s\n" : ((curr->text[0] == ' ') ? "%s\n" :
-				" %s\n")) : TMP) : (inet ? ">%s\n" : "%s\n"),
-				curr->text);
+		if (!((Sigline == curr->attr) ||
+		    (!curr->length && (i < (NumOfLines - 1)) &&
+			(Sigline == linelist[i + 1]->attr) ))) {
+
+			    fprintf(reply, curr->length ? ((Quoted ==
+				curr->attr) ? (inet ? ">" :
+				((curr->text[0] == ' ') ? "" : " ")) :
+				TMP) : (inet ? ">" : ""));
+
+			    curr->out(reply);
+		}
 	}
 
 	MakeChain(COLS);
 }
 
 int LetterWindow::HeaderLine(ShadowedWin &win, char *buf, int limit,
-				int pos, int color)
+				int pos, coltype color)
 {
 	areaconv_in(buf);
 	int getit = win.getstring(pos, 8, buf, limit, color, color);
@@ -138,7 +150,7 @@ int LetterWindow::EnterHeader(char *FROM, char *TO, char *SUBJ, bool &privat)
 	bool hasTo = hasNews || mm.areaList->hasTo();
 
 	if (hasNet) {
-		strcpy(NETADD, NM);
+		sprintf(NETADD, "%.99s", (const char *) NM);
 		maxitems++;
 	} else
 		NM.isSet = false;
@@ -228,7 +240,7 @@ int LetterWindow::EnterHeader(char *FROM, char *TO, char *SUBJ, bool &privat)
 			privat = true;
 			break;
 		case 3:
-			if (!interface->WarningWindow(
+			if (!ui->WarningWindow(
 				"Make letter private?", privat ? 0 : noyes))
 						privat = !privat;
 		}
@@ -238,27 +250,45 @@ int LetterWindow::EnterHeader(char *FROM, char *TO, char *SUBJ, bool &privat)
 
 long LetterWindow::reconvert(const char *reply_filename)
 {
-	FILE *reply;
+	FILE *src, *dest;
 
-	reply = fopen(reply_filename, "rt");
-	fseek(reply, 0, SEEK_END);
-	long replen = ftell(reply);
-	rewind(reply);
+	char *outname = mytmpnam();
+	src = fopen(reply_filename, "rt");
+	dest = fopen(outname, "wt");
 
-	char *body = new char[replen + 1];
-	replen = (long) fread(body, 1, replen, reply);
-	fclose(reply);
+	fseek(src, 0, SEEK_END);
+	long replen = ftell(src);
+	rewind(src);
 
-	body[replen] = '\0';
+	char *body = new char[((replen > MAXBLOCK) ? MAXBLOCK : replen) + 1];
+
+	long totlen = replen;
+	replen = 0;
+	while (totlen > MAXBLOCK) {
+		long blklen = (long) fread(body, 1, MAXBLOCK, src);
+		body[blklen] = '\0';
+		areaconv_out(body);
+		replen += (long) fwrite(body, 1, blklen, dest);
+		totlen -= blklen;
+	}
+	totlen = (long) fread(body, 1, totlen, src);
+	fclose(src);
+
+	body[totlen] = '\0';
 	areaconv_out(body);
-	while (body[replen - 1] == '\n')
-		replen--;
+	while (body[totlen - 1] == '\n')
+		totlen--;
 
-	reply = fopen(reply_filename, "wt");
-	fwrite(body, 1, replen, reply);
-	fclose(reply);
+	replen += (long) fwrite(body, 1, totlen, dest);
+	fclose(dest);
 
 	delete[] body;
+
+	remove(reply_filename);
+	rename(outname, reply_filename);
+
+	delete[] outname;
+
 	return replen;
 }
 
@@ -290,7 +320,7 @@ void LetterWindow::setToFrom(char *TO, char *FROM)
 		sprintf(TO, "%.512s", newsgrps);
 	} else
 		if (key == 'E')
-			strcpy(TO, (To[0] ? To : "All"));
+			strcpy(TO, (To ? To : "All"));
 		else
 			if (mm.areaList->isInternet()) {
 				if (key == 'O') {
@@ -315,14 +345,13 @@ void LetterWindow::setToFrom(char *TO, char *FROM)
 void LetterWindow::EnterLetter()
 {
 	FILE *reply;
-	char reply_filename[256], FROM[74], TO[514], SUBJ[514];
+	char FROM[74], TO[514], SUBJ[514];
 	const char *orig_id;
 
 	mystat fileStat;
 	time_t oldtime;
 
-	long replen;
-	int replyto_num;
+	long replen, replyto_num;
 	bool privat;
 
 	mm.areaList->gotoArea(replyto_area);
@@ -340,16 +369,19 @@ void LetterWindow::EnterLetter()
 		const char *s = stripre(mm.letterList->getSubject());
 		int len = strlen(s);
 
-		sprintf(SUBJ, ((len + 4) > mm.areaList->maxSubLen()) ?
-			"%.512s" : "Re: %.509s", s);
+		bool useRe = (inet || mm.resourceObject->getInt(ReOnReplies))
+			&& ((len + 4) <= mm.areaList->maxSubLen());
+		sprintf(SUBJ, useRe ? "Re: %.509s" : "%.512s", s);
 	}
 
 	privat = (key == 'E') ? false : mm.letterList->getPrivate();
 
 	if (!EnterHeader(FROM, TO, SUBJ, privat)) {
 		NM.isSet = false;
-		interface->areas.Select();
-		interface->redraw();
+		delete[] To;
+		To = 0;
+		ui->areas.Select();
+		ui->redraw();
 		return;
 	}
 
@@ -362,7 +394,7 @@ void LetterWindow::EnterLetter()
 
 	// BODY
 
-	mytmpnam(reply_filename);
+	char *reply_filename = mytmpnam();
 
 	// Quote the old text 
 
@@ -372,21 +404,21 @@ void LetterWindow::EnterLetter()
 		fclose(reply);
 	}
 	fileStat.init(reply_filename);
-	oldtime = fileStat.date;
+	oldtime = fileStat.fdate();
 
 	// Edit the reply
 
 	edit(reply_filename);
-	interface->areas.Select();
-	interface->redraw();
+	ui->areas.Select();
+	ui->redraw();
 
 	// Check if modified
 
 	fileStat.init(reply_filename);
-	if (fileStat.date == oldtime)
-		if (interface->WarningWindow("Cancel this letter?")) {
+	if (fileStat.fdate() == oldtime)
+		if (ui->WarningWindow("Cancel this letter?")) {
 			remove(reply_filename);
-			interface->redraw();
+			ui->redraw();
 			return;
 		}
 
@@ -396,7 +428,7 @@ void LetterWindow::EnterLetter()
 		int origatt = mm.letterList->getStatus();
 		mm.letterList->setStatus(origatt | MS_REPLIED);
 		if (!(origatt & MS_REPLIED))
-			interface->setAnyRead();
+			ui->setAnyRead();
 	}
 
 	reply = fopen(reply_filename, "at");
@@ -409,11 +441,12 @@ void LetterWindow::EnterLetter()
 	if (sg && *sg) {
 		FILE *s = fopen(sg, "rt");
 		if (s) {
-			char bufx[81];
+			int c;
 
 			fputs(inet ? "\n-- \n" : "\n", reply);
-			while (myfgets(bufx, sizeof bufx, s))
-				fputs(bufx, reply);
+			while ((c = fgetc(s)) != EOF)
+				if (c != '\r')
+					fputc(c, reply);
 			fclose(s);
 
 			sigset = true;
@@ -422,20 +455,23 @@ void LetterWindow::EnterLetter()
 
 	// Tagline
 
-	bool useTag = mm.resourceObject->get(UseTaglines) &&
-		interface->Tagwin();
+	bool useTag = mm.resourceObject->getInt(UseTaglines) &&
+		ui->taglines.NumOfItems() && ui->Tagwin();
 	if (useTag)
 		fprintf(reply, inet ? (sigset ? "\n%s\n" : "\n-- \n%s\n")
-			: "\n... %s\n", interface->taglines.getCurrent());
+			: "\n... %s\n", ui->taglines.getCurrent());
 	else
 		if (!inet)
 			fprintf(reply, " \n");
 
 	// Tearline (not for Blue Wave -- it does its own)
 
-	if (!inet && mm.driverList->useTearline())
-		fprintf(reply, "--- %s/%s v%d.%d\n", MM_NAME, sysname(),
-			MM_MAJOR, MM_MINOR);
+	if (!inet) {
+		const char *tear = mm.areaList->getTear();
+
+		if (tear)
+			fprintf(reply, "%s\n", tear);
+	}
 
 	fclose(reply);
 
@@ -446,13 +482,17 @@ void LetterWindow::EnterLetter()
 
 	mm.areaList->enterLetter(replyto_area, FROM, news ? "All" : TO,
 		SUBJ, orig_id, news ? TO : 0, replyto_num, privat, NM,
-		reply_filename, (int) replen);
+		reply_filename, replen);
+
+	delete[] reply_filename;
 
 	NM.isSet = false;
-	To[0] = '\0';
+	delete[] To;
+	To = 0;
 
-	interface->areas.Select();
-	interface->setUnsaved();
+	ui->areas.Select();
+	ui->setUnsaved();
+	ui->redraw();
 }
 
 void LetterWindow::forward_header(FILE *fd, const char *FROM,
@@ -484,7 +524,7 @@ void LetterWindow::forward_header(FILE *fd, const char *FROM,
 	for (j = from; j < items; j++)
 		use[j] = !(!strcasecmp(org[j], head[j]));
 
-	interface->areas.Select();
+	ui->areas.Select();
 
 	bool anyused = false;
 
@@ -493,7 +533,7 @@ void LetterWindow::forward_header(FILE *fd, const char *FROM,
 			p = Header + sprintf(Header, "%.511s", head[j]);
 			if (((j == from) && mm.areaList->isEmail())
 			    || ((j == to) && mm.areaList->isReplyArea()))
-				p = netAdd(p);
+				netAdd(p);
 			letterconv_in(Header);
 			fprintf(fd, " * Original%s: %s\n", names[j], Header);
 			anyused = true;
@@ -506,8 +546,7 @@ void LetterWindow::forward_header(FILE *fd, const char *FROM,
 void LetterWindow::EditLetter(bool forwarding)
 {
 	FILE *reply;
-	char reply_filename[256], FROM[74], TO[514], SUBJ[514], *body;
-	const char *msgid;
+	char FROM[74], TO[514], SUBJ[514];
 	long siz;
 	int replyto_num, replyto_area;
 	bool privat, newsflag = false;
@@ -516,7 +555,7 @@ void LetterWindow::EditLetter(bool forwarding)
 
 	NM = mm.letterList->getNetAddr();
 
-	replyto_area = interface->areaMenu();
+	replyto_area = ui->areaMenu();
 	if (replyto_area == -1)
 		return;
 
@@ -525,14 +564,14 @@ void LetterWindow::EditLetter(bool forwarding)
 	replyto_num = (replyto_area != mm.letterList->getAreaID()) ?
 		0 : mm.letterList->getReplyTo();
 
-	msgid = replyto_num ? mm.letterList->getMsgID() : 0;
+	char *msgid = strdupplus(mm.letterList->getMsgID());
 
 	mm.areaList->gotoArea(replyto_area);
 
 	if (forwarding) {
 		if (mm.areaList->isEmail()) {
-			interface->areas.Select();
-			interface->addressbook();
+			ui->areas.Select();
+			ui->addressbook();
 			mm.areaList->gotoArea(replyto_area);
 		} else {
 			NM.isSet = false;
@@ -547,7 +586,7 @@ void LetterWindow::EditLetter(bool forwarding)
 		newsflag = !(!newsgrps);
 
 		strcpy(FROM, mm.letterList->getFrom());
-		sprintf(TO, newsflag ? "%.512s" : "%.72s", newsflag ?
+		sprintf(TO, "%.512s", newsflag ?
 			newsgrps : mm.letterList->getTo());
 		sprintf(SUBJ, "%.512s", mm.letterList->getSubject());
 		privat = mm.letterList->getPrivate();
@@ -555,55 +594,71 @@ void LetterWindow::EditLetter(bool forwarding)
 
 	if (!EnterHeader(FROM, TO, SUBJ, privat)) {
 		NM.isSet = false;
-		interface->areas.Select();
-		interface->redraw();
+		ui->areas.Select();
+		ui->redraw();
 		return;
 	}
 
 	DestroyChain();		// current letter's chain reset
 
-	mytmpnam(reply_filename);
-
-	body = (char *) mm.letterList->getBody();
-	letterconv_in(body);
-
-	// Can't use MakeChain here, or it will wrap the text; so:
-	if (!hidden)		// skip hidden lines at start
-		while (*body == 1) {
-			do
-				body++;
-			while (*body && (*body != '\n'));
-			while (*body == '\n')
-				body++;
-		}
+	char *reply_filename = mytmpnam();
 
 	reply = fopen(reply_filename, "wt");
 	if (forwarding)
 		forward_header(reply, FROM, TO, SUBJ, replyto_area,
 			is_reply_area);
-	fwrite(body, strlen(body), 1, reply);
+
+	letter_body *msgBody = mm.letterList->getBody();
+
+	while (msgBody) {
+		char *body = msgBody->getText();
+		int offset = 0;
+
+		letterconv_in(body);
+
+		// Can't use MakeChain here, or it will wrap the text; so:
+		if (!hidden)		// skip hidden lines at start
+			while (*body == 1) {
+				do {
+					body++;
+					offset++;
+				} while (*body && (*body != '\n'));
+				while (*body == '\n') {
+					body++;
+					offset++;
+				}
+			}
+
+		fwrite(body, msgBody->getLength() - offset, 1, reply);
+
+		msgBody = msgBody->next;
+	}
 	fclose(reply);
-	body = 0;		// it will be auto-dealloc'd by next getBody
 
 	edit(reply_filename);
 	siz = reconvert(reply_filename);
 
 	if (!forwarding)
-		mm.areaList->killLetter(mm.letterList->getMsgNum());
+		mm.areaList->killLetter(mm.letterList->getAreaID(),
+			mm.letterList->getMsgNum());
 
 	mm.areaList->enterLetter(replyto_area, FROM, newsflag ? "All" :
 		TO, SUBJ, msgid, newsflag ? TO : 0, replyto_num, privat,
-		NM, reply_filename, (int) siz);
+		NM, reply_filename, siz);
+
+	delete[] reply_filename;
+	delete[] msgid;
 
 	if (is_reply_area) {
 		mm.letterList->rrefresh();
-		interface->letters.ResetActive();
+		ui->letters.ResetActive();
 	}
-	interface->areas.Select();
+	ui->areas.Select();
 
 	NM.isSet = false;
 
-	interface->setUnsaved();
+	ui->redraw();
+	ui->setUnsaved();
 }
 
 bool LetterWindow::SplitLetter(int lines)
@@ -614,15 +669,17 @@ bool LetterWindow::SplitLetter(int lines)
 		char maxlinesA[55];
 
 		sprintf(maxlinesA, "%d", eachmax);
-		if (!interface->savePrompt(
+		if (!ui->savePrompt(
 	    	"Max lines per part? (WARNING: Split is not reversible!)",
 			maxlinesA) || !sscanf(maxlinesA, "%d", &eachmax))
 				return false;
 	}
 	int maxlines = lines ? lines : eachmax;
 
-	if (maxlines < 20)
+	if (maxlines < 20) {
+		ui->nonFatalError("Split at less than 20 lines not allowed");
 		return false;
+	}
 
 	MakeChain(80);
 	int orglines = NumOfLines;
@@ -636,7 +693,7 @@ bool LetterWindow::SplitLetter(int lines)
 	int replyto_area = mm.letterList->getAreaID();
 	int replyto_num = mm.letterList->getReplyTo();
 
-	char ORGSUBJ[514], *from, *to, *msgid, *newsgrps;
+	char ORGSUBJ[514], format[15], *from, *to, *msgid, *newsgrps;
 
 	from = strdupplus(mm.letterList->getFrom());
 	to = strdupplus(mm.letterList->getTo());
@@ -645,34 +702,39 @@ bool LetterWindow::SplitLetter(int lines)
 
 	sprintf(ORGSUBJ, "%.510s", mm.letterList->getSubject());
 
+	sprintf(format, "%d", parts);
+	int padsize = strlen(format);
+	sprintf(format, "%%s (%%0%dd/%%d)", padsize);
+
 	bool privat = mm.letterList->getPrivate();
 
 	int clines = 0;
 
-	mm.areaList->gotoArea(replyto_area);
-	mm.areaList->killLetter(mm.letterList->getMsgNum());
+	mm.areaList->killLetter(replyto_area, mm.letterList->getMsgNum());
 
 	for (int partno = 1; partno <= parts; partno++) {
 		FILE *reply;
-		char reply_filename[256], SUBJ[514];
+		char SUBJ[514];
 
-		mytmpnam(reply_filename);
+		char *reply_filename = mytmpnam();
 
 		int endline = (orglines > maxlines) ? maxlines: orglines;
 
+		unsigned long replen = 0;
 		reply = fopen(reply_filename, "wt");
-		for (int i = clines; i < (clines + endline); i++)
-			fprintf(reply, "%s\n", linelist[i]->text);
+		for (int i = clines; i < (clines + endline); i++) {
+			linelist[i]->out(reply);
+			replen += linelist[i]->length + 1;
+		}
 		fclose(reply);
 
-		mystat fileStat;
-		fileStat.init(reply_filename);
-
-		sprintf(SUBJ, "%s [%d/%d]", ORGSUBJ, partno, parts);
+		sprintf(SUBJ, format, ORGSUBJ, partno, parts);
 
 		mm.areaList->enterLetter(replyto_area, from, to, SUBJ, msgid,
 			newsgrps, replyto_num, privat, NM, reply_filename,
-			(int) fileStat.size);
+			(long) replen);
+
+		delete[] reply_filename;
 
 		clines += endline;
 		orglines -= endline;
@@ -687,23 +749,23 @@ bool LetterWindow::SplitLetter(int lines)
 	mm.letterList->rrefresh();
 
 	if (!lines) {
-		interface->letters.ResetActive();
-		interface->areas.Select();
-		interface->setUnsaved();
+		ui->letters.ResetActive();
+		ui->areas.Select();
+		ui->setUnsaved();
 	}
 	return true;
 }
 
 void LetterWindow::GetTagline()
 {
-	interface->taglines.EnterTagline(tagline1);
+	ui->taglines.EnterTagline(tagline1);
 	ReDraw();
 }
 
 bool LetterWindow::EditOriginal()
 {
 	int old_area = mm.letterList->getAreaID();
-	int old_mnum = mm.letterList->getMsgNum();
+	long old_mnum = mm.letterList->getMsgNum();
 	int orig_area = mm.areaList->getAreaNo();
 	int orig_mnum = mm.letterList->getCurrent();
 	int oldPos = position;
@@ -712,11 +774,11 @@ bool LetterWindow::EditOriginal()
 	letter_list *old_list = mm.letterList;
 	mm.areaList->gotoArea(REPLY_AREA);
 	mm.areaList->getLetterList();
-	interface->areas.ResetActive();
+	ui->areas.ResetActive();
 
 	bool found = mm.letterList->findReply(old_area, old_mnum);
 
-	if (found && interface->WarningWindow("A reply exists. Re-edit it?"))
+	if (found && ui->WarningWindow("A reply exists. Re-edit it?"))
 		EditLetter(false);
 	else
 		found = false;
@@ -725,9 +787,9 @@ bool LetterWindow::EditOriginal()
 	delete mm.letterList;
 	mm.letterList = old_list;
 	mm.areaList->gotoArea(orig_area);
-	interface->areas.ResetActive();
+	ui->areas.ResetActive();
 	mm.letterList->gotoLetter(orig_mnum);
-	interface->letters.ResetActive();
+	ui->letters.ResetActive();
 
 	return found;
 }
@@ -735,10 +797,10 @@ bool LetterWindow::EditOriginal()
 void LetterWindow::SplitAll(int lines)
 {
 	letter_list *old_list = 0;
-	statetype state = interface->active();
+	statetype state = ui->active();
 	bool list_is_active = (state == letter) || (state == letterlist);
 
-	interface->areas.Select();
+	ui->areas.Select();
 	int orig_area = mm.areaList->getAreaNo();
 
 	bool is_reply_area = (orig_area == REPLY_AREA) && list_is_active;
@@ -749,7 +811,7 @@ void LetterWindow::SplitAll(int lines)
 
 		mm.areaList->gotoArea(REPLY_AREA);
 		mm.areaList->getLetterList();
-		interface->areas.ResetActive();
+		ui->areas.ResetActive();
 	}
 
 	bool anysplit = false;
@@ -764,18 +826,18 @@ void LetterWindow::SplitAll(int lines)
 	}
 
 	if (is_reply_area)
-		interface->letters.ResetActive();
+		ui->letters.ResetActive();
 	else {
 		delete mm.letterList;
 		if (list_is_active)
 			mm.letterList = old_list;
 	}
 	mm.areaList->gotoArea(orig_area);
-	interface->areas.ResetActive();
+	ui->areas.ResetActive();
 
 	if ((state == letter) && !is_reply_area)
 		MakeChain(COLS);
 
 	if (anysplit)
-		interface->nonFatalError("Some replies were split");
+		ui->nonFatalError("Some replies were split");
 }

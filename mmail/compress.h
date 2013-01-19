@@ -3,7 +3,7 @@
  * compress and decompress packets
 
  Copyright (c) 1997 John Zero <john@graphisoft.hu>
- Copyright (c) 1999 William McBrine <wmcbrine@clark.net>
+ Copyright (c) 1999 William McBrine <wmcbrine@users.sourceforge.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */

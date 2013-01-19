@@ -1,8 +1,8 @@
 /*
  * MultiMail offline mail reader
- * OPX (Silver Xpress)
+ * OPX
 
- Copyright (c) 1999 William McBrine <wmcbrine@clark.net>
+ Copyright (c) 2001 William McBrine <wmcbrine@users.sourceforge.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -10,49 +10,9 @@
 #include "opx.h"
 #include "compress.h"
 
-struct tm *getdostime(unsigned long packed)
-{
-	static struct tm unpacked;
-
-	unpacked.tm_mday = packed & 0x1f;
-	packed >>= 5;
-	unpacked.tm_mon = (packed & 0x0f) - 1;
-	packed >>= 4;
-	unpacked.tm_year = (packed & 0x7f) + 80;
-	packed >>= 7;
-
-	unpacked.tm_sec = (packed & 0x1f) << 1;
-	packed >>= 5;
-	unpacked.tm_min = packed & 0x3f;
-	packed >>= 6;
-	unpacked.tm_hour = packed & 0x1f;
-
-	return &unpacked;
-}
-
-unsigned long mkdostime(struct tm *unpacked)
-{
-	unsigned long packed;
-
-	packed = unpacked->tm_hour;
-	packed <<= 6;
-	packed |= unpacked->tm_min;
-	packed <<= 5;
-	packed |= unpacked->tm_sec >> 1;
-	packed <<= 7;
-
-	packed |= unpacked->tm_year - 80;
-	packed <<= 4;
-	packed |= unpacked->tm_mon + 1;
-	packed <<= 5;
-	packed |= unpacked->tm_mday;
-
-	return packed;
-}
-
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------
 // The OPX methods
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------
 
 opxpack::opxpack(mmail *mmA)
 {
@@ -62,7 +22,8 @@ opxpack::opxpack(mmail *mmA)
 
 	readBrdinfoDat();
 
-	if (!(infile = mm->workList->ftryopen("mail.dat", "rb")))
+	infile = mm->workList->ftryopen("mail.dat");
+	if (!infile)
 		fatalError("Could not open MAIL.DAT");
 
 	buildIndices();
@@ -91,8 +52,11 @@ area_header *opxpack::getNextArea()
 
 void opxpack::buildIndices()
 {
+	FILE *fdxFile = 0;	// warning supression
 	msgHead mhead;
-	int x;
+	fdxHeader fhead;
+	fdxRec frec;
+	int x, totMsgs = 0;
 
 	body = new bodytype *[maxConf];
 
@@ -103,29 +67,66 @@ void opxpack::buildIndices()
 
 	ndx_fake base, *tmpndx = &base;
 
-	int counter, length, personal = 0;
-	const char *name = mm->resourceObject->get(LoginName);
-	bool checkpers = mm->resourceObject->getInt(BuildPersArea);
+	long counter, length, personal = 0;
+	long mdatlen = mm->workList->getSize();
+
+	bool hasFdx = (mm->workList->exists("mail.fdx") != 0);
+
+	if (hasFdx) {
+		fdxFile = mm->workList->ftryopen("mail.fdx");
+		if (fdxFile) {
+			fread(&fhead, FDX_HEAD_SIZE, 1, fdxFile);
+			if (getshort(fhead.PageCount) != 1) {
+				// Skip it, we don't understand it
+				hasFdx = false;
+				fclose(fdxFile);
+			} else {
+				totMsgs = getshort(fhead.RowsInPage);
+				fseek(fdxFile, 4, SEEK_CUR);
+				fread(&frec, FDX_REC_SIZE, 1, fdxFile);
+			}
+		} else
+			hasFdx = false;
+	}
 
 	numMsgs = 0;
 
-	while (fread(&mhead, sizeof mhead, 1, infile)) {
-		counter = ftell(infile);
-		x = getXNum(getshort(mhead.confnum));
-		length = getshort(mhead.length) - 0xbe;
+	while ((hasFdx ? (numMsgs < totMsgs) :
+	    fread(&mhead, MSG_HEAD_SIZE, 1, infile))) {
 
-		fseek(infile, length, SEEK_CUR);
+#ifdef BOGUS_WARNING
+		bool pers = false;
+#else
+		bool pers;
+#endif
+		if (hasFdx) {
+			counter = getlong(frec.offset) + MSG_HEAD_SIZE;
+			x = getXNum(getshort(frec.confnum));
+			pers = ('D' == frec.msgtype);
+
+			bool fdxAvail = (numMsgs < (totMsgs - 1));
+			if (fdxAvail)
+				fread(&frec, FDX_REC_SIZE, 1, fdxFile);
+			length = (fdxAvail ? getlong(frec.offset) :
+				mdatlen) - counter;
+		} else {
+			counter = ftell(infile);
+			x = getXNum(getshort(mhead.confnum));
+			pers = ('D' == mhead.msgtype);
+
+			length = getshort(mhead.length) - 0xbe;
+
+			fseek(infile, length, SEEK_CUR);
+		}
 
 		tmpndx->next = new ndx_fake;
 		tmpndx = tmpndx->next;
 
 		tmpndx->confnum = x;
 
-		if (checkpers && !strcasecmp(mhead.to, name)) {
-			tmpndx->pers = true;
+		tmpndx->pers = pers;
+		if (pers)
 			personal++;
-		} else
-			tmpndx->pers = false;
 
 		tmpndx->pointer = counter;
 		tmpndx->length = length;
@@ -133,6 +134,9 @@ void opxpack::buildIndices()
 		numMsgs++;
 		areas[x].nummsgs++;
 	}
+
+	if (hasFdx)
+		fclose(fdxFile);
 
 	initBody(base.next, personal);
 }
@@ -144,10 +148,10 @@ letter_header *opxpack::getNextLetter()
 	int areaID, letterID;
 
 	rawpos = body[currentArea][currentLetter].pointer;
-	pos = rawpos - sizeof mhead;
+	pos = rawpos - MSG_HEAD_SIZE;
 
 	fseek(infile, pos, SEEK_SET);
-	if (!fread(&mhead, sizeof mhead, 1, infile))
+	if (!fread(&mhead, MSG_HEAD_SIZE, 1, infile))
 		fatalError("Error reading MAIL.DAT");
 
 	if (areas[currentArea].num == -1) {
@@ -160,48 +164,39 @@ letter_header *opxpack::getNextLetter()
 
         net_address na;
 	if (areas[areaID].attr & INTERNET)
-		na = mhead.from;
+		na = mhead.f.from;
 	else {
-		na.zone = getshort(mhead.orig_zone);
+		na.zone = getshort(mhead.f.orig_zone);
 		if (na.zone) {
-			na.net = getshort(mhead.orig_net);
-			na.node = getshort(mhead.orig_node);
+			na.net = getshort(mhead.f.orig_net);
+			na.node = getshort(mhead.f.orig_node);
 			na.point = 0;   // set from getBody()
 			na.isSet = true;
 		}
 	}
 
-	bool privat = getshort(mhead.attr) & OPX_PRIVATE;
+	bool privat = getshort(mhead.f.attr) & OPX_PRIVATE;
 
 	char date[30];
 	strftime(date, 30, "%b %d %Y  %H:%M",
-		getdostime(getlong(mhead.date_written)));
+		getdostime(getlong(mhead.f.date_written)));
 
 	currentLetter++;
 
-	return new letter_header(mm, mhead.subject, mhead.to, mhead.from,
-		date, 0, getshort(mhead.reply), letterID,
+	return new letter_header(mm, mhead.f.subject, mhead.f.to, 
+		mhead.f.from, date, 0, getshort(mhead.f.reply), letterID,
 		getshort(mhead.msgnum), areaID, privat,
 		getshort(mhead.length), this, na,
 		!(!(areas[areaID].attr & LATINCHAR)));
 }
 
-// returns the body of the requested letter
-const char *opxpack::getBody(letter_header &mhead)
+void opxpack::getblk(int, long &offset, long blklen,
+	unsigned char *&p, unsigned char *&begin)
 {
-	unsigned char *p;
-	int c, kar, AreaID, LetterID;
+	int lastkar = -1;
 
-	AreaID = mhead.getAreaID() - mm->driverList->getOffset(this);
-	LetterID = mhead.getLetterID();
-
-	delete[] bodyString;
-	bodyString = new char[body[AreaID][LetterID].msgLength + 1];
-	fseek(infile, body[AreaID][LetterID].pointer, SEEK_SET);
-
-	for (c = 0, p = (unsigned char *) bodyString;
-	     c < body[AreaID][LetterID].msgLength; c++) {
-		kar = fgetc(infile);
+	for (long count = 0; count < blklen; count++) {
+		int kar = fgetc(infile);
 
 		if (!kar)
 			kar = ' ';
@@ -210,48 +205,45 @@ const char *opxpack::getBody(letter_header &mhead)
 		if (kar == 0x8d)
 			kar = '\n';
 
-		if (kar != '\r')
-			*p++ = kar;
-	}
-	do
-		p--;
-	while ((*p == ' ') || (*p == '\n'));	// Strip blank lines
-	p[1] = '\0';
+		// Line endings are a mess in OPX -- can be
+		// CR, LF, _or_ CR/LF!
 
-
-	// Extra header info embedded in the text:
-
-	const char *s;
-	char *end;
-
-	net_address &na = mhead.getNetAddr();
-
-	if ((s = getHidden("\001INETORIG ", end))) {
-		na = s;
-		*end = '\n';
-	} else {
-		// Add point to netmail address, if possible/necessary:
-		if (na.isSet)
-			if (!na.point) {
-				s = strstr(bodyString, "\001FMPT");
-				if (s)
-					sscanf(s, "\001FMPT%d\n", &na.point);
-			}
-	}
-
-	// Get MSGID:
-	if (!mhead.getMsgID())
-		if ((s = getHidden("\001MSGID: ", end))) {
-			mhead.changeMsgID(s);
-			*end = '\n';
+		if ((lastkar == '\r') && (kar != '\n')) {
+			*p++ = '\n';
+			begin = p;
+			offset = ftell(infile) - 1;
 		}
 
-	// Change to Latin character set, if necessary:
-	checkLatin(mhead);
+		if (kar != '\r')
+			*p++ = kar;
 
-	return bodyString;
+		if (kar == '\n') {
+			begin = p;
+			offset = ftell(infile);
+		}
+
+		lastkar = kar;
+	}
 }
 
+void opxpack::endproc(letter_header &mhead)
+{
+	// Extra header info embedded in the text:
+
+	char *end;
+
+	const char *s = getHidden("\001INETORIG ", end);
+	if (s) {
+		net_address &na = mhead.getNetAddr();
+
+		na = s;
+		if (end)
+			*end = '\n';
+	} else
+		fidocheck(mhead);
+}
+
+// Read a Borland Pascal pstring, return a C string
 char *opxpack::pstrget(void *src)
 {
 	unsigned len = (unsigned) *((unsigned char *) src);
@@ -265,16 +257,26 @@ char *opxpack::pstrget(void *src)
 
 void opxpack::readBrdinfoDat()
 {
-	FILE *brdinfoFile;
+	FILE *brdinfoFile, *ocfgFile;
 	brdHeader header;
 	brdRec boardrec;
-	pstring(readerf,12);
+	ocfgRec offrec;
 	char *p;
+	int brdCount, extCount;
+	bool hasExtra;
 
-	if (!(brdinfoFile = mm->workList->ftryopen("brdinfo.dat", "rb")))
+	ocfgFile = mm->workList->ftryopen("dusrcfg.dat");
+	if (ocfgFile) {
+		fread(&confhead, OCFG_HEAD_SIZE, 1, ocfgFile);
+		hasOffConfig = OFFCONFIG;
+	} else
+		hasOffConfig = 0;
+
+	brdinfoFile = mm->workList->ftryopen("brdinfo.dat");
+	if (!brdinfoFile)
 		fatalError("Could not open BRDINFO.DAT");
 
-	if (!fread(&header, sizeof header, 1, brdinfoFile))
+	if (!fread(&header, BRD_HEAD_SIZE, 1, brdinfoFile))
 		fatalError("Error reading BRDINFO.DAT");
 
 	p = pstrget(&header.bbsid);
@@ -282,63 +284,249 @@ void opxpack::readBrdinfoDat()
 	delete[] p;
 
 	p = pstrget(&header.bbsname);
-	mm->resourceObject->set(BBSName, p);
-	delete[] p;
+	mm->resourceObject->set_noalloc(BBSName, p);
 
 	p = pstrget(&header.sysopname);
-	mm->resourceObject->set(SysOpName, p);
-	delete[] p;
+	mm->resourceObject->set_noalloc(SysOpName, p);
 
 	p = pstrget(&header.username);
 	mm->resourceObject->set(LoginName, p);
-	mm->resourceObject->set(AliasName, p);
-	delete[] p;
+	mm->resourceObject->set_noalloc(AliasName, p);
 
 	char *bulls = new char[header.readerfiles * 13];
 
-	for (int c = 0; c < header.readerfiles; c++) {
-		fread(&readerf, sizeof readerf, 1, brdinfoFile);
-		strncpy(bulls + c * 13, readerf.data, readerf.len);
-		bulls[c * 13 + readerf.len] = '\0';
+	int c;
+	for (c = 0; c < header.readerfiles; c++) {
+		pstring(readerf,12);
+
+		fread(&readerf, 13, 1, brdinfoFile);
+		strncpy(bulls + c * 13, (char *) readerf + 1, *readerf);
+		bulls[c * 13 + *readerf] = '\0';
 	}
 
 	listBulletins((const char (*)[13]) bulls,
 		header.readerfiles, 1);
 
+	// Skip old numofareas byte:
+	fseek(brdinfoFile, 1, SEEK_CUR);
+
 	maxConf = getshort(header.numofareas) + 1;
 	areas = new AREAs[maxConf];
+
+	hasExtra = (mm->workList->exists("extareas.dat") != 0);
+	extCount = hasExtra ? (mm->workList->getSize() / BRD_REC_SIZE) : 0;
+	brdCount = maxConf - extCount;
 
 	areas[0].num = -1;
 	strcpy(areas[0].numA, "PERS");
 	areas[0].name = strdupplus("PERSONAL");
 	areas[0].attr = PUBLIC | PRIVATE | COLLECTION;
 
-	for (int c = 1; c < maxConf; c++) {
-		fread(&boardrec, sizeof boardrec, 1, brdinfoFile);
+	for (c = 1; c < maxConf; c++) {
+		if (hasExtra && (c == brdCount)) {
+			fclose(brdinfoFile);
+			brdinfoFile =
+				mm->workList->ftryopen("extareas.dat");
+			if (!brdinfoFile)
+				fatalError("Could not open EXTAREAS.DAT");
+		}
+		fread(&boardrec, BRD_REC_SIZE, 1, brdinfoFile);
 
 		areas[c].num = getshort(boardrec.confnum);
 		sprintf(areas[c].numA, "%d", areas[c].num);
 
 		areas[c].name = pstrget(&boardrec.name);
 
-		areas[c].attr = (((boardrec.attrib & OPX_NETMAIL) |
+		bool selected = !(!boardrec.scanned);
+		if (hasOffConfig) {
+			fread(&offrec, OCFG_REC_SIZE, 1, ocfgFile);
+			if (getshort(offrec.confnum) == (unsigned)
+			    areas[c].num)
+				selected = !(!offrec.scanned);
+		}
+
+		unsigned rawattr = getshort(boardrec.attrib);
+		areas[c].attr = (((rawattr & OPX_NETMAIL) |
 			(boardrec.attrib2 & OPX_INTERNET)) ? NETMAIL : 0) |
-			((boardrec.attrib & OPX_PRIVONLY) ? 0 : PUBLIC) |
-			((boardrec.attrib & OPX_PUBONLY) ? 0 : PRIVATE) |
+			((rawattr & OPX_PRIVONLY) ? 0 : PUBLIC) |
+			((rawattr & OPX_PUBONLY) ? 0 : PRIVATE) |
 			(((boardrec.attrib2 & OPX_USENET) |
 			(boardrec.attrib2 & OPX_INTERNET)) ? (INTERNET |
-			LATINCHAR) : 0);
+			LATINCHAR) : 0) | (selected ? ACTIVE : 0) |
+			hasOffConfig | (hasOffConfig ? SUBKNOWN : 0);
 	}
 
 	fclose(brdinfoFile);
+
+	if (hasOffConfig)
+		fclose(ocfgFile);
 }
 
-// ---------------------------------------------------------------------------
-// The OPX reply methods
-// ---------------------------------------------------------------------------
-
-opxreply::upl_opx::upl_opx()
+ocfgHeader *opxpack::offhead()
 {
+	return &confhead;
+}
+
+const char *opxpack::oldFlagsName()
+{
+	return "mail.fdx";
+}
+
+// Read in an .FDX file
+bool opxpack::readOldFlags()
+{
+	FILE *fdxFile;
+	fdxHeader fhead;
+	fdxRec frec;
+	int totmsgs, area = -1, lastarea, msgnum;
+	letter_list *ll = 0;
+
+	fdxFile = mm->workList->ftryopen(oldFlagsName());
+	if (!fdxFile)
+		return false;
+
+	fread(&fhead, FDX_HEAD_SIZE, 1, fdxFile);
+	if (getshort(fhead.PageCount) != 1) {
+		fclose(fdxFile);
+		return false;
+	}
+
+	fseek(fdxFile, 4, SEEK_CUR);
+	totmsgs = getshort(fhead.RowsInPage);
+
+	area_list *al = mm->areaList;
+
+	for (int x = 0; x < totmsgs; x++) {
+		fread(&frec, FDX_REC_SIZE, 1, fdxFile);
+
+		lastarea = area;
+		area = getshort(frec.confnum);
+		msgnum = getshort(frec.msgnum);
+
+		if (lastarea != area) {
+			delete ll;
+			al->gotoArea(getXNum(area) + 1);
+			al->getLetterList();
+			ll = mm->letterList;
+			ll->gotoLetter(-1);
+		}
+
+		ll->findMsgNum(msgnum);
+
+		int stat = ((frec.flags & FDX_READ) ? MS_READ : 0) |
+			((frec.flags & FDX_REPLIED) ? MS_REPLIED : 0) |
+			((frec.marks & FDX_TAGGED) ? MS_MARKED : 0) |
+			((frec.msgtype == 'D') ? MS_PERSTO : 0);
+
+		ll->setStatus(stat);
+	}
+	delete ll;
+
+	fclose(fdxFile);
+
+	return true;
+}
+
+// Write out an .FDX file
+bool opxpack::saveOldFlags()
+{
+	FILE *fdxFile;
+
+	// If there are more messages than will fit in a 64K block,
+	// it would need multiple pages, so forget it:
+
+	if (((long) numMsgs * FDX_REC_SIZE) > 0x10000)
+		return false;
+
+	fdxFile = fopen(oldFlagsName(), "wb");
+	if (!fdxFile)
+		return false;
+
+	// Fill the header and write it out:
+
+	fdxHeader fhead;
+	putshort(fhead.RowsInPage, numMsgs);
+	putshort(fhead.ColsInPage, 1);
+	putshort(fhead.PagesDown, 1);
+	putshort(fhead.PagesAcross, 1);
+	putshort(fhead.ElSize, FDX_REC_SIZE);
+	putshort(fhead.PageSize, numMsgs * FDX_REC_SIZE);
+	putshort(fhead.PageCount, 1);
+	putlong(fhead.NextAvail, (long) numMsgs * FDX_REC_SIZE +
+		FDX_HEAD_SIZE + 4);
+	strncpy(fhead.ID, "\006VARRAY", 7);
+
+	fwrite(&fhead, FDX_HEAD_SIZE, 1, fdxFile);
+
+	plong addr;
+	putlong(addr, FDX_HEAD_SIZE + 4);
+
+	fwrite(addr, 4, 1, fdxFile);
+
+	// And now, the body:
+
+	area_list *al = mm->areaList;
+	int maxareas = al->noOfAreas();
+	for (int c = 0; c < maxareas; c++) {
+		al->gotoArea(c);
+		if (!al->isCollection()) {
+			al->getLetterList();
+			letter_list *ll = mm->letterList;
+
+			for (int d = 0; d < ll->noOfLetter(); d++) {
+			    ll->gotoLetter(d);
+			    int stat = ll->getStatus();
+
+			    fdxRec frec;
+
+			    int anum = atoi(al->getShortName());
+			    putshort(frec.confnum, anum);
+			    putshort(frec.msgnum, ll->getMsgNum());
+
+			    long offset = body[c - 1][d].pointer -
+				MSG_HEAD_SIZE;
+			    putlong(frec.offset, offset);
+
+			    frec.flags =
+				((stat & MS_READ) ? FDX_READ : 0) |
+				((stat & MS_REPLIED) ? FDX_REPLIED : 0);
+
+			    frec.marks =
+				(stat & MS_MARKED) ? FDX_TAGGED : 0;
+
+			    frec.msgtype =
+				((stat & MS_PERSTO) ? 'D' : ' ');
+
+			    fwrite(&frec, FDX_REC_SIZE, 1, fdxFile);
+			}
+			delete ll;
+		}
+	}
+	fclose(fdxFile);
+
+	return true;
+}
+
+const char *opxpack::getTear(int)
+{
+	// All this, just to add a space to the end of the tear line.
+	// (Some versions of the SX door eat the last character.)
+
+	static char tear[80];
+
+	sprintf(tear, "--- %.9s/%.58s v%1d.%2d ", MM_NAME, sysname(),
+		MM_MAJOR, MM_MINOR);
+
+	return tear;
+}
+
+// -----------------------------------------------------------------
+// The OPX reply methods
+// -----------------------------------------------------------------
+
+opxreply::upl_opx::upl_opx(const char *name) : pktreply::upl_base(name)
+{
+	memset(&rhead, 0, sizeof(rhead));
 	msgid = 0;
 }
 
@@ -384,13 +572,13 @@ int opxreply::getArea(const char *fname)
 bool opxreply::getRep1(const char *orgname, upl_opx *l)
 {
 	FILE *orgfile, *destfile;
-	int c, count = 0;
+	int c;
+	long count = 0;
 
-	mytmpnam(l->fname);
+	orgfile = fopen(orgname, "rb");
+	if (orgfile) {
 
-	if ((orgfile = fopen(orgname, "rb"))) {
-
-	    fread(&l->rhead, sizeof(repHead), 1, orgfile);
+	    fread(&l->rhead, FIDO_HEAD_SIZE, 1, orgfile);
 	    l->area = getArea(orgname);
 
 	    net_address na;
@@ -402,7 +590,8 @@ bool opxreply::getRep1(const char *orgname, upl_opx *l)
 		na.isSet = true;
 	    }
 
-	    if ((destfile = fopen(l->fname, "wt"))) {
+	    destfile = fopen(l->fname, "wt");
+	    if (destfile) {
 		while ((c = fgetc(orgfile)) != EOF) {
 			if (c == '\001') {
 				c = fgetc(orgfile);
@@ -433,7 +622,7 @@ bool opxreply::getRep1(const char *orgname, upl_opx *l)
 						if (isInet)
 							na = tmp;
 						else
-							sscanf(tmp, "%d",
+							sscanf(tmp, "%u",
 								&na.point);
 						delete[] tmp;
 					}
@@ -460,7 +649,7 @@ bool opxreply::getRep1(const char *orgname, upl_opx *l)
 	return true;
 }
 
-void opxreply::getReplies(FILE *repFile)
+void opxreply::getReplies(FILE *)
 {
 	noOfLetters = 0;
 
@@ -468,7 +657,7 @@ void opxreply::getReplies(FILE *repFile)
 	const char *p;
 
 	upWorkList->gotoFile(-1);
-	while ((p = upWorkList->getNext("!"))) {
+	while ((p = upWorkList->getNext("!")) != 0) {
 		currUplList->nextRecord = new upl_opx;
 		currUplList = (upl_opx *) currUplList->nextRecord;
 		if (!getRep1(p, currUplList)) {
@@ -478,8 +667,6 @@ void opxreply::getReplies(FILE *repFile)
 		noOfLetters++;
 	}
 	uplListHead = baseUplList.nextRecord;
-
-	repFile = repFile;	// warning supression
 }
 
 area_header *opxreply::getNextArea()
@@ -514,10 +701,9 @@ letter_header *opxreply::getNextLetter()
 }
 
 void opxreply::enterLetter(letter_header &newLetter,
-				const char *newLetterFileName, int length)
+			const char *newLetterFileName, long length)
 {
-	upl_opx *newList = new upl_opx;
-	memset(newList, 0, sizeof(upl_opx));
+	upl_opx *newList = new upl_opx(newLetterFileName);
 
 	int attrib = newLetter.getPrivate() ? OPX_PRIVATE : 0;
 
@@ -542,7 +728,6 @@ void opxreply::enterLetter(letter_header &newLetter,
 	putlong(newList->rhead.date_written, dostime);
 	putlong(newList->rhead.date_arrived, dostime);
 
-	strcpy(newList->fname, newLetterFileName);
 	newList->msglen = length;
 
 	addUpl(newList);
@@ -564,43 +749,36 @@ const char *opxreply::freeFileName(upl_opx *l)
 		ext[x] = area[x] + ((area[x] < 10) ? '0' : ('A' - 10));
 	ext[3] = '\0';
 
+	mystat st;
 	int reply = getshort(l->rhead.reply);
 	if (reply) {
 		sprintf(fname, "!R%d.%s", reply, ext);
-		if (!readable(fname))
+		if (!st.init(fname))
 			return fname;
 	}
 	x = 1;
 	do
 		sprintf(fname, "!N%d.%s", x++, ext);
-	while (readable(fname));
+	while (st.init(fname));
 
 	return fname;
 }
 
-void opxreply::addRep1(FILE *rep, upl_base *node, int recnum)
+void opxreply::addRep1(FILE *, upl_base *node, int)
 {
 	FILE *orgfile, *destfile;
 	upl_opx *l = (upl_opx *) node;
 	const char *dest;
 
-	recnum = recnum;	// warning supression
-	rep = rep;
-
 	dest = freeFileName(l);
 
-	if ((orgfile = fopen(l->fname, "rt"))) {
+	orgfile = fopen(l->fname, "rt");
+	if (orgfile) {
 
-		char *replyText = new char[l->msglen + 1];
+		destfile = fopen(dest, "wb");
+		if (destfile) {
 
-		fread(replyText, l->msglen, 1, orgfile);
-		fclose(orgfile);
-
-		replyText[l->msglen] = '\0';
-
-		if ((destfile = fopen(dest, "wb"))) {
-
-			fwrite(&l->rhead, sizeof(repHead), 1, destfile);
+			fwrite(&l->rhead, FIDO_HEAD_SIZE, 1, destfile);
 
 			bool skipPID = false;
 
@@ -633,43 +811,36 @@ void opxreply::addRep1(FILE *rep, upl_base *node, int recnum)
 					"/%s v%d.%d\r\n", sysname(),
 						MM_MAJOR, MM_MINOR);
 
-			char *lastsp = 0, *q = replyText;
-			int count = 0;
-
-			for (char *p = replyText; *p; p++) {
-				if (*p == '\n') {
-					*p = '\0';
-					fprintf(destfile, "%s\r\n", q);
-					q = p + 1;
-					count = 0;
-					lastsp = 0;
-				} else {
-					count++;
-					if (*p == ' ')
-						lastsp = p;
+			int c, count = 0, lastsp = 0;
+			while ((c = fgetc(orgfile)) != EOF) {
+				count++;
+				if ((count > 80) && lastsp) {
+					fseek(orgfile, lastsp - count,
+						SEEK_CUR);
+					fseek(destfile, lastsp - count,
+						SEEK_CUR);
+					c = '\n';
 				}
-
-				// wrap at 80 characters
-				if ((count >= 80) && lastsp) {
-					*lastsp = '\n';
-					p = lastsp - 1;
+				if ('\n' == c) {
+					fprintf(destfile, "\r\n");
+					count = lastsp = 0;
+				} else {
+					fputc(c, destfile);
+					if (' ' == c)
+						lastsp = count;
 				}
 			}
-                        if (count)
-                                fprintf(destfile, "%s\r\n", q);
-                        fclose(destfile);
+			fclose(destfile);
 		}
-		delete[] replyText;
+		fclose(orgfile);
 	}
 }
 
 void opxreply::addHeader(FILE *repFile)
 {
-	// I don't really understand <BBSID>.ID, but I can fake it. I use
-	// the version number "4.4" since that's the SX reader I've tested
-	// with, and I don't bother stamping the fake date.
+	// <BBSID>.ID -- fake it.
 
-	long magic = -598939720L;	// What IS this, anyway?
+	long magic = -598939720L;
 	time_t now = time(0);
 
 	fprintf(repFile, "FALSE\r\n\r\n4.4\r\nTRUE\r\n%ld\r\n0\r\n%ld\r\n",
@@ -689,19 +860,80 @@ void opxreply::repFileName()
 	strcpy(replyInnerName + x, ".ID");
 }
 
-const char *opxreply::repTemplate(bool offres)
+const char *opxreply::repTemplate(bool)
 {
-	offres = offres;
-
 	return "*.*";
 }
 
 bool opxreply::getOffConfig()
 {
-	return false;
+	FILE *olc;
+	bool status = false;
+
+	upWorkList = new file_list(mm->resourceObject->get(UpWorkDir));
+
+	olc = upWorkList->ftryopen("rusrcfg.dat");
+	if (olc) {
+		ocfgHeader offhead;
+		ocfgRec offrec;
+		int areaOPX, areaNo;
+
+		fread(&offhead, OCFG_HEAD_SIZE, 1, olc);
+		int totareas = getshort(offhead.numofareas);
+
+		for (int i = 0; i < totareas; i++) {
+			fread(&offrec, OCFG_REC_SIZE, 1, olc);
+			areaOPX = getshort(offrec.confnum);
+
+			areaNo = ((opxpack *) baseClass)->
+				getXNum(areaOPX) + 1;
+			mm->areaList->gotoArea(areaNo);
+
+			if (offrec.scanned)
+				mm->areaList->Add();
+			else
+				mm->areaList->Drop();
+		}
+		fclose(olc);
+		upWorkList->kill();
+
+		status = true;
+	}
+	delete upWorkList;
+
+	return status;
 }
 
 bool opxreply::makeOffConfig()
 {
-	return false;
+	FILE *olc;
+	ocfgRec offrec;
+
+	olc = fopen("RUSRCFG.DAT", "wb");
+	if (!olc)
+		return false;
+
+	fwrite(((opxpack *) baseClass)->offhead(),
+		OCFG_HEAD_SIZE, 1, olc);
+
+	int oldarea = mm->areaList->getAreaNo();
+
+	int maxareas = mm->areaList->noOfAreas();
+	for (int areaNo = 0; areaNo < maxareas; areaNo++) {
+		mm->areaList->gotoArea(areaNo);
+
+		unsigned long attrib = mm->areaList->getType();
+		int anum = atoi(mm->areaList->getShortName());
+
+		if (!(attrib & COLLECTION)) {
+			putshort(offrec.confnum, anum);
+			offrec.scanned = ((((attrib & ACTIVE) && !(attrib
+			    & DROPPED)) || (attrib & ADDED)));
+			fwrite(&offrec, OCFG_REC_SIZE, 1, olc);
+		}
+	}
+	mm->areaList->gotoArea(oldarea);
+	fclose(olc);
+
+	return true;
 }

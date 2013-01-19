@@ -10,7 +10,11 @@ include version
 #OPTS = -g -Wall -pedantic
 
 # Optimized, no debug:
-OPTS = -O2 -Wall -pedantic
+#OPTS = -O2 -Wall -pedantic
+
+# Optimized for egcs -- since MultiMail does not (yet) use exceptions, we
+# can save a little space in the executable:
+OPTS = -O2 -Wall -pedantic -fno-exceptions -fno-rtti -fconserve-space
 
 # PREFIX is the base directory under which to install the binary and man 
 # page; generally either /usr/local or /usr (or perhaps /opt...):
@@ -31,78 +35,56 @@ SEP = ;
 POST =
 
 #--------------------------------------------------------------
-# Defaults are for Linux, with ncurses; also NetBSD, others:
+# Defaults are for the standard curses setup:
 
 # CURS_INC specifies the location of your curses header file. Broken
 # brackets (<, >) should be preceded by backslashes. Quotes (") should
 # be preceded by *three* backslashes:
 
-CURS_INC = \<ncurses/curses.h\>
+CURS_INC = \<curses.h\>
 
 # CURS_DIR may also be necessary in some cases:
 
-CURS_DIR = /usr/include/ncurses
+CURS_DIR = .
 
 # CURS_LIB specifies the directory where the curses libraries can be found,
 # if they're not in the standard search path:
 
-CURS_LIB = /usr/local/lib
+CURS_LIB = .
 
 # LIBS lists any "extra" libraries that need to be linked in:
 
-LIBS = -lncurses
-#LIBS = /usr/lib/libncurses.a
+LIBS = -lcurses
 
 #--------------------------------------------------------------
-# Solaris and others, with standard curses:
+# With ncurses installed beside the original curses, rather than
+# replacing it -- for older Linux distros, etc.:
 
-#CURS_INC = \<curses.h\>
-#CURS_DIR = .
-#CURS_LIB = .
-#LIBS = -lcurses
+#CURS_INC = \<ncurses/curses.h\>
+#CURS_DIR = /usr/include/ncurses
+#CURS_LIB = /usr/local/lib
+#LIBS = -lncurses
+
+# For static linking:
+
+#LIBS = /usr/lib/libncurses.a
 
 #--------------------------------------------------------------
 # With ncurses installed in the user's home directory:
 
 # Example with quotes (relative pathnames start from ./interfac):
-#CURS_INC = \\\"../../ncurses-4.2/include/curses.h\\\"
-#CURS_DIR = .
-#CURS_LIB = ../ncurses-4.2/lib
+#CURS_INC = \\\"../../ncurses-5.2/include/curses.h\\\"
+#CURS_DIR = ../../ncurses-5.2/include
+#CURS_LIB = ../ncurses-5.2/lib
+#LIBS = -lncurses
 
 #--------------------------------------------------------------
-# DJGPP (MSDOS), with PDCurses 2.4 beta:
+# With XCurses (PDCurses 2.5) in my home directory:
 
-#CURS_INC = \<curses.h\>
-#CURS_DIR = /djgpp/contrib/pdcurs24
-#CURS_LIB = .
-#LIBS = ../contrib/pdcurs24/dos/pdcurses.a
-#RM = del
-# Optional; attach pmode stub:
-#POST = $(RM) mm.exe $(SEP) strip mm $(SEP) copy /b \
-#	..\pmode\pmodstub.exe+mm mm.exe $(SEP) $(RM) mm
-
-#--------------------------------------------------------------
-# EMX (OS/2), with GNU make, and PDCurses 2.3:
-# Note: If you get "g++: Command not found", then type "set cxx=gcc"
-# before running make.
-
-# For some reason, it wants twice as many slashes:
-#CURS_INC = \\\\\\"../../PDCurses-2.3/curses.h\\\\\\"
-#CURS_DIR = /emx/PDCurses-2.3
-#CURS_LIB = .
-#LIBS = /emx/PDCurses-2.3/os2/pdcurses.a -Zcrtdll -lwrap
-#RM = del /n
-#SEP = &&
-# Remove "emxbind -s mm" for a debug executable:
-#POST = emxbind mm $(SEP) $(RM) mm $(SEP) emxbind -s mm
-
-#--------------------------------------------------------------
-# With XCurses (PDCurses 2.3) in my home directory:
-
-#CURS_INC = \\\"../../../PDCurses-2.4b/curses.h\\\"
+#CURS_INC = \\\"/home/wmcbrine/PDCurses-2.5/curses.h\\\"
 # Sneak some extra defines in through the back door:
-#CURS_DIR = /home/wmcbrine/source/PDCurses-2.4b -DXCURSES -DHAVE_PROTO
-#CURS_LIB = /home/wmcbrine/source/PDCurses-2.4b/pdcurses
+#CURS_DIR = /home/wmcbrine/PDCurses-2.5 -DXCURSES -DHAVE_PROTO
+#CURS_LIB = /home/wmcbrine/PDCurses-2.5/pdcurses
 #LIBS = -L/usr/X11R6/lib -lXCurses -lXaw -lXmu -lXt -lX11 -lSM -lICE -lXext
 
 #--------------------------------------------------------------
@@ -133,6 +115,9 @@ clean:
 	cd interfac $(SEP) $(MAKE) RM="$(RM)" clean $(SEP) cd ..
 	cd mmail $(SEP) $(MAKE) RM="$(RM)" clean $(SEP) cd ..
 	$(RM) mm
+
+modclean:
+	cd mmail $(SEP) $(MAKE) RM="$(RM)" modclean $(SEP) cd ..
 
 install:
 	install -c -s mm $(PREFIX)/bin

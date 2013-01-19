@@ -3,7 +3,7 @@
  * QWK
 
  Copyright (c) 1997 John Zero <john@graphisoft.hu>
- Copyright (c) 1999 William McBrine <wmcbrine@clark.net>
+ Copyright (c) 2001 William McBrine <wmcbrine@users.sourceforge.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -37,11 +37,14 @@ class qheader {
 
  public:
 	char from[26], to[26], subject[72], date[15];
-	int msglen, msgnum, refnum, origArea;
+	long msglen;
+	int origArea;
+	long msgnum, refnum;
 	bool privat, netblock;
 	//netaddress na;	// not yet used, but could be!
 
 	bool init(FILE *);
+	bool init_short(FILE *);
 	void output(FILE *);
 };
 
@@ -57,12 +60,15 @@ class qwkpack : public pktbase
 	void readToReader();
 	bool externalIndex();
 	void readIndices();
+
+	void getblk(int, long &, long, unsigned char *&, unsigned char *&);
+	void postfirstblk(unsigned char *&, letter_header &);
+	void endproc(letter_header &);
  public:
 	qwkpack(mmail *);
 	~qwkpack();
 	area_header *getNextArea();
 	letter_header *getNextLetter();
-	const char *getBody(letter_header &);
 	bool isQWKE();
 	const char *ctrlName();
 };
@@ -72,6 +78,8 @@ class qwkreply : public pktreply
 	class upl_qwk : public upl_base {
 	 public:
 		qheader qHead;
+
+		upl_qwk(const char * = 0);
 	};
 
 	bool qwke;
@@ -88,7 +96,7 @@ class qwkreply : public pktreply
 	~qwkreply();
 	area_header *getNextArea();
 	letter_header *getNextLetter();
-	void enterLetter(letter_header &, const char *, int);
+	void enterLetter(letter_header &, const char *, long);
 	bool getOffConfig();
 	bool makeOffConfig();
 };

@@ -3,7 +3,7 @@
  * mmail class
 
  Copyright (c) 1996 Toth Istvan <stoty@vma.bme.hu>
- Copyright (c) 1999 William McBrine <wmcbrine@clark.net>,
+ Copyright (c) 2000 William McBrine <wmcbrine@users.sourceforge.net>,
                     Robert Vukovic <vrobert@uns.ns.ac.yu>
 
  Distributed under the GNU General Public License.
@@ -22,6 +22,9 @@ net_address::net_address()
 
 net_address::net_address(net_address &x)
 {
+	isSet = isInternet = false;
+	zone = 0;
+	inetAddr = 0;
 	copy(x);
 }
 
@@ -107,12 +110,12 @@ net_address::operator const char *()
 mmail::mmail()
 {
 	resourceObject = new resource();
-};
+}
 
 mmail::~mmail()
 {
 	delete resourceObject;
-};
+}
 
 void mmail::Delete()
 {
@@ -125,39 +128,47 @@ void mmail::Delete()
 pktstatus mmail::selectPacket(const char *packetName)
 {
 	pktstatus result;
-	char fname[256];
 
 	const char *x = strrchr(packetName, '/');
 	if (!x)
 		x = strrchr(packetName, '\\');
 	if (x) {
 		int len = x - packetName;
+		char *fname = new char[len + 1];
 		strncpy(fname, packetName, len);
 		fname[len] = '\0';
 
 		mychdir(error.getOrigDir());
 		mychdir(fname);
-
-		mygetcwd(fname);
-		resourceObject->set(PacketDir, fname);
+		delete[] fname;
+		
+		fname = mygetcwd();
+		resourceObject->set_noalloc(PacketDir, fname);
 		packetName = x + 1;
 	}
 	resourceObject->set(PacketName, packetName);
 
 	// Uncompression is done here
-	sprintf(fname, "%s/%s", resourceObject->get(PacketDir),
-		packetName);
+	char *fpath = fullpath(resourceObject->get(PacketDir), packetName);
 
 	if (!resourceObject->get(oldPacketName) ||
 	    strcmp(packetName, resourceObject->get(oldPacketName))) {
 		resourceObject->set(oldPacketName, packetName);
-		result = uncompressFile(resourceObject, fname,
+		result = uncompressFile(resourceObject, fpath,
 		    resourceObject->get(WorkDir), true);
 		if (result != PKT_OK)
 			return result;
 	}
 
+	delete[] fpath;
+
 	workList = new file_list(resourceObject->get(WorkDir));
+
+	if (!workList->getNoOfFiles()) {
+		delete workList;
+		return PKT_NOFILES;
+	}
+
 	driverList = new driver_list(this);
 
 	if (!driverList->getNoOfDrivers()) {
@@ -166,14 +177,14 @@ pktstatus mmail::selectPacket(const char *packetName)
 		return PTYPE_UNK;
 	}
 	return PKT_OK;
-};
+}
 
 // Save last read pointers
 bool mmail::saveRead()
 {
 	return driverList->getReadObject(driverList->getDriver(REPLY_AREA
 		+ 1))->saveAll();
-};
+}
 
 // Get the BBS' "new files" list, if available
 file_header *mmail::getFileList()

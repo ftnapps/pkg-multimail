@@ -3,37 +3,42 @@
  * address book
 
  Copyright (c) 1996 Kolossvary Tamas <thomas@vma.bme.hu>
- Copyright (c) 1999 William McBrine <wmcbrine@clark.net>
+ Copyright (c) 2000 William McBrine <wmcbrine@users.sourceforge.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
 
 #include "interfac.h"
 
-Person::Person(const char *sname, const char *saddr)
+AddressBook::Person::Person(const char *sname, const char *saddr)
 {
 	if (saddr && (*saddr == 'I'))
 		saddr++;
 	netmail_addr = saddr;
-	Init(sname);
-}
-
-Person::Person(const char *sname, net_address &naddr)
-{
-	netmail_addr = naddr;
-	Init(sname);
-}
-
-void Person::Init(const char *sname)
-{
-	if (sname) {
-		strncpy(name, sname, 44);
-		name[44] = '\0';
-	}
+	setname(sname);
+	killed = false;
 	next = 0;
 }
 
-void Person::dump(FILE *fd)
+AddressBook::Person::Person(const char *sname, net_address &naddr)
+{
+	netmail_addr = naddr;
+	setname(sname);
+	killed = false;
+	next = 0;
+}
+
+AddressBook::Person::~Person()
+{
+	delete[] name;
+}
+
+void AddressBook::Person::setname(const char *sname)
+{
+	name = strdupplus(sname);
+}
+
+void AddressBook::Person::dump(FILE *fd)
 {
 	fprintf(fd, (netmail_addr.isInternet ? "%s\nI%s\n\n" :
 		"%s\n%s\n\n"), name, (const char *) netmail_addr);
@@ -41,7 +46,9 @@ void Person::dump(FILE *fd)
 
 AddressBook::AddressBook()
 {
-	NumOfPersons = 0;
+	NumOfPersons = NumOfActive = 0;
+	people = living = 0;
+	filter = 0;
 }
 
 AddressBook::~AddressBook()
@@ -51,53 +58,62 @@ AddressBook::~AddressBook()
 
 void AddressBook::MakeActive(bool NoEnterA)
 {
-	statetype s = interface->prevactive();
+	int expmode = mm.resourceObject->getInt(ExpertMode);
+	statetype s = ui->prevactive();
 	if (s != address)
 		inletter = ((s == letter) || (s == littlearealist)) &&
 			!mm.areaList->isReplyArea();
 
 	NoEnter = NoEnterA;
 
-	list_max_y = LINES - 12;
+	list_max_y = LINES - (expmode ? 9 : 12);
 	list_max_x = COLS - 6;
 	top_offset = 2;
 
 	borderCol = C_ADDR1;
 
-	int xwidth = list_max_x + 2;
-	list = new InfoWin(LINES - 6, xwidth, 2, borderCol,
-		"Addressbook", C_ADDR2, 6);
+	char tmp[60];
+	char *p = tmp + sprintf(tmp, "Addresses");
+	if (NumOfActive > list_max_y)
+		p += sprintf(p, " (%d)", NumOfActive);
+	if (filter)
+		sprintf(p, " | %.20s", filter);
 
-	int x = xwidth / 3 + 1;
-	int y = list_max_y + 2;
+	int xwidth = list_max_x + 2;
+	list = new InfoWin(LINES - 6, xwidth, 2, borderCol, tmp, C_ADDR2,
+		expmode ? 3 : 6);
 
 	list->attrib(C_ADDR2);
 	list->put(1, 2,
 		"Name                            Netmail address");
 
-	list->horizline(y, list_max_x);
+	if (!expmode) {
+		int x = xwidth / 3 + 1;
+		int y = list_max_y + 2;
 
-	list->put(++y, 3, ": Quit addressbook");
-	list->put(y, x + 3, ": Add new address");
-	list->put(y, x * 2 + 1, ": search / next");
-	list->put(++y, 3, ": Kill current address");
-	list->put(y, x + 3, ": Edit address");
+		list->horizline(y, list_max_x);
 
-	if (inletter)
-		list->put(y, x * 2 + 1,
-			  ": address from Letter");
+		list->put(++y, 3, ": Quit addressbook");
+		list->put(y, x + 3, ": Add new address");
+		list->put(y, x * 2 + 1, ": search / next");
+		list->put(++y, 3, ": Kill current address");
+		list->put(y, x + 3, ": Edit address");
 
-	list->attrib(C_ADDR1);
-	list->put(y, 2, "K");
-	list->put(y, x + 2, "E");
+		if (inletter)
+			list->put(y, x * 2 + 1,
+				  ": address from Letter");
 
-	if (inletter)
-		list->put(y, x * 2, "L");
+		list->attrib(C_ADDR1);
+		list->put(y, 2, "K");
+		list->put(y, x + 2, "E");
 
-	list->put(--y, 2, "Q");
-	list->put(y, x + 2, "A");
-	list->put(y, x * 2 - 3, "/, .");
+		if (inletter)
+			list->put(y, x * 2, "L");
 
+		list->put(--y, 2, "Q");
+		list->put(y, x + 2, "A");
+		list->put(y, x * 2 - 3, "/, .");
+	}
 	DrawAll();
 }
 
@@ -108,8 +124,6 @@ void AddressBook::Delete()
 
 bool AddressBook::extrakeys(int key)
 {
-	bool end = false;
-
 	switch (key) {
 	case MM_ENTER:
 		SetLetterThings();
@@ -120,14 +134,33 @@ bool AddressBook::extrakeys(int key)
 	case 'E':
 		ChangeAddress();
 		break;
-	case KEY_DC:
+	case MM_DEL:
 	case 'K':
 		kill();
 		break;
 	case 'L':
 		GetAddress();
+		break;
+	case '^':
+		{
+			char item[80];
+			*item = '\0';
+
+			if (ui->savePrompt("Filter on:", item)) {
+				delete[] filter;
+				filter = strdupplus(item);
+				MakeChain();
+				if (!NumOfActive) {
+					delete[] filter;
+					filter = 0;
+					MakeChain();
+				}
+			}
+		}
+		Delete();
+		MakeActive(NoEnter);
 	}
-	return end;
+	return false;
 }
 
 void AddressBook::WriteFile()
@@ -141,19 +174,13 @@ void AddressBook::WriteFile()
 void AddressBook::kill()
 {
 	if (highlighted) {
-		if (interface->WarningWindow("Remove this address?")) {
-			if (active)
-				people[active - 1]->next = highlighted->next;
-			else
-				head.next = highlighted->next;
+		if (ui->WarningWindow("Remove this address?")) {
+			highlighted->killed = true;
 
 			if (position)
 				position--;
 
 			NumOfPersons--;
-
-			delete highlighted;
-			delete[] people;
 
 			MakeChain();
 			WriteFile();
@@ -166,7 +193,7 @@ void AddressBook::kill()
 void AddressBook::SetLetterThings()
 {
 	if (!NoEnter && highlighted)
-		interface->letterwindow.set_Letter_Params(
+		ui->letterwindow.set_Letter_Params(
 			highlighted->netmail_addr, highlighted->name);
 }
 
@@ -191,26 +218,25 @@ void AddressBook::Add(const char *Name, net_address &Address)
 			fclose(fd);
 
 			NumOfPersons++;
-			delete[] people;
 			MakeChain();
 
 			active = NumOfPersons;
 			Draw();
 		} else
-			interface->nonFatalError("Already in addressbook");
+			ui->nonFatalError("Already in addressbook");
 	} else
-		interface->nonFatalError("No address found");
+		ui->nonFatalError("No address found");
 }
 
 void AddressBook::GetAddress()
 {
 	if (inletter)
 		Add(mm.letterList->getFrom(),
-			interface->letterwindow.PickNetAddr());
+			ui->letterwindow.PickNetAddr());
 }
 
 int AddressBook::HeaderLine(ShadowedWin &win, char *buf, int limit,
-				int pos, int color)
+				int pos, coltype color)
 {
 	int getit = win.getstring(pos, 8, buf, limit, color, color);
 	return getit;
@@ -218,15 +244,15 @@ int AddressBook::HeaderLine(ShadowedWin &win, char *buf, int limit,
 
 int AddressBook::Edit(Person &p)
 {
-	char NAME[45], NETADD[72];
+	char NAME[100], NETADD[100];
 
 	const int maxitems = 2;
 	int result, current = 0;
 	bool end = false;
 
 	if (p.netmail_addr.isSet) {
-		strcpy(NAME, p.name);
-		strcpy(NETADD, p.netmail_addr);
+		sprintf(NAME, "%.99s", p.name);
+		sprintf(NETADD, "%.99s", (const char *) p.netmail_addr);
 	} else
 		NAME[0] = NETADD[0] = '\0';
 
@@ -245,8 +271,7 @@ int AddressBook::Edit(Person &p)
 
 	do {
 		result = HeaderLine(add_edit, current ? NETADD : NAME,
-			current ? 69 : 44, current + 1,
-			current ? C_LEGET2 : C_LEGET1);
+			99, current + 1, current ? C_LEGET2 : C_LEGET1);
 
 		switch (result) {
 		case 0:
@@ -268,7 +293,7 @@ int AddressBook::Edit(Person &p)
 	} while (!end);
 
 	if (result && NAME[0] && NETADD[0]) {
-		strcpy(p.name, NAME);
+		p.setname(NAME);
 		p.netmail_addr = NETADD;
 		if (!p.netmail_addr.isSet)
 			result = 0;
@@ -284,7 +309,7 @@ void AddressBook::NewAddress()
 	p.netmail_addr.isSet = false;
 	if (Edit(p))
 		Add(p.name, p.netmail_addr);
-	interface->redraw();
+	ui->redraw();
 }
 
 void AddressBook::ChangeAddress()
@@ -292,13 +317,13 @@ void AddressBook::ChangeAddress()
 	if (highlighted)
 		if (Edit(*highlighted))
 			WriteFile();
-	interface->redraw();
+	ui->redraw();
 }
 
 void AddressBook::oneLine(int i)
 {
 	int z = position + i;
-	curr = (z < NumOfPersons) ? people[z] : 0;
+	curr = (z < NumOfActive) ? living[z] : 0;
 
 	if (z == active)
 		highlighted = curr;
@@ -313,26 +338,25 @@ void AddressBook::oneLine(int i)
 	DrawOne(i, C_ADDR3);
 }
 
-searchret AddressBook::oneSearch(int x, const char *item, int ignore)
+searchret AddressBook::oneSearch(int x, const char *item, int)
 {
 	const char *s;
 
-	ignore = ignore;
-
-	if (!(s = searchstr(people[x]->name, item)))
-		s = searchstr(people[x]->netmail_addr, item);
+	s = searchstr(living[x]->name, item);
+	if (!s)
+		s = searchstr(living[x]->netmail_addr, item);
 	return s ? True : False;
 }
 
 int AddressBook::NumOfItems()
 {
-	return NumOfPersons;
+	return NumOfActive;
 }
 
 int perscomp(const void *a, const void *b)
 {
-	return strcasecmp((*((Person **) a))->name,
-		(*((Person **) b))->name);
+	return strcasecmp((*((AddressBook::Person **) a))->name,
+		(*((AddressBook::Person **) b))->name);
 }
 
 void AddressBook::ReadFile()
@@ -341,7 +365,8 @@ void AddressBook::ReadFile()
 	char name[256], nmaddr[256], other[256];
 	bool end = false;
 
-	if ((fd = fopen(addfname, "rt"))) {
+	fd = fopen(addfname, "rt");
+	if (fd) {
 		curr = &head;
 		while (!end) {
 			do
@@ -369,6 +394,8 @@ void AddressBook::ReadFile()
 
 	if (NumOfPersons > 1) {
 		qsort(people, NumOfPersons, sizeof(Person *), perscomp);
+		if (NumOfActive > 1)
+			qsort(living, NumOfActive, sizeof(Person *), perscomp);
 		ReChain();
 	}
 }
@@ -376,16 +403,28 @@ void AddressBook::ReadFile()
 
 void AddressBook::MakeChain()
 {
+	delete[] people;
+	delete[] living;
+
+	NumOfActive = 0;
+
 	if (NumOfPersons) {
 		people = new Person *[NumOfPersons];
+		living = new Person *[NumOfPersons];
+
 		curr = head.next;
 		int c = 0;
 		while (curr) {
-			people[c++] = curr;
+			if (!curr->killed) {
+				people[c++] = curr;
+				if (!filter || (searchstr(curr->name, filter)
+				    || searchstr(curr->netmail_addr, filter)))
+					living[NumOfActive++] = curr;
+			}
 			curr = curr->next;
 		}
 	} else
-		people = 0;
+		people = living = 0;
 }
 
 void AddressBook::ReChain()

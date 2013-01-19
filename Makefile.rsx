@@ -21,7 +21,6 @@ CURS_INC = \\\"/PDCurses-2.3/curses.h\\\"
 CURS_DIR = /PDCurses-2.3
 CURS_LIB = .
 LIBS = /PDCurses-2.3/os2/pdcurses.a -llibmain -lvideont -Zwin32 -Zsys
-RANLIB = ar -s
 RM = del
 POST = ntbind mm
 
@@ -31,13 +30,11 @@ POST = ntbind mm
 all:	mm
 
 mm-main:
-	${MAKE} -C mmail RANLIB="${RANLIB}" \
-		MM_MAJOR="${MM_MAJOR}" MM_MINOR="${MM_MINOR}" \
+	${MAKE} -C mmail MM_MAJOR="${MM_MAJOR}" MM_MINOR="${MM_MINOR}" \
 		OPTS="${OPTS}" mm-main
 
 intrfc:
-	${MAKE} -C interfac RANLIB="${RANLIB}" \
-		MM_MAJOR="${MM_MAJOR}" MM_MINOR="${MM_MINOR}" \
+	${MAKE} -C interfac MM_MAJOR="${MM_MAJOR}" MM_MINOR="${MM_MINOR}" \
 		OPTS="${OPTS} -I${CURS_DIR}" \
 		CURS_INC="${CURS_INC}" intrfc
 
@@ -53,3 +50,7 @@ clean:
 	${MAKE} -C interfac RM="${RM}" clean
 	${MAKE} -C mmail RM="${RM}" clean
 	${RM} mm
+	${RM} mm.exe
+
+modclean:
+	${MAKE} -C mmail RM="${RM}" modclean

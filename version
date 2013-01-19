@@ -3,9 +3,9 @@
 # use to build the distribution archives).
 
 MM_MAJOR=0
-MM_MINOR=32
+MM_MINOR=43
 
 # Last-released version (used only by the aforementioned scripts)
 
 OLD_MAJOR=0
-OLD_MINOR=31
+OLD_MINOR=42

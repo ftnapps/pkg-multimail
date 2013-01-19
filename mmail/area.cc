@@ -3,36 +3,32 @@
  * area_header and area_list
 
  Copyright (c) 1996 Toth Istvan <stoty@vma.bme.hu>
- Copyright (c) 1999 William McBrine <wmcbrine@clark.net>
+ Copyright (c) 2002 William McBrine <wmcbrine@users.sourceforge.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
 
 #include "mmail.h"
 
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------
 // Area header methods
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------
 
 area_header::area_header(mmail *mmA, int numA, const char *shortNameA,
 			const char *nameA, const char *descriptionA,
-			const char *areaTypeA, unsigned typeA,
+			const char *areaTypeA, unsigned long typeA,
 			int noOfLettersA, int noOfPersonalA,
-			int maxtolenA, int maxsublenA)
+			int maxtolenA, int maxsublenA) :
+			mm(mmA), shortName(shortNameA), name(nameA),
+			description(descriptionA), areaType(areaTypeA),
+			type(typeA), noOfLetters(noOfLettersA),
+			noOfPersonal(noOfPersonalA),
+			maxtolen(maxtolenA), maxsublen(maxsublenA)
 {
-	mm = mmA;
-	shortName = shortNameA;
-	name = nameA;
-	description = descriptionA;
-	areaType = areaTypeA;
-	type = typeA;
-	num = numA;
-	noOfLetters = noOfLettersA;
-	noOfPersonal = noOfPersonalA;
-	maxtolen = maxtolenA;
-	maxsublen = maxsublenA;
+	noOfReplies = 0;
 
-	driver = mm->driverList->getDriver(num);
+	driver = mm->driverList->getDriver(numA);
+	num = numA - mm->driverList->getOffset(driver);
 }
 
 const char *area_header::getName() const
@@ -50,12 +46,17 @@ const char *area_header::getDescription() const
 	return description;
 }
 
+const char *area_header::getTear()
+{
+	return driver->getTear(num);
+}
+
 const char *area_header::getAreaType() const
 {
 	return areaType;
 }
 
-unsigned area_header::getType() const
+unsigned long area_header::getType() const
 {
 	return type;
 }
@@ -67,14 +68,12 @@ int area_header::getNoOfLetters() const
 
 int area_header::getNoOfUnread()
 {
-	return (mm->driverList->getReadObject(driver))->
-		getNoOfUnread(num - mm->driverList->getOffset(driver));
+	return (mm->driverList->getReadObject(driver))->getNoOfUnread(num);
 }
 
 int area_header::getNoOfMarked()
 {
-	return (mm->driverList->getReadObject(driver))->
-		getNoOfMarked(num - mm->driverList->getOffset(driver));
+	return (mm->driverList->getReadObject(driver))->getNoOfMarked(num);
 }
 
 int area_header::getNoOfPersonal() const
@@ -99,7 +98,7 @@ bool area_header::isReplyArea() const
 
 bool area_header::isActive() const
 {
-	return !(!(type & (ACTIVE | ADDED | DROPPED)));
+	return !(!(type & (ACTIVE | ADDED | DROPPED | HASREPLY)));
 }
 
 bool area_header::isNetmail() const
@@ -125,6 +124,11 @@ bool area_header::isUsenet() const
 bool area_header::isLatin() const
 {
 	return !(!(type & LATINCHAR));
+}
+
+bool area_header::isReadOnly() const
+{
+	return !(!(type & READONLY));
 }
 
 bool area_header::hasTo() const
@@ -179,14 +183,27 @@ void area_header::Drop()
 	}
 }
 
-// ---------------------------------------------------------------------------
-// Arealist methods
-// ---------------------------------------------------------------------------
-
-area_list::area_list(mmail *mmA)
+void area_header::addReply()
 {
-	mm = mmA;
+	type |= HASREPLY;
+	noOfReplies++;
+}
+
+void area_header::killReply()
+{
+	noOfReplies--;
+	if (!noOfReplies)
+		type &= ~HASREPLY;
+}
+
+// -----------------------------------------------------------------
+// Arealist methods
+// -----------------------------------------------------------------
+
+area_list::area_list(mmail *mmA) : mm(mmA)
+{
 	no = 0;
+	filter = 0;
 
 	int c = 0;
 	do {
@@ -204,7 +221,7 @@ area_list::area_list(mmail *mmA)
 	}
 
 	current = 0;
-	shortlist = false;
+	almode = mm->resourceObject->getInt(AreaMode) - 1;
 	relist();
 
 	// 1. Find out what types of areas we have (i.e. qwk, usenet... ) 
@@ -220,18 +237,58 @@ area_list::~area_list()
 		delete areaHeader[--no];
 	delete[] areaHeader;
 	delete[] activeHeader;
+	delete[] filter;
 }
 
-void area_list::relist()
+bool area_list::relist()
 {
+	bool anyfound = !filter;
 	noActive = 0;
-	shortlist = !shortlist;
+
+	almode++;
+	if (almode == 3)
+		almode = 0;
+
+	// Check if Active/Subscribed distincion makes sense -- checks
+	// the last area, instead of making a global per-packet check;
+	// bogus, but it works, because this value is always the same for 
+	// each area in a packet:
+
+	if ((almode == 1) && !(areaHeader[no - 1]->getType() & SUBKNOWN))
+		almode++;
+
 	int c = current;
 
 	for (current = 0; current < no; current++)
-		if (areaHeader[current]->isActive() || !shortlist)
-			activeHeader[noActive++] = current;
+		if ( ((current == REPLY_AREA) || (getType() & HASREPLY)) ||
+		    ( (!filter || filterCheck(filter)) && ((almode == 0) ||
+		    ((almode == 1) && areaHeader[current]->isActive()) ||
+		    ((almode == 2) && getNoOfLetters())) ) ) {
+				activeHeader[noActive++] = current;
+				if (!anyfound)
+					anyfound = (filterCheck(filter) != 0);
+		}
+
 	current = c;
+
+	return anyfound;
+}
+
+int area_list::getRepList()
+{
+	current = REPLY_AREA;
+	getLetterList();
+
+	int max = mm->letterList->noOfLetter();
+	for (int x = 0; x < max; x++) {
+		mm->letterList->gotoLetter(x);
+		int area = mm->letterList->getAreaID();
+		areaHeader[area]->addReply();
+	}
+
+	delete mm->letterList;
+
+	return max;
 }
 
 void area_list::updatePers()
@@ -256,9 +313,19 @@ void area_list::updatePers()
 	}
 }
 
-bool area_list::isShortlist()
+bool area_list::isShortlist() const
 {
-	return shortlist;
+	return !(!almode);
+}
+
+int area_list::getMode() const
+{
+	return almode;
+}
+
+void area_list::setMode(int newmode)
+{
+	almode = newmode;
 }
 
 const char *area_list::getShortName() const
@@ -295,7 +362,12 @@ const char *area_list::getAreaType() const
 	return areaHeader[current]->getAreaType();
 }
 
-unsigned area_list::getType() const
+const char *area_list::getTear()
+{
+	return areaHeader[current]->getTear();
+}
+
+unsigned long area_list::getType() const
 {
 	return areaHeader[current]->getType();
 }
@@ -322,8 +394,7 @@ int area_list::getNoOfPersonal() const
 
 void area_list::getLetterList()
 {
-	mm->letterList = new letter_list(mm, current, isCollection() &&
-					!isReplyArea());
+	mm->letterList = new letter_list(mm, current, getType());
 }
 
 int area_list::noOfAreas() const
@@ -367,11 +438,13 @@ void area_list::enterLetter(int areaNo, const char *from, const char *to,
 			const char *subject, const char *replyID,
 			const char *newsgrp, int replyTo, bool privat,
 			net_address &netAddress, const char *filename,
-			int length)
+			long length)
 {
 	reply_driver *replyDriver = mm->driverList->getReplyDriver();
 
 	gotoArea(areaNo);
+	areaHeader[current]->addReply();
+
 	letter_header newLetter(mm, subject, to, from, "", replyID,
 		replyTo, 0, 0, areaNo, privat, 0, replyDriver,
 		netAddress, isLatin(), newsgrp);
@@ -381,9 +454,10 @@ void area_list::enterLetter(int areaNo, const char *from, const char *to,
 	refreshArea();
 }
 
-void area_list::killLetter(int letterNo)
+void area_list::killLetter(int areaNo, long letterNo)
 {
-	mm->driverList->getReplyDriver()->killLetter(letterNo);
+	areaHeader[areaNo]->killReply();
+	mm->driverList->getReplyDriver()->killLetter((int) letterNo);
 	refreshArea();
 }
 
@@ -466,6 +540,11 @@ bool area_list::isLatin(int area)
 	return areaHeader[area]->isLatin();
 }
 
+bool area_list::isReadOnly() const
+{
+	return areaHeader[current]->isReadOnly();
+}
+
 bool area_list::hasTo() const
 {
 	return areaHeader[current]->hasTo();
@@ -512,4 +591,34 @@ bool area_list::anyChanged() const
 		if (areaHeader[c]->getType() & (ADDED | DROPPED))
 			return true;
 	return false;
+}
+
+const char *area_list::getFilter() const
+{
+        return filter;
+}
+
+void area_list::setFilter(const char *newfilter)
+{
+        delete[] filter;
+        filter = (newfilter && *newfilter) ? strdupplus(newfilter) : 0;
+	almode--;
+	if (!relist()) {
+		delete[] filter;
+		filter = 0;
+		almode--;
+		relist();
+	}
+}
+
+const char *area_list::filterCheck(const char *item)
+{
+	const char *s = searchstr(getShortName(), item);
+	if (!s) {
+		s = searchstr(getName(), item);
+		if (!s)
+			s = searchstr(getDescription(), item);
+	}
+
+	return s;
 }

@@ -4,11 +4,12 @@
 
  Copyright (c) 1996 Kolossvary Tamas <thomas@tvnet.hu>
  Copyright (c) 1997 John Zero <john@graphisoft.hu>
- Copyright (c) 1999 William McBrine <wmcbrine@clark.net>
+ Copyright (c) 2002 William McBrine <wmcbrine@users.sourceforge.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
 
+#include "error.h"
 #include "interfac.h"
 
 #ifdef XCURSES
@@ -22,13 +23,16 @@ Interface::Interface()
 	searchItem = 0;
 #ifdef SIGWINCH
 	resized = false;
-# ifndef XCURSES
+# if !defined(XCURSES) && !defined(NCURSES_SIGWINCH)
 	signal(SIGWINCH, sigwinchHandler);
 # endif
 #endif
 	commandline = abortNow = dontSetAsRead = false;
 	unsaved_reply = any_read = false;
 	state = nostate;
+	width_min = MINWIDTH;
+	height_min = mm.resourceObject->getInt(ExpertMode) ?
+		MINHIEXPERT : MINHINORM;
 }
 
 void Interface::init()
@@ -48,8 +52,10 @@ void Interface::main()
 			newpacket();
 		else
 			fatalError(pkterrmsg(pktret));
-	} else
+	} else {
+		packets.init();
 		newstate(packetlist);
+	}
 	KeyHandle();
 }
 
@@ -61,20 +67,27 @@ Interface::~Interface()
 	leaveok(stdscr, FALSE);
 	echo();
 	endwin();
-#ifdef __PDCURSES__
-# ifdef XCURSES
+#ifdef XCURSES
 	XCursesExit();
-# else
+#endif
+#ifdef PDCURSKLUDGE
 	PDC_set_cursor_mode(curs_start, curs_end);
-# endif
 #endif
 }
 
 void Interface::init_colors()
 {
+#if defined(NCURSES_VERSION) && defined(HAS_TRANS)
+	bool trans = mm.resourceObject->getInt(Transparency);
+	int bkcol = PAIR_NUMBER(ColorArray[C_SBACK]) & 7;
+#endif
 	for (int back = COLOR_BLACK; back <= (COLOR_WHITE); back++)
 		for (int fore = COLOR_BLACK; fore <= (COLOR_WHITE); fore++)
-			init_pair((fore << 3) + back, fore, back);
+			init_pair((fore << 3) + back, fore,
+#if defined(NCURSES_VERSION) && defined(HAS_TRANS)
+				(trans && (back == bkcol)) ? -1 :
+#endif
+				back);
 
 	// Color pair 0 cannot be used (argh!), so swap:
 
@@ -86,7 +99,7 @@ void Interface::init_colors()
 
 void Interface::alive()
 {
-#if defined (__PDCURSES__) && !defined (XCURSES)
+#ifdef PDCURSKLUDGE
 	// Preserve the startup cursor mode:
 
 	int curs_mode = PDC_get_cursor_mode();
@@ -95,51 +108,72 @@ void Interface::alive()
 #endif
 	initscr();
 	refresh();
-	start_color();
+#ifndef __PDCURSES__
+	if (mm.resourceObject->getInt(UseColors))
+#endif
+		start_color();
+#ifdef NCURSES_VERSION
+	use_default_colors();
+#endif
 	init_colors();
 	cbreak();
 	noecho();
 	nonl();
+	//raw();
 
-	//mousemask(BUTTON1_CLICKED, 0);
-	//mouse_set(BUTTON1_PRESSED);
+#ifdef USE_MOUSE
+# ifndef NCURSES_MOUSE_VERSION
+	mouse_set(BUTTON1_PRESSED | BUTTON3_PRESSED
+		| BUTTON1_DOUBLE_CLICKED | BUTTON3_DOUBLE_CLICKED);
+# else
+	mousemask(BUTTON1_CLICKED | BUTTON1_DOUBLE_CLICKED |
+		BUTTON3_CLICKED, 0);
+# endif
+#endif
 
-#if defined (__PDCURSES__) && defined (__RSXNT__)
-	/* With the RSXNT port, the keyboard check after printing each
-           line makes output very slow, unless we disable line break
-           optimization.
-	*/
+#ifdef NOTYPEAHEAD
 	typeahead(-1);
 #endif
 }
 
 void Interface::screen_init()
 {
+	char tmp[80];
+
 	// Make a new background window, fill it with ACS_BOARD characters:
 
-	screen = new Win(LINES, COLS, 0, C_SBACK | ACS_BOARD);
+	screen = new Win(LINES, COLS, 0, ColorArray[C_SBACK] |
+		(mm.resourceObject->getInt(BackFill) ? ACS_BOARD : 0));
 
-	if ((COLS < 80) || (LINES < 20))
-		fatalError("A screen at least 80x20 is required");
+	if ((COLS < width_min) || (LINES < height_min)) {
+		sprintf(tmp, "A screen at least %dx%d is required",
+			width_min, height_min);
+		fatalError(tmp);
+	}
 
 	// Border and title:
 
-	char tmp[80];
 	sprintf(tmp, MM_TOPHEADER, MM_NAME, MM_MAJOR, MM_MINOR);
 	screen->boxtitle(C_SBORDER, tmp, emph(C_SBACK));
 
 	// Help window area:
 
-	screen->attrib(C_SSEPBOTT);
-	screen->horizline(LINES - 5, COLS - 2);
+	if (!mm.resourceObject->getInt(ExpertMode)) {
+		screen->attrib(C_SSEPBOTT);
+		screen->horizline(LINES - 5, COLS - 2);
+	}
 	screen->delay_update();
 }
 
 const char *Interface::pkterrmsg(pktstatus pktret)
 {
-	return (pktret == PKT_UNFOUND) ? "Could not open packet" :
-		((pktret == UNCOMP_FAIL) ? "Could not uncompress packet" :
-		"Packet type not recognized");
+	return (pktret == PKT_UNFOUND) ?
+			"Could not open packet" :
+		(pktret == PKT_NOFILES) ?
+			"No files uncompresed - check archiver config" :
+		(pktret == UNCOMP_FAIL) ?
+			"Could not uncompress packet" :
+			"Packet type not recognized";
 }
 
 int Interface::WarningWindow(const char *warning, const char **selectors,
@@ -148,7 +182,7 @@ int Interface::WarningWindow(const char *warning, const char **selectors,
 	static const char *yesno[] = { "Yes", "No" };
 	const char **p;
 
-	int x, y, z, itemlen, c, curitem, def_val = 0;
+	int x, z, width, itemlen, c, curitem, def_val = 0;
 	bool result = false;
 
 	if (!selectors)
@@ -162,21 +196,22 @@ int Interface::WarningWindow(const char *warning, const char **selectors,
 		if (z > itemlen)
 			itemlen = z;
 	}
-	itemlen += 3;
-	x = itemlen * (items + 1);
+	itemlen += 2;
+	x = itemlen * items + 3;
 	z = strlen(warning);
-	if ((z + 4) > x)
+	if ((z + 4) > x) {
 		x = z + 4;
+		itemlen = z / items;
+	}
+	width = x;
 
-	ShadowedWin warn(7, x, (LINES >> 1) - 4, C_WTEXT);
+	ShadowedWin warn(7, width, (LINES >> 1) - 4, C_WTEXT);
 	warn.put(2, (x - z) >> 1, warning);
-
-	y = x / (items + 1);
 
 	// Display each item:
 
 	for (p = selectors, curitem = 0; curitem < items; curitem++) {
-		x = (curitem + 1) * y - (strlen(*p) >> 1);
+		x = curitem * itemlen + ((itemlen - strlen(*p) + 5) >> 1);
 
 		warn.attrib(C_WTEXT);
 		warn.put(4, x + 1, *p + 1);
@@ -191,7 +226,7 @@ int Interface::WarningWindow(const char *warning, const char **selectors,
 		for (p = selectors, curitem = 0; curitem < items;
 		    curitem++, p++) {
 			z = strlen(*p);
-			x = (curitem + 1) * y - (z >> 1);
+			x = curitem * itemlen + ((itemlen - z + 5) >> 1);
 			warn.put(4, x - 1, (def_val == curitem) ? '[' : ' ');
 			warn.put(4, x + z, (def_val == curitem) ? ']' : ' ');
 		}
@@ -199,7 +234,9 @@ int Interface::WarningWindow(const char *warning, const char **selectors,
 		warn.update();
 		warn.cursor_off();
 
-		c = warn.inkey();
+		do
+			c = warn.inkey();
+		while (ERR == c);
 
 		for (p = selectors, curitem = 0; (curitem < items) &&
 		    !result; curitem++, p++)
@@ -210,13 +247,32 @@ int Interface::WarningWindow(const char *warning, const char **selectors,
 
 		if (!result)
 			switch (c) {
-			case KEY_LEFT:
+#ifdef USE_MOUSE
+			case MM_MOUSE:
+				mm_mouse_get();
+				if ((LINES >> 1) == mouse_event.y)
+				    for (p = selectors, curitem = 0;
+					(curitem < items) && !result;
+					curitem++, p++) {
+					    z = strlen(*p);
+					    x = curitem * itemlen +
+						((itemlen - z + 5) >> 1) +
+						((COLS - width) / 2);
+					    if ((x <= mouse_event.x) &&
+					     (mouse_event.x <= (x + z))) {
+						def_val = curitem;
+						result = true;
+					    }
+				    }
+				break;
+#endif
+			case MM_LEFT:
 				if (!def_val)
 					def_val = items;
 				def_val--;
 				break;
-			case KEY_RIGHT:
-			case 9:
+			case MM_RIGHT:
+			case '\t':
 				if (++def_val == items)
 					def_val = 0;
 				break;
@@ -246,6 +302,14 @@ void Interface::nonFatalError(const char *warn)
 
 	WarningWindow(warn, ok, 1);
 	redraw();
+}
+
+void Interface::ReportWindow(const char *message)
+{
+	ShadowedWin rwin(3, strlen(message) + 4, (LINES >> 1) - 2,
+		C_WTEXT);
+	rwin.put(1, 2, message);
+	rwin.update();
 }
 
 statetype Interface::active()
@@ -368,14 +432,21 @@ void Interface::newpacket()
 	static const char *keepers[] = {"Save", "Kill"};
 	unsaved_reply = any_read = false;
 
-	if (mm.checkForReplies() &&
-		!WarningWindow("Existing replies found:", keepers))
+	if (mm.checkForReplies())
+		if (!WarningWindow("Existing replies found:", keepers))
 			mm.deleteReplies();
+		else {
+			redraw();
+			ReportWindow("Opening replies...");
+		}
+
 	mm.openReply();
 
 	mm.areaList = new area_list(&mm);
-	if (mm.getOffConfig()) {
-		mm.areaList->relist();
+	int noOfReplies = mm.areaList->getRepList();
+	mm.driverList->initRead();
+	if (mm.getOffConfig() || noOfReplies) {
+		mm.areaList->setMode(0);
 		mm.areaList->relist();
 	}
 	areas.FirstUnread();
@@ -417,7 +488,10 @@ bool Interface::select()
 
 	switch (state) {
 	case packetlist:
+		ReportWindow("Opening...");
+
 		pktret = packets.OpenPacket();
+
 		if (pktret == PKT_OK)
 			newpacket();
 		else
@@ -427,6 +501,8 @@ bool Interface::select()
 	case arealist:
 		areas.Select();
 		if (mm.areaList->getNoOfLetters() > 0) {
+			ReportWindow("Opening...");
+
 			mm.areaList->getLetterList();
 			letters.FirstUnread();
 			changestate(letterlist);
@@ -457,8 +533,14 @@ bool Interface::back()
 {
 	switch (state) {
 	case packetlist:
-		if ((Key == KEY_LEFT) && !packets.back())
-			return false;
+		switch (Key) {
+#ifdef USE_MOUSE
+			case MM_MOUSE:
+#endif
+			case MM_LEFT:
+				if (!packets.back())
+					return false;
+		}
 		if (abortNow || WarningWindow("Do you really want to quit?")) {
 			oldstate(state);
 			return true;
@@ -466,16 +548,15 @@ bool Interface::back()
 			redraw();
 		break;
 	case arealist:
-		if (any_read) {
-			if (mm.resourceObject->get(AutoSaveRead) ||
-				WarningWindow("Save lastread pointers?"))
-					save_read();
-		}
+		if (any_read)
+			save_read();
 		if (unsaved_reply)
-			if (mm.resourceObject->get(AutoSaveReplies) ||
+			if (mm.resourceObject->getInt(AutoSaveReplies) ||
 				WarningWindow(
-			"The REPLY area has changed. Save changes?"))
+			"The REPLY area has changed. Save changes?")) {
+				redraw();
 				create_reply_packet();
+			}
 		mm.Delete();
 		if (abortNow || commandline) {
 			oldstate(state);
@@ -512,18 +593,15 @@ void Interface::sigwinch()
 # ifdef XCURSES
 	resize_term(0, 0);
 # else
+#  ifndef NCURSES_SIGWINCH
 	endwin();
 	initscr();
 	refresh();
+#  endif
 # endif
 	screen_init();
 	newstate(state);
 	resized = false;
-}
-
-void Interface::setResized()
-{
-	resized = true;
 }
 #endif
 
@@ -532,7 +610,9 @@ void Interface::kill_letter()
 	if (WarningWindow(
 		"Are you sure you want to delete this letter?")) {
 
-		mm.areaList->killLetter(mm.letterList->getMsgNum());
+		redraw();
+		mm.areaList->killLetter(mm.letterList->getAreaID(),
+			mm.letterList->getMsgNum());
 		setUnsaved();
 
 		changestate(letterlist);
@@ -547,21 +627,24 @@ void Interface::create_reply_packet()
 	static int lines = mm.resourceObject->getInt(MaxLines);
 	if (lines)
 		letterwindow.SplitAll(lines);
-	if (mm.makeReply())
+
+	ReportWindow("Saving replies...");
+	bool result = mm.makeReply();
+
+	if (result)
 		unsaved_reply = false;
-	else {
-		redraw();
+	else
 		nonFatalError("Warning: Unable to create reply packet!");
-	}
 }
 
 void Interface::save_read()
 {
+	ReportWindow("Saving last read...");
 	if (mm.saveRead())
 		any_read = false;
 	else {
 		redraw();
-		nonFatalError("Could not save lastread pointers");
+		nonFatalError("Could not save last read");
 	}
 }
 
@@ -585,7 +668,7 @@ bool Interface::Tagwin()
 	return false;
 }
 
-int Interface::ansiLoop(const char *source, const char *title, bool latin)
+int Interface::ansiLoop(letter_body *source, const char *title, bool latin)
 {
 	ansiwindow.set(source, title, latin);
 	return ansiCommon();
@@ -593,7 +676,7 @@ int Interface::ansiLoop(const char *source, const char *title, bool latin)
 
 int Interface::ansiFile(file_header *f, const char *title, bool latin)
 {
-	ansiwindow.setFile(f, title, latin);
+	ansiwindow.set(f, title, latin);
 	return ansiCommon();
 }
 
@@ -603,12 +686,12 @@ int Interface::ansiCommon()
 	changestate(ansiwin);
 	KeyHandle();
 	switch (Key) {
-	case KEY_LEFT:
+	case MM_LEFT:
 		if (lynxNav)
 			return 0;
 	case MM_MINUS:
 		return -1;
-	case KEY_RIGHT:
+	case MM_RIGHT:
 	case MM_ENTER:
 	case MM_PLUS:
 		return 1;
@@ -628,7 +711,7 @@ int Interface::areaMenu()
 void Interface::setUnsaved()
 {
 	unsaved_reply = true;
-	if (mm.resourceObject->get(AutoSaveReplies))
+	if (mm.resourceObject->getInt(AutoSaveReplies))
 		create_reply_packet();
 }
 
@@ -653,8 +736,11 @@ void Interface::searchNext()
 		// We should only continue if the search was started in an
 		// appropriate state with respect to the current state.
 
+#ifdef BOGUS_WARNING
 		bool stateok = false;
-
+#else
+		bool stateok;
+#endif
 		switch (state) {
 		case letter:
 		case letterlist:
@@ -666,14 +752,16 @@ void Interface::searchNext()
 		}
 
 		if (stateok) {
+#ifdef BOGUS_WARNING
 			searchret result = False;
+#else
+			searchret result;
+#endif
 			dontSetAsRead = true;
 
 			bool restorepos = (s_oldpos == -1);
 
-			ShadowedWin searchsay(3, 31, (LINES >> 1) - 2, C_WTEXT);
-			searchsay.put(1, 2, "Searching (ESC to abort)...");
-			searchsay.update();
+			ReportWindow("Searching (ESC to abort)...");
 
 			switch (state) {
 			case letter:
@@ -768,18 +856,34 @@ void Interface::setKey(int newkey)
 
 bool Interface::fromCommandLine(const char *pktname)
 {
-	char *s = strpbrk(pktname, "/\\");
-	if (!s) {
-		s = new char[strlen(pktname) + 2];
-		sprintf(s, "./%s", pktname);
-	} else
-		s = strdup(pktname);
-	cmdpktname = s;
-	commandline = true;
-	main();
-	delete[] s;
-	state = nostate;
-	return !abortNow;
+	mychdir(error.getOrigDir());
+
+	commandline = mychdir(pktname);
+
+	if (!commandline) {
+		char *cdir = mygetcwd();
+		mm.resourceObject->set_noalloc(PacketDir, cdir);
+
+		main();
+
+		abortNow = true;
+	} else {
+		char *s, *t = strpbrk((char *) pktname, "/\\");
+
+		if (!t) {
+			s = new char[strlen(pktname) + 3];
+			sprintf(s, "./%s", pktname);
+		} else
+			s = strdupplus(pktname);
+
+		cmdpktname = s;
+
+		main();
+
+		delete[] s;
+		state = nostate;
+	}
+	return commandline;
 }
 
 void Interface::KeyHandle()		// Main loop
@@ -793,36 +897,38 @@ void Interface::KeyHandle()		// Main loop
 #endif
 		doupdate();
 		Key = screen->inkey();
-#ifdef XCURSES
+#ifdef SIGWINCH
+# ifdef XCURSES
 		resized = is_termresized();
+# else
+		resized = (KEY_RESIZE == Key);
+# endif
 #endif
-
 		if (((state == letter_help) || (state == ansi_help))
 #ifdef SIGWINCH
 			&& !resized
 #endif
 			) {
-				abortNow = (Key == 24);
-				back();
+				if (ERR != Key) {
+					abortNow = (Key == 24);
+					back();
+				}
 		} else {
 			if ((Key >= 'a') && (Key <= 'z'))
 				Key = toupper(Key);
 
 			switch (Key) {
-			//case KEY_MOUSE:
-			//	beep();
-			//	break;
 			case 24:		// ^X
 				abortNow = true;
 			case 'Q':
-			case 27:		// escape
-			case KEY_BACKSPACE:
+			case MM_ESC:
+			case MM_BACKSP:
 				end = back();
 				break;
 			case MM_ENTER:
 				end = select();
 				break;
-#if defined (__MSDOS__) || defined (__EMX__)
+#ifdef USE_SHELL
 			case 26:		// ^Z
 				shell.out();
 				break;
@@ -875,19 +981,29 @@ void Interface::KeyHandle()		// Main loop
 				}
 				break;
 			case '!':
-			case KEY_F(2):
+			case MM_F2:
 				switch (state) {
 				case arealist:
 				case letterlist:
 				case letter:
 					if (!mm.checkForReplies() ||
 					     WarningWindow(
-		"This will overwrite the existing reply packet. Continue?"))
+	"This will overwrite the existing reply packet. Continue?")) {
+						redraw();
 						create_reply_packet();
+					}
 					redraw();
 				default:;
 				}
 				break;
+#ifdef USE_MOUSE
+			case MM_MOUSE:
+				mm_mouse_get();
+				if (mouse_event.bstate & BUTTON3_CLICKED) {
+					end = back();
+					break;
+				}
+#endif
 			default:
 				switch (state) {
 				case letter:
@@ -895,10 +1011,10 @@ void Interface::KeyHandle()		// Main loop
 					break;
 				case ansiwin:
 					switch (Key) {
-					case KEY_RIGHT:
+					case MM_RIGHT:
 						if (lynxNav)
 							break;
-					case KEY_LEFT:
+					case MM_LEFT:
 					case MM_PLUS:
 					case MM_MINUS:
 						end = back();

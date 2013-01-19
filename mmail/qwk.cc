@@ -3,7 +3,7 @@
  * QWK
 
  Copyright (c) 1997 John Zero <john@graphisoft.hu>
- Copyright (c) 1999 William McBrine <wmcbrine@clark.net>
+ Copyright (c) 2001 William McBrine <wmcbrine@users.sourceforge.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -31,14 +31,14 @@ unsigned char *onecomp(unsigned char *p, char *dest, const char *comp)
 	return 0;
 }
 
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------
 // The qheader methods
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------
 
 bool qheader::init(FILE *datFile)
 {
 	qwkmsg_header qh;
-	char buf[9];
+	char buf[9], *err;
 
 	if (!fread(&qh, 1, sizeof qh, datFile))
 		return false;
@@ -60,15 +60,42 @@ bool qheader::init(FILE *datFile)
 	strcat(date, buf);
 
 	getQfield(buf, qh.refnum, 8);
-	refnum = atoi(buf);
+	refnum = atol(buf);
 
 	getQfield(buf, qh.msgnum, 7);
-	msgnum = atoi(buf);
+	cropesp(buf);
+	msgnum = strtol(buf, &err, 10);
+	if (*err)
+		return false;	// bogus message
 
 	getQfield(buf, qh.chunks, 6);
-	msglen = (atoi(buf) - 1) << 7;
+	msglen = (atol(buf) - 1) << 7;
 
 	privat = (qh.status == '*') || (qh.status == '+');
+
+	// Is this a block of net-status flags?
+	netblock = !qh.status || (qh.status == '\xff');
+
+	origArea = getshort(&qh.confLSB);
+
+	return true;
+}
+
+// Just the fields needed for building the index:
+bool qheader::init_short(FILE *datFile)
+{
+	qwkmsg_header qh;
+	char buf[9];
+
+	if (!fread(&qh, 1, sizeof qh, datFile))
+		return false;
+
+	getQfield(to, qh.to, 25);
+
+	cropesp(to);
+
+	getQfield(buf, qh.chunks, 6);
+	msglen = (atol(buf) - 1) << 7;
 
 	// Is this a block of net-status flags?
 	netblock = !qh.status || (qh.status == '\xff');
@@ -82,7 +109,8 @@ void qheader::output(FILE *repFile)
 {
 	qwkmsg_header qh;
 	char buf[10];
-	int chunks, length, sublen;
+	long chunks, length;
+	int sublen;
 
 	length = msglen;
 	sublen = strlen(subject);
@@ -93,17 +121,16 @@ void qheader::output(FILE *repFile)
 
 	memset(&qh, ' ', sizeof qh);
 
-	chunks = (length + 127) / 128;
-	if (!chunks)
-		chunks = 1;
+	length++;
+	chunks = length / 128 + ((length % 128) != 0);
 
-	sprintf(buf, " %-6d", msgnum);
+	sprintf(buf, " %-6ld", msgnum);
 	strncpy(qh.msgnum, buf, 7);
 
 	putshort(&qh.confLSB, msgnum);
 
 	if (refnum) {
-		sprintf(buf, " %-7d", refnum);
+		sprintf(buf, " %-7ld", refnum);
 		strncpy(qh.refnum, buf, 8);
 	}
 	strncpy(qh.to, to, strlen(to));
@@ -115,7 +142,7 @@ void qheader::output(FILE *repFile)
 	strncpy(qh.date, date, 8);
 	strncpy(qh.time, &date[9], 5);
 
-	sprintf(buf, "%-6d", chunks + 1);
+	sprintf(buf, "%-6ld", chunks + 1);
 	strncpy(qh.chunks, buf, 6);
 	if (privat)
 		qh.status = '*';
@@ -123,9 +150,9 @@ void qheader::output(FILE *repFile)
 	fwrite(&qh, 1, sizeof qh, repFile);
 }
 
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------
 // The QWK methods
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------
 
 qwkpack::qwkpack(mmail *mmA)
 {
@@ -141,7 +168,8 @@ qwkpack::qwkpack(mmail *mmA)
 	else
 		readDoorId();
 
-	if (!(infile = mm->workList->ftryopen("messages.dat", "rb")))
+	infile = mm->workList->ftryopen("messages.dat");
+	if (!infile)
 		fatalError("Could not open MESSAGES.DAT");
 
 	readIndices();
@@ -186,11 +214,13 @@ bool qwkpack::isQWKE()
 bool qwkpack::externalIndex()
 {
 	const char *p;
-	int x, cMsgNum;
+	bool hasNdx;
 
 	hasPers = !(!mm->workList->exists("personal.ndx"));
 
-	bool hasNdx = (p = mm->workList->exists(".ndx"));
+	p = mm->workList->exists(".ndx");
+	hasNdx = !(!p);
+
 	if (hasNdx) {
 		struct {
         		unsigned char MSB[4];
@@ -205,32 +235,80 @@ bool qwkpack::externalIndex()
 			maxConf--;
 		}
 
+		// Store the size of the .DAT for future comparison as
+		// a check against invalid .NDX entries.
+
+		fseek(infile, 0, SEEK_END);
+		unsigned long endpoint = (unsigned long) ftell(infile);
+		if (endpoint > 128)
+			endpoint -= 128;
+
 		while (p) {
-			cMsgNum = 0;
+			int x, cMsgNum = 0;
 
 			strncpy(fname, p, strlen(p) - 4);
 			fname[strlen(p) - 4] = '\0';
 			x = atoi(fname);
+
 			if (!x)
 				if (!strcasecmp(fname, "personal"))
 					x = -1;
-			x = getXNum(x);
+				else
+					if (strcmp(fname, "000"))
+						x = -2;	// fname is not a num
 
-			if ((idxFile = mm->workList->ftryopen(p, "rb"))) {
+			if (x != -2) {
+			    x = getXNum(x);
+			    if (-1 == x)	// fname is a num but not a
+				hasNdx = false;	// valid conference
+			}
+
+			if (x >= 0) {
+
+			    idxFile = mm->workList->ftryopen(p);
+			    if (idxFile) {
 				cMsgNum = mm->workList->getSize() / ndxRecLen;
 				body[x] = new bodytype[cMsgNum];
 				for (int y = 0; y < cMsgNum; y++) {
-					fread(&ndx_rec, ndxRecLen, 1, idxFile);
-					body[x][y].pointer =
-						MSBINtolong(ndx_rec.MSB);
+				    fread(&ndx_rec, ndxRecLen, 1, idxFile);
+				    unsigned long temp =
+					MSBINtolong(ndx_rec.MSB) << 7;
+
+				    // If any .NDX entries appear corrupted,
+				    // we're better off aborting this and
+				    // using the new (purely .DAT-based)
+				    // indexing method (in readIndices()).
+				    
+				    if ((temp < 256) || (temp > endpoint)) {
+					hasNdx = false;	// use other method
+					break;
+				    } else
+					body[x][y].pointer = temp;
 				}
 				fclose(idxFile);
+			    }
+
+			    if (hasNdx) {
+				areas[x].nummsgs = cMsgNum;
+				numMsgs += cMsgNum;
+			    }
 			}
+			p = hasNdx ? mm->workList->getNext(".ndx") : 0;
+		}
 
-			areas[x].nummsgs = cMsgNum;
-			numMsgs += cMsgNum;
+		// Clean up after aborting
 
-			p = mm->workList->getNext(".ndx");
+		if (!hasNdx) {
+			if (!hasPers) {
+				areas--;
+				maxConf++;
+			}
+			for (int x = 0; x < maxConf; x++) {
+				delete[] body[x];
+				body[x] = 0;
+				areas[x].nummsgs = 0;
+			}
+			numMsgs = 0;
 		}
 	}
 	return hasNdx;
@@ -249,39 +327,41 @@ void qwkpack::readIndices()
 
 	numMsgs = 0;
 
-	if (!externalIndex()) {
+	if (mm->resourceObject->getInt(IgnoreNDX) || !externalIndex()) {
 		ndx_fake base, *tmpndx = &base;
 
-		int counter, personal = 0;
+		long counter;
+		int personal = 0;
 		const char *name = mm->resourceObject->get(LoginName);
 		const char *alias = mm->resourceObject->get(AliasName);
-		bool checkpers = mm->resourceObject->getInt(BuildPersArea);
 
 		qheader qHead;
 
 		fseek(infile, 128, SEEK_SET);
-		while (qHead.init(infile))
+		while (qHead.init_short(infile))
 		    if (!qHead.netblock) {	// skip net-status flags
-			counter = ftell(infile) >> 7;
+			counter = ftell(infile);
 			x = getXNum(qHead.origArea);
 
-			tmpndx->next = new ndx_fake;
-			tmpndx = tmpndx->next;
+			if (-1 != x) {
+				tmpndx->next = new ndx_fake;
+				tmpndx = tmpndx->next;
 
-			tmpndx->confnum = x;
+				tmpndx->confnum = x;
 
-			if (checkpers && (!strcasecmp(qHead.to, name) ||
-			    (qwke && !strcasecmp(qHead.to, alias)))) {
-				tmpndx->pers = true;
-				personal++;
-			} else
-				tmpndx->pers = false;
+				if (!strcasecmp(qHead.to, name) ||
+				    (qwke && !strcasecmp(qHead.to, alias))) {
+					tmpndx->pers = true;
+					personal++;
+				} else
+					tmpndx->pers = false;
 
-			tmpndx->pointer = counter;
-			tmpndx->length = 0;	// temp
+				tmpndx->pointer = counter;
+				tmpndx->length = 0;	// temp
 
-			areas[x].nummsgs++;
-			numMsgs++;
+				areas[x].nummsgs++;
+				numMsgs++;
+			}
 
 			fseek(infile, qHead.msglen, SEEK_CUR);
 		    }
@@ -292,30 +372,34 @@ void qwkpack::readIndices()
 
 letter_header *qwkpack::getNextLetter()
 {
+	static net_address nullNet;
 	qheader q;
 	unsigned long pos, rawpos;
 	int areaID, letterID;
 
 	rawpos = body[currentArea][currentLetter].pointer;
-	pos = (rawpos - 1) << 7;
+	pos = rawpos - 128;
 
 	fseek(infile, pos, SEEK_SET);
-	if (!q.init(infile))
-		fatalError("Error reading MESSAGES.DAT");
+	if (q.init(infile)) {
+		if (areas[currentArea].num == -1) {
+			areaID = getXNum(q.origArea);
+			letterID = getYNum(areaID, rawpos);
+		} else {
+			areaID = currentArea;
+			letterID = currentLetter;
+		}
+	} else
+		areaID = letterID = -1;
 
-	if (areas[currentArea].num == -1) {
-		areaID = getXNum(q.origArea);
-		letterID = getYNum(areaID, rawpos);
-	} else {
-		areaID = currentArea;
-		letterID = currentLetter;
-	}
-
+	if ((-1 == areaID) || (-1 == letterID))
+		return new letter_header(mm, "MESSAGES.DAT", "READING",
+			"ERROR", "ERROR", 0, 0, 0, 0, 0, false, 0,
+			this, nullNet, false);
+	
 	body[areaID][letterID].msgLength = q.msglen;
 
 	currentLetter++;
-
-	static net_address nullNet;
 
 	return new letter_header(mm, q.subject, q.to, q.from,
 		q.date, 0, q.refnum, letterID, q.msgnum, areaID,
@@ -323,39 +407,31 @@ letter_header *qwkpack::getNextLetter()
 		!(!(areas[areaID].attr & LATINCHAR)));
 }
 
-// returns the body of the requested letter
-const char *qwkpack::getBody(letter_header &mhead)
+void qwkpack::getblk(int, long &offset, long blklen,
+	unsigned char *&p, unsigned char *&begin)
 {
-	unsigned char *p;
-	int c, kar, AreaID, LetterID;
-
-	AreaID = mhead.getAreaID() - mm->driverList->getOffset(this);
-	LetterID = mhead.getLetterID();
-
-	delete[] bodyString;
-	bodyString = new char[body[AreaID][LetterID].msgLength + 1];
-	fseek(infile, body[AreaID][LetterID].pointer << 7, SEEK_SET);
-
-	for (c = 0, p = (unsigned char *) bodyString;
-	     c < body[AreaID][LetterID].msgLength; c++) {
-		kar = fgetc(infile);
+	for (long count = 0; count < blklen; count++) {
+		int kar = fgetc(infile);
 
 		if (!kar)
 			kar = ' ';
 
 		*p++ = (kar == 227) ? '\n' : kar;	
-	}
-	do
-		p--;
-	while ((*p == ' ') || (*p == '\n'));	// Strip blank lines
-	p[1] = '\0';
 
+		if (kar == 227) {
+			begin = p;
+			offset = ftell(infile);
+		}
+	}
+}
+
+void qwkpack::postfirstblk(unsigned char *&p, letter_header &mhead)
+{
 	// Get extended (QWKE-type) info, if available:
 
-	char extsubj[72];	// extended subject or other line
+	char extsubj[72]; // extended subject or other line
 	bool anyfound;
 	unsigned char *q;
-	p = (unsigned char *) bodyString;
 
 	do {
 		anyfound = false;
@@ -363,7 +439,8 @@ const char *qwkpack::getBody(letter_header &mhead)
 		q = onecomp(p, extsubj, "subject:");
 
 		if (!q) {
-			q = onecomp(p + 1, extsubj, "@subject:");
+			q = onecomp(p + 1, extsubj,
+				"@subject:");
 			if (q) {
 				extsubj[strlen(extsubj) - 1] = '\0';
 				cropesp(extsubj);
@@ -373,40 +450,46 @@ const char *qwkpack::getBody(letter_header &mhead)
 		// For WWIV QWK door:
 		if (!q)
 			q = onecomp(p, extsubj, "title:");
-
 		if (q) {
 			p = q;
 			mhead.changeSubject(extsubj);
 			anyfound = true;
 		}
 
-		q = onecomp(p, extsubj, "to:");
-		if (q) {
-			p = q;
-			mhead.changeTo(extsubj);
-			anyfound = true;
-		}
+		// To and From are now checked only
+		// in QWKE packets:
 
-		q = onecomp(p, extsubj, "from:");
-		if (q) {
-			p = q;
-			mhead.changeFrom(extsubj);
-			anyfound = true;
+		if (qwke) {
+			q = onecomp(p, extsubj, "to:");
+			if (q) {
+				p = q;
+				mhead.changeTo(extsubj);
+				anyfound = true;
+			}
+
+			q = onecomp(p, extsubj, "from:");
+			if (q) {
+				p = q;
+				mhead.changeFrom(extsubj);
+				anyfound = true;
+			}
 		}
 
 	} while (anyfound);
+}
 
+void qwkpack::endproc(letter_header &mhead)
+{
 	// Change to Latin character set, if necessary:
 	checkLatin(mhead);
-
-	return (char *) p;
 }
 
 void qwkpack::readControlDat()
 {
 	char *p, *q;
 
-	if (!(infile = mm->workList->ftryopen("control.dat", "rb")))
+	infile = mm->workList->ftryopen("control.dat");
+	if (!infile)
 		fatalError("Could not open CONTROL.DAT");
 
 	mm->resourceObject->set(BBSName, nextLine());	// 1: BBS name
@@ -427,7 +510,7 @@ void qwkpack::readControlDat()
 	mm->resourceObject->set(SysOpName, q);
 
 	q = nextLine();					// 5: doorserno,BBSid
-	p = strtok(q, ",");
+	strtok(q, ",");
 	p = strtok(0, " ");
 	strncpy(packetBaseName, p, 8);
 	packetBaseName[8] = '\0';
@@ -452,14 +535,15 @@ void qwkpack::readControlDat()
 	areas[0].name = strdupplus("PERSONAL");
 	areas[0].attr = PUBLIC | PRIVATE | COLLECTION;
 
-	for (int c = 1; c < maxConf; c++) {
+	int c;
+	for (c = 1; c < maxConf; c++) {
 		areas[c].num = atoi(nextLine());		// conf #
 		sprintf(areas[c].numA, "%d", areas[c].num);
 		areas[c].name = strdupplus(nextLine());		// conf name
 		areas[c].attr = PUBLIC | PRIVATE;
 	}
 
-	for (int c = 0; c < 3; c++)
+	for (c = 0; c < 3; c++)
 		strncpy(textfiles[c], nextLine(), 12);
 
 	fclose(infile);
@@ -472,7 +556,8 @@ void qwkpack::readDoorId()
 
 	strcpy(controlname, "QMAIL");
 
-	if ((infile = mm->workList->ftryopen("door.id", "rb"))) {
+	infile = mm->workList->ftryopen("door.id");
+	if (infile) {
 		while (!feof(infile)) {
 			s = nextLine();
 			if (!strcasecmp(s, "CONTROLTYPE = ADD"))
@@ -493,11 +578,13 @@ void qwkpack::readDoorId()
 void qwkpack::readToReader()
 {
 	char *s;
-	int cnum, attr;
+	int cnum;
+	unsigned long attr;
 
 	hasOffConfig = OFFCONFIG;
 
-	if ((infile = mm->workList->ftryopen("toreader.ext", "rb"))) {
+	infile = mm->workList->ftryopen("toreader.ext");
+	if (infile) {
 		while (!feof(infile)) {
 			s = nextLine();
 
@@ -529,6 +616,10 @@ void qwkpack::readToReader()
 					else
 						attr |= (PUBLIC | PRIVATE);
 
+				// Read-only:
+				if (strchr(s, 'R'))
+					attr |= READONLY;
+
 				/* Set character set to Latin-1 for
 				   Internet or Usenet areas -- but is this
 				   the right thing here?
@@ -537,7 +628,7 @@ void qwkpack::readToReader()
 					attr |= LATINCHAR;
 
 				if (strchr(s, 'E'))
-					attr |= ECHO;
+					attr |= ECHOAREA;
 
 				areas[getXNum(cnum)].attr = attr;
 			    }
@@ -557,9 +648,14 @@ const char *qwkpack::ctrlName()
 	return controlname;
 }
 
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------
 // The QWK reply methods
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------
+
+qwkreply::upl_qwk::upl_qwk(const char *name) : pktreply::upl_base(name)
+{
+	memset(&qHead, 0, sizeof(qHead));
+}
 
 qwkreply::qwkreply(mmail *mmA, specific_driver *baseClassA)
 {
@@ -582,50 +678,44 @@ qwkreply::~qwkreply()
 bool qwkreply::getRep1(FILE *rep, upl_qwk *l)
 {
 	FILE *replyFile;
-	char *p, *q, *replyText;
+	char *p, *q, blk[128];
 
 	if (!l->qHead.init(rep))
 		return false;
 
-	mytmpnam(l->fname);
-
-	if (!(replyFile = fopen(l->fname, "wt")))
+	replyFile = fopen(l->fname, "wt");
+	if (!replyFile)
 		return false;
 
-	replyText = new char[l->qHead.msglen + 1];
-	fread(replyText, l->qHead.msglen, 1, rep);
+	long count, length = 0, chunks = l->qHead.msglen >> 7;
 
-	for (p = &replyText[l->qHead.msglen - 1]; ((*p == ' ') ||
-		(*p == (char) 227)) && (p > replyText); p--);
-	p[1] = '\0';
+	for (count = 0; count < chunks; count++) {
+		fread(blk, 1, 128, rep);
 
-	for (p = replyText; *p; p++)
-		if (*p == (char) 227)
-			*p = '\n';	// PI-softcr
+		for (p = blk; p < (blk + 128); p++)
+			if (*p == (char) 227)
+				*p = '\n';	// PI-softcr
 
-	// Get extended (QWKE-type) subject line, if available:
+		// Get extended (QWKE-type) subject line, if available:
 
-	bool anyfound;
-	q = replyText;
-
-	do {
-		char *q2;
-		anyfound = false;
-
-		q2 = (char *) onecomp((unsigned char *) q,
+		p = blk;
+		if (!count) {
+			q = (char *) onecomp((unsigned char *) p,
 				l->qHead.subject, "subject:");
-		if (q2) {
-			q = q2;
-			anyfound = true;
+			if (q)
+				p = q;
 		}
 
-	} while (anyfound);
+		q = blk + 127;
+		if (count == (chunks - 1))
+			for (; ((*q == ' ') || (*q == '\n')) && (q > blk);
+				q--);
 
-	l->qHead.msglen = l->msglen = p - q;	//strlen(replyText);
-
-	fwrite(q, 1, l->msglen, replyFile);
+		length += (long) fwrite(p, 1, q - p + 1, replyFile);
+	}
 	fclose(replyFile);
-	delete[] replyText;
+
+	l->qHead.msglen = l->msglen = length;
 
 	return true;
 }
@@ -664,7 +754,7 @@ letter_header *qwkreply::getNextLetter()
 	upl_qwk *current = (upl_qwk *) uplListCurrent;
 
 	int area = ((qwkpack *) baseClass)->
-		getXNum(current->qHead.msgnum) + 1;
+		getXNum((int) current->qHead.msgnum) + 1;
 
 	letter_header *newLetter = new letter_header(mm,
 		current->qHead.subject, current->qHead.to,
@@ -692,19 +782,17 @@ int qwkreply::monthval(const char *abbr)
 }
 
 void qwkreply::enterLetter(letter_header &newLetter,
-				const char *newLetterFileName, int length)
+			const char *newLetterFileName, long length)
 {
-	upl_qwk *newList = new upl_qwk;
-	memset(newList, 0, sizeof(upl_qwk));
+	upl_qwk *newList = new upl_qwk(newLetterFileName);
 
 	strncpy(newList->qHead.subject, newLetter.getSubject(), 71);
 	strncpy(newList->qHead.from, newLetter.getFrom(), 25);
 	strncpy(newList->qHead.to, newLetter.getTo(), 25);
 
-	newList->qHead.msgnum = atoi(mm->areaList->getShortName());
+	newList->qHead.msgnum = atol(mm->areaList->getShortName());
 	newList->qHead.privat = newLetter.getPrivate();
 	newList->qHead.refnum = newLetter.getReplyTo();
-	strcpy(newList->fname, newLetterFileName);
 
 	time_t tt = time(0);
 	strftime(newList->qHead.date, 15, "%m-%d-%y %H:%M",
@@ -715,15 +803,13 @@ void qwkreply::enterLetter(letter_header &newLetter,
 	addUpl(newList);
 }
 
-void qwkreply::addRep1(FILE *rep, upl_base *node, int recnum)
+void qwkreply::addRep1(FILE *rep, upl_base *node, int)
 {
 	FILE *replyFile;
 	upl_qwk *l = (upl_qwk *) node;
-	char *replyText, *p, *lastsp = 0;
-	int chunks, length, sublen, count = 0;
+	long length, count = 0;
+	int sublen;
 	bool longsub;
-
-	recnum = recnum;	// warning supression
 
 	l->qHead.output(rep);
 
@@ -731,51 +817,49 @@ void qwkreply::addRep1(FILE *rep, upl_base *node, int recnum)
 	sublen = strlen(l->qHead.subject);
 	longsub = (sublen > 25);
 
-	if (longsub)
+	if (longsub) {
 		length += sublen + 11;
+		fprintf(rep, "Subject: %s%c%c", l->qHead.subject,
+			(char) 227, (char) 227);
+	}
 
-	chunks = (length + 127) / 128;
-	if (!chunks)
-		chunks = 1;
+	replyFile = fopen(l->fname, "rt");
+	if (replyFile) {
 
-	replyText = new char[chunks * 128 + 1];
-	memset(&replyText[(chunks - 1) * 128], ' ', 128);
-
-	p = replyText;
-
-	if (longsub)
-		p += sprintf(p, "Subject: %s\n\n", l->qHead.subject);
-
-	if ((replyFile = fopen(l->fname, "rt"))) {
-		fread(p, l->qHead.msglen, 1, replyFile);
-		fclose(replyFile);
-
-		replyText[length] = 0;
-		for (p = replyText; *p; p++) {
-			if (*p == '\n') {
-				*p = (char) 227;
-				count = 0;
-				lastsp = 0;
-			} else {
-				count++;
-				if (*p == ' ')
-					lastsp = p;
+		int c, lastsp = 0;
+		while ((c = fgetc(replyFile)) != EOF) {
+			count++;
+			if ((count > 80) && lastsp) {
+				fseek(replyFile, lastsp - count,
+					SEEK_CUR);
+				fseek(rep, lastsp - count,
+					SEEK_CUR);
+				c = '\n';
 			}
-			if ((count >= 80) && lastsp) {
-				*lastsp = (char) 227;
-				count = p - lastsp;
-				lastsp = 0;
+			if ('\n' == c) {
+				fputc((char) 227, rep);
+				count = lastsp = 0;
+			} else {
+				fputc(c, rep);
+				if (' ' == c)
+					lastsp = count;
 			}
 		}
-		replyText[length] = (char) 227;
+		fclose(replyFile);
 	}
-	fwrite(replyText, 1, chunks * 128, rep);
-	delete[] replyText;
+
+	fputc((char) 227, rep);
+	length++;
+
+	length %= 128L;
+	if (length)
+		for (count = 0; count < (128L - length); count++)
+			fputc(' ', rep);
 }
 
 void qwkreply::addHeader(FILE *repFile)
 {
-	char tmp[256];
+	char tmp[129];
 	sprintf(tmp, "%-128s", baseClass->getBaseName());
 	fwrite(tmp, 128, 1, repFile);
 }
@@ -812,7 +896,8 @@ bool qwkreply::getOffConfig()
 
 		upWorkList = new file_list(mm->resourceObject->get(UpWorkDir));
 
-		if ((olc = upWorkList->ftryopen("todoor.ext", "rb"))) {
+		olc = upWorkList->ftryopen("todoor.ext");
+		if (olc) {
 			char line[128], mode;
 			int areaQWK, areaNo;
 
@@ -845,7 +930,6 @@ bool qwkreply::makeOffConfig()
 	net_address bogus;
 	letter_header *ctrlMsg;
 	const char *myname = 0, *ctrlName = 0;
-	int maxareas = mm->areaList->noOfAreas();
 
 	if (qwke) {
 		todoor = fopen("TODOOR.EXT", "wb");
@@ -856,9 +940,12 @@ bool qwkreply::makeOffConfig()
 		ctrlName = ((qwkpack *) baseClass)->ctrlName();
 	}
 
+	int oldarea = mm->areaList->getAreaNo();
+
+	int maxareas = mm->areaList->noOfAreas();
 	for (int areaNo = 0; areaNo < maxareas; areaNo++) {
 		mm->areaList->gotoArea(areaNo);
-		int attrib = mm->areaList->getType();
+		unsigned long attrib = mm->areaList->getType();
 
 		if (attrib & (ADDED | DROPPED)) {
 			if (qwke)
@@ -885,9 +972,12 @@ bool qwkreply::makeOffConfig()
 			}
 		}
 	}
+	mm->areaList->gotoArea(oldarea);
+
 	if (qwke)
 		fclose(todoor);
 	else
 		mm->areaList->refreshArea();
+
 	return true;
 }

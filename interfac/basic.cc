@@ -4,7 +4,7 @@
 
  Copyright (c) 1996 Kolossvary Tamas <thomas@tvnet.hu>
  Copyright (c) 1997 John Zero <john@graphisoft.hu>
- Copyright (c) 1999 William McBrine <wmcbrine@clark.net>
+ Copyright (c) 2002 William McBrine <wmcbrine@users.sourceforge.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -13,18 +13,30 @@
 
 Win::Win(int height, int width, int topline, chtype backg)
 {
-	// All windows are centered horizontally.
-
-	win = newwin(height, width, topline, (COLS - width) / 2);
+	init(height, width, topline);
 	Clear(backg);
+}
 
-	keypad(win, TRUE);
-	cursor_off();
+Win::Win(int height, int width, int topline, coltype backg)
+{
+	init(height, width, topline);
+	Clear(backg);
 }
 
 Win::~Win()
 {
+	delete[] buffer;
 	delwin(win);
+}
+
+void Win::init(int height, int width, int topline)
+{
+	// All windows are centered horizontally.
+
+	win = newwin(height, width, topline, (COLS - width) / 2);
+	buffer = new chtype[width + 1];
+	keypad(win, TRUE);
+	cursor_off();
 }
 
 void Win::Clear(chtype backg)
@@ -32,7 +44,12 @@ void Win::Clear(chtype backg)
 	wbkgdset(win, backg | ' ');
 	werase(win);
 	wbkgdset(win, ' ');
-	wattrset(win, backg);
+	attrib(backg);
+}
+
+void Win::Clear(coltype backg)
+{
+	Clear(ColorArray[backg]);
 }
 
 void Win::put(int y, int x, chtype z)
@@ -63,17 +80,15 @@ int Win::put(int y, int x, const char *z, int len)
 
 	const int tabwidth = 8;
 	chtype z2;
-	int counter = 0;
+	int counter = 0, limit = getmaxx(win) - x;
 
-	if (!len)
-		len = getmaxx(win) - x;
-
-	wmove(win, y, x);
+	if ((-1 == len) || (len > limit))
+		len = limit;
 
 	for (; *z && (counter < len); z++) {
 		z2 = ((unsigned char) *z);
 		switch (z2) {
-#ifndef __PDCURSES__			// unprintable control codes
+#ifndef ALLCHARSOK			// unprintable control codes
 		case 14:		// double musical note
 			z2 = 19;
 			break;
@@ -94,21 +109,35 @@ int Win::put(int y, int x, const char *z, int len)
 		case '\t':		// TAB
 			z2 = ' ';
 			int i = (tabwidth - 1) - (counter % tabwidth);
-			counter += i;
+			len += i;
+			if (len > limit) {
+				i = limit - counter - 1;
+				len = limit;
+			}
 			while (i--)
-				waddch(win, z2);
+				buffer[counter++] = z2 | curratt;
 		}
 		if ((z2 < ' ') || ((z2 > 126) && (z2 < 160)))
-			z2 |= A_ALTCHARSET;
-		waddch(win, z2);
-		counter++;
+			if (isoConsole)
+				z2 = '?';
+			else
+				z2 |= A_ALTCHARSET;
+		buffer[counter++] = z2 | curratt;
 	}
+	mvwaddchnstr(win, y, x, buffer, counter);
+
 	return counter;
 }
 
 void Win::attrib(chtype z)
 {
+	curratt = z;
 	wattrset(win, z);
+}
+
+void Win::attrib(coltype z)
+{
+	attrib(ColorArray[z]);
 }
 
 void Win::horizline(int y, int len)
@@ -140,16 +169,10 @@ void Win::wscroll(int i)
 	scrollok(win, FALSE);
 }
 
-/* The cursor toggling routines for PDCurses are ugly, I know; especially
-   in the mismatched use of the standard curs_set() to disable, and a
-   private PDCurses function to enable. Unfortunately, this seems to be
-   the only combination which works correctly on all platforms. (OS/2 Full
-   Screen sessions are a particular problem.)
-*/
 void Win::cursor_on()
 {
 	leaveok(win, FALSE);
-#if defined (__PDCURSES__) && !defined(XCURSES)
+#ifdef PDCURSKLUDGE
 	PDC_set_cursor_mode(curs_start, curs_end);
 #else
 	curs_set(1);
@@ -166,35 +189,77 @@ int Win::keypressed()
 {
 	// Return key status immediately (non-blocking)
 
+	nocbreak();	// Clear any halfdelay() set
+	cbreak();	// Back to normal -- is there a better way?
 	nodelay(win, TRUE);
+	
 	return wgetch(win);
 }
 
 int Win::inkey()
 {
-	// Wait until key pressed, OR signal received (e.g., SIGWINCH)
+	// Wait until key pressed, SIGWINCH received, or 5 seconds
 
-	nodelay(win, FALSE);
+#ifdef __PDCURSES__
+	nodelay(win, TRUE);
+#else
+# ifndef NCURSES_VERSION
+	nocbreak();	// Solaris curses needs this, otherwise it's
+	cbreak();	// stuck in nodelay mode after keypressed()
+# endif
+#endif
+	halfdelay(50);
+
 	return wgetch(win);
 }
 
-void Win::boxtitle(chtype backg, const char *title, chtype titleAttrib)
+void Win::boxtitle(coltype backg, const char *title, chtype titleAttrib)
 {
-	wattrset(win, backg);
+	attrib(backg);
 	box(win, 0, 0);
 
 	if (title) {
 		put(0, 2, ACS_RTEE);
 		put(0, 3 + strlen(title), ACS_LTEE);
-		wattrset(win, titleAttrib);
+		attrib(titleAttrib);
 		put(0, 3, title);
-		wattrset(win, backg);
+		attrib(backg);
 	}
 }
 
-ShadowedWin::ShadowedWin(int height, int width, int topline, chtype backg,
-	const char *title, chtype titleAttrib) : Win(height, width,
-	topline, backg)
+void Win::clreol(int y, int x)
+{
+	for (int i = x; i < COLS; i++)
+		put(y, i, (chtype) ' ' | curratt);
+}
+
+#ifdef USE_MOUSE
+int Win::xstart()
+{
+# ifndef NCURSES_MOUSE_VERSION
+	return getbegx(win);
+# else
+	int x, y;
+	getbegyx(win, y, x);
+	return x;
+# endif
+}
+
+int Win::ystart()
+{
+# ifndef NCURSES_MOUSE_VERSION
+	return getbegy(win);
+# else
+	int x, y;
+	getbegyx(win, y, x);
+	return y;
+# endif
+}
+#endif
+
+ShadowedWin::ShadowedWin(int height, int width, int topline, coltype backg,
+	const char *title, coltype titleAttrib) :
+	Win(height, width, topline, backg)
 {
 	// The text to be in "shadow" is taken from different windows,
 	// depending on the curses implementation. Note that the default,
@@ -211,7 +276,7 @@ ShadowedWin::ShadowedWin(int height, int width, int topline, chtype backg,
 	WINDOW *&newscr = stdscr;
 #  endif
 # endif
-	int xlimit = 2 + (interface->active() != letter);
+	int xlimit = 2 + (ui->active() != letter);
 	int firstcol = (COLS - width) / 2;
 
 	while ((width + firstcol) > (COLS - xlimit))
@@ -240,14 +305,15 @@ ShadowedWin::ShadowedWin(int height, int width, int topline, chtype backg,
 	for (i = 0; i < (height - 1); i++)
 		for (j = 0; j < 2; j++)
 			mvwaddch(shadow, i, width - 2 + j,
-				(right[(i << 1) + j] | C_SHADOW));
+				(right[(i << 1) + j] |
+				ColorArray[C_SHADOW]));
 	for (i = 0; i < width; i++)
 		mvwaddch(shadow, height - 1, i, (lower[i] & (A_CHARTEXT |
-			A_ALTCHARSET)) | C_SHADOW);
+			A_ALTCHARSET)) | ColorArray[C_SHADOW]);
 
 	wnoutrefresh(shadow);
 #endif
-	boxtitle(backg, title, titleAttrib);
+	boxtitle(backg, title, ColorArray[titleAttrib]);
 
 #ifdef USE_SHADOWS
 	delete[] lower;
@@ -272,7 +338,7 @@ void ShadowedWin::touch()
 }
 
 int ShadowedWin::getstring(int y, int x, char *string, int maxlen,
-		chtype bg_color, chtype fg_color)
+		coltype bg_color, coltype fg_color)
 {
 	int i, j, offset, end, c;
 	char *tmp = new char[maxlen + 1];
@@ -282,7 +348,7 @@ int ShadowedWin::getstring(int y, int x, char *string, int maxlen,
 
 	cropesp(string);
 
-	wattrset(win, fg_color);
+	attrib(fg_color);
 	for (i = 0; i < maxlen; i++) {
 		if (i < dwidth)
 			put(y, x + i, ACS_BOARD);
@@ -303,62 +369,76 @@ int ShadowedWin::getstring(int y, int x, char *string, int maxlen,
 
 	i = end = 0;
 	bool first_key = true;
-
+	
 	while (!end) {
-		c = inkey();
+		do
+			c = inkey();
+		while (ERR == c);
 
 		// these keys make the string "accepted" and editable:
 		if (first_key) {
 			first_key = false;
 
 			switch (c) {
-			case KEY_LEFT:
-			case KEY_RIGHT:
-			case 8:
-			case KEY_BACKSPACE:
-			case KEY_HOME:
-			case KEY_END:
+			case MM_LEFT:
+			case MM_RIGHT:
+			case MM_BACKSP:
+			case MM_HOME:
+			case MM_END:
+#ifdef USE_MOUSE
+			case MM_MOUSE:
+#endif
 				strncpy(tmp, string, maxlen);
 				i = strlen(tmp);
 			}
 		}
 
 		switch (c) {
-		case KEY_DOWN:
+		case MM_DOWN:
 			end++;
-		case KEY_UP:
+		case MM_UP:
 			end++;
+		case '\t':
 		case MM_ENTER:
 			end++;
-		case '\033':		// Escape
+		case MM_ESC:
 			end++;
 			break;
-		case KEY_LEFT:
+		case MM_LEFT:
 			if (i > 0)
 				i--;
 			break;
-		case KEY_RIGHT:
+		case MM_RIGHT:
 			if ((i < maxlen) && tmp[i])
 				i++;
 			break;
 		case 127:
-		case KEY_DC:		// Delete key 
+		case MM_DEL:		// Delete key 
 			strncpy(&tmp[i], &tmp[i + 1], maxlen - i);
 			tmp[maxlen] = '\0';
 			break;
-		case 8:			// Ctrl-H
-		case KEY_BACKSPACE:
+		case MM_BACKSP:
 			if (i > 0) {
 				strncpy(&tmp[i - 1], &tmp[i], maxlen + 1 - i);
 				tmp[maxlen] = '\0';
 				i--;
 			}
 			break;
-		case KEY_HOME:
+		case MM_HOME:
 			i = 0;
 			break;
-		case KEY_END:
+		case MM_END:
 			i = strlen(tmp);
+#ifdef USE_MOUSE
+		case MM_MOUSE:
+			mm_mouse_get();
+			if (mouse_event.bstate & BUTTON3_CLICKED)
+				end = 1;
+			else
+				end = 2;
+			break;
+#endif
+		case MM_DISCARD:
 			break;
 		default:
 			for (j = (maxlen - 1); j > i; j--)
@@ -383,7 +463,7 @@ int ShadowedWin::getstring(int y, int x, char *string, int maxlen,
 	if (tmp[0])
 		strcpy(string, tmp);
 
-	wattrset(win, bg_color);
+	attrib(bg_color);
 
 	j = strlen(string);
 	for (i = 0; i < dwidth; i++)
@@ -397,8 +477,8 @@ int ShadowedWin::getstring(int y, int x, char *string, int maxlen,
 	return end - 1;
 }
 
-InfoWin::InfoWin(int height, int width, int topline, chtype backg,
-	const char *title, chtype titleAttrib, int bottx, int topx) :
+InfoWin::InfoWin(int height, int width, int topline, coltype backg,
+	const char *title, coltype titleAttrib, int bottx, int topx) :
 	ShadowedWin(height, width, topline, backg, title, titleAttrib)
 {
 	lineBuf = new char[COLS];
@@ -433,12 +513,23 @@ void InfoWin::iscrl(int i)
 	info->wscroll(i);
 }
 
+#ifdef USE_MOUSE
+int InfoWin::xstartinfo()
+{
+	return info->xstart();
+}
+
+int InfoWin::ystartinfo()
+{
+	return info->ystart();
+}
+#endif
+
 ListWindow::ListWindow()
 {
 	position = active = 0;
 	oldPos = oldActive = oldHigh = -100;
 	lynxNav = mm.resourceObject->getInt(UseLynxNav);
-	useScrollBars = mm.resourceObject->getInt(UseScrollBars);
 }
 
 ListWindow::~ListWindow()
@@ -500,7 +591,7 @@ void ListWindow::Draw()
 
 	// Highlight bar:
 
-	if (useScrollBars && (limit > list_max_y)) {
+	if (limit > list_max_y) {
 		if (oldHigh == -100) {
 			list->attrib(borderCol);
 			for (i = top_offset; i < (top_offset +
@@ -558,6 +649,11 @@ void ListWindow::DrawOne(int i, chtype ch)
 	list->oneline(i, ch);
 }
 
+void ListWindow::DrawOne(int i, coltype ch)
+{
+	DrawOne(i, ColorArray[ch]);
+}
+
 void ListWindow::DrawAll()
 {
 	oldPos = oldActive = oldHigh = -100;
@@ -608,7 +704,7 @@ searchret ListWindow::search(const char *item, int mode)
 	int limit = NumOfItems();
 	searchret found = False;
 
-	statetype orgstate = interface->active();
+	statetype orgstate = ui->active();
 	for (int x = active + 1; (x < limit) && (found == False); x++) {
 		if (list->keypressed() == 27) {
 			found = Abort;
@@ -617,7 +713,7 @@ searchret ListWindow::search(const char *item, int mode)
 		found = oneSearch(x, item, mode);
 		if (found == True) {
 			active = x;
-			if (interface->active() == orgstate)
+			if (ui->active() == orgstate)
 				Draw();
 		}
 	}
@@ -635,49 +731,90 @@ void ListWindow::Next()
 	Move(DOWN);
 }
 
+
 bool ListWindow::KeyHandle(int key)
 {
 	bool draw = true, end = false;
 
 	switch (key) {
-	case KEY_LEFT:
+#ifdef USE_MOUSE
+	case MM_MOUSE:
+		{
+		    int begx = list->xstartinfo(), begy = list->ystartinfo();
+
+		    if ( ((mouse_event.x < begx) || (mouse_event.x >
+			(begx + list_max_x))) || ((mouse_event.y <
+			(begy - 1)) || (mouse_event.y >
+			(begy + list_max_y))) ) {
+			    draw = false;
+			    end = extrakeys(key);
+		    } else {
+			mouse_event.y -= begy;
+			if (-1 == mouse_event.y)
+			    Move(UP);
+			else
+			    if (list_max_y == mouse_event.y)
+				Move(DOWN);
+			    else
+				if ((begx + list_max_x) ==
+				    mouse_event.x) {
+					if (mouse_event.y > oldHigh)
+					    Move(PGDN);
+					else
+					    if (mouse_event.y < oldHigh)
+						Move(PGUP);
+				} else {
+					bool select = (mouse_event.bstate &
+					    BUTTON1_DOUBLE_CLICKED) || (active
+					    == (position + mouse_event.y));
+					active = position + mouse_event.y;
+					if (select) {
+						draw = false;
+						end = ui->select();
+					}
+				}
+		    }
+		}
+		break;
+#endif
+	case MM_LEFT:
 		if (lynxNav) {
 			draw = false;
-			end = interface->back();
+			end = ui->back();
 			break;
 		}
 	case MM_MINUS:
 		Prev();
 		break;
-	case KEY_RIGHT:
+	case MM_RIGHT:
 		if (lynxNav) {
 			draw = false;
-			end = interface->select();
+			end = ui->select();
 			break;
 		}
 	case '\t':
 	case MM_PLUS:
 		Next();
 		break;
-	case KEY_DOWN:
+	case MM_DOWN:
 		Move(DOWN);
 		break;
-	case KEY_UP:
+	case MM_UP:
 		Move(UP);
 		break;
-	case KEY_HOME:
+	case MM_HOME:
 		Move(HOME);
 		break;
-	case KEY_END:
+	case MM_END:
 		Move(END);
 		break;
 	case 'B':
-	case KEY_PPAGE:
+	case MM_PPAGE:
 		Move(PGUP);
 		break;
 	case ' ':
 	case 'F':
-	case KEY_NPAGE:
+	case MM_NPAGE:
 		Move(PGDN);
 		break;
 	default:

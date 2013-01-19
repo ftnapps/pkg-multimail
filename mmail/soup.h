@@ -2,7 +2,7 @@
  * MultiMail offline mail reader
  * SOUP
 
- Copyright (c) 1999 William McBrine <wmcbrine@clark.net>
+ Copyright (c) 2002 William McBrine <wmcbrine@users.sourceforge.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -19,13 +19,14 @@ class sheader {
 	char *values[items];
  public:
 	long msglen;
+	bool has8bit, qpenc;
 
 	sheader();
 	~sheader();
 	bool init(FILE *);
 	bool init(const char *, const char *, const char *, const char *,
 		const char *, const char *, long);
-	void output(FILE *);
+	void output(FILE *, const char *, bool, bool);
 	const char *From();
 	const char *Subject();
 	const char *Date();
@@ -41,13 +42,15 @@ class soup : public pktbase
 {
 	struct AREAs {
 		char *name;
-		int nummsgs, attr;
+		int nummsgs;
+		unsigned long attr;
 		char mode;
 		char numA[10], msgfile[10];
 		AREAs *next;
 	} **areas;
 
 	bool msgopen(int);
+	bool parseFrom(const char *);
 	void buildIndices();
 	void readAreas();
  public:
@@ -57,7 +60,8 @@ class soup : public pktbase
 	area_header *getNextArea();
 	int getNoOfLetters();
 	letter_header *getNextLetter();
-	const char *getBody(letter_header &);
+	letter_body *getBody(letter_header &);
+	const char *getTear(int);
 	bool isLatin();
 };
 
@@ -71,6 +75,8 @@ class souprep : public pktreply
 		int origArea;
 		long refnum;
 		bool privat;
+
+		upl_soup(const char * = 0);
 	};
 	bool getRep1(FILE *, upl_soup *);
 	void getReplies(FILE *);
@@ -83,7 +89,7 @@ class souprep : public pktreply
 	~souprep();
 	area_header *getNextArea();
 	letter_header *getNextLetter();
-	void enterLetter(letter_header &, const char *, int);
+	void enterLetter(letter_header &, const char *, long);
 	bool getOffConfig();
 	bool makeOffConfig();
 };

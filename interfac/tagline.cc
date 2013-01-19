@@ -3,24 +3,43 @@
  * tagline selection, editing
 
  Copyright (c) 1996 Kolossvary Tamas <thomas@vma.bme.hu>
- Copyright (c) 1999 William McBrine <wmcbrine@clark.net>
+ Copyright (c) 2002 William McBrine <wmcbrine@users.sourceforge.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
 
 #include "interfac.h"
 
-tagline::tagline(const char *tag)
+int tnamecmp(const void *a, const void *b)
+{
+	int d;
+	
+	const char *p = (*((TaglineWindow::tagline **) a))->text;
+	const char *q = (*((TaglineWindow::tagline **) b))->text;
+
+	d = strcasecmp(p, q);
+	if (!d)
+		d = strcmp(q, p);
+
+	return d;
+}
+
+
+TaglineWindow::tagline::tagline(const char *tag)
 {
 	if (tag)
 		strncpy(text, tag, TAGLINE_LENGTH);
+	killed = false;
 	next = 0;
 }
 
 TaglineWindow::TaglineWindow()
 {
 	nodraw = true;
-	NumOfTaglines = 0;
+	sorted = false;
+	NumOfTaglines = NumOfActive = 0;
+	taglist = tagactive = 0;
+	filter = 0;
 }
 
 TaglineWindow::~TaglineWindow()
@@ -30,43 +49,57 @@ TaglineWindow::~TaglineWindow()
 
 void TaglineWindow::MakeActive()
 {
+	int expmode = mm.resourceObject->getInt(ExpertMode);
 	nodraw = false;
 
 	srand((unsigned) time(0));
 
-	list_max_y = LINES - 15;
+	list_max_y = LINES - (expmode ? 12 : 15);
 
-	int xwidth = COLS - 2;
-	if (xwidth > 78)
-		xwidth = 78;
+	int xwidth = COLS - 4;
+	if (xwidth > (TAGLINE_LENGTH + 2))
+		xwidth = TAGLINE_LENGTH + 2;
 	list_max_x = xwidth - 2;
+
+	sprintf(format, "%%-%d.%ds", list_max_x, list_max_x);
+
 	top_offset = 1;
 
 	borderCol = C_TBBACK;
 
-	list = new InfoWin(LINES - 10, xwidth, 5, borderCol,
-		"Select tagline", C_TTEXT, 5, top_offset);
+	char tmp[60];
+	char *p = tmp + sprintf(tmp, "Taglines, %s", sorted ? "sorted" :
+		"unsorted");
+	if (NumOfActive > list_max_y)
+		p += sprintf(p, " (%d)", NumOfActive);
+	if (filter)
+		sprintf(p, " | %.20s", filter);
 
-	int x = xwidth / 3 + 1;
-	int y = list_max_y + 1;
+	list = new InfoWin(LINES - 10, xwidth, 5, borderCol, tmp, C_TTEXT,
+		expmode ? 2 : 5, top_offset);
 
-	list->attrib(C_TKEYSTEXT);
-	list->horizline(y, xwidth - 2);
-	list->put(++y, 2, "Q");
-	list->put(y, x, "R");
-	list->put(y, x * 2, "Enter");
-	list->put(++y, 2, "K");
-	list->put(y, x, "A");
-	//list->put(y, x * 2, " /, .");
-	list->put(y, x * 2 + 4, "E");
-	list->attrib(C_TTEXT);
-	list->put(y, 3, ": Kill current tagline");
-	list->put(y, x + 1, ": Add new tagline");
-	//list->put(y, x * 2 + 5, ": search / next");
-	list->put(y, x * 2 + 5, ": Edit tagline");
-	list->put(--y, 3, ": don't apply tagline");
-	list->put(y, x + 1, ": Random select tagline");
-	list->put(y, x * 2 + 5, ": apply tagline");
+	if (!expmode) {
+		int x = xwidth / 3 + 1;
+		int y = list_max_y + 1;
+
+		list->attrib(C_TKEYSTEXT);
+		list->horizline(y, xwidth - 2);
+		list->put(++y, 2, "Q");
+		list->put(y, x, "R");
+		list->put(y, x * 2, "Enter");
+		list->put(++y, 2, "K");
+		list->put(y, x, "A");
+		//list->put(y, x * 2, " /, .");
+		list->put(y, x * 2 + 4, "E");
+		list->attrib(C_TTEXT);
+		list->put(y, 3, ": Kill current tagline");
+		list->put(y, x + 1, ": Add new tagline");
+		//list->put(y, x * 2 + 5, ": search / next");
+		list->put(y, x * 2 + 5, ": Edit tagline");
+		list->put(--y, 3, ": don't apply tagline");
+		list->put(y, x + 1, ": Random select tagline");
+		list->put(y, x * 2 + 5, ": apply tagline");
+	}
 	DrawAll();
 }
 
@@ -78,8 +111,6 @@ void TaglineWindow::Delete()
 
 bool TaglineWindow::extrakeys(int key)
 {
-	bool end = false;
-
 	switch (key) {
 	case 'A':
 		EnterTagline();
@@ -90,18 +121,43 @@ bool TaglineWindow::extrakeys(int key)
 	case 'R':
 		RandomTagline();
 		break;
-	case KEY_DC:
+	case MM_DEL:
 	case 'K':
 		if (highlighted)
 			kill();
 		break;
+	case 'S':
+	case '$':
+		sorted = !sorted;
+		MakeChain();
+		Delete();
+		MakeActive();
+		break;
+	case '^':
+		{
+			char item[80];
+			*item = '\0';
+
+			if (ui->savePrompt("Filter on:", item)) {
+				delete[] filter;
+				filter = strdupplus(item);
+				MakeChain();
+				if (!NumOfActive) {
+					delete[] filter;
+					filter = 0;
+					MakeChain();
+				}
+			}
+		}
+		Delete();
+		MakeActive();
 	}
-	return end;
+	return false;
 }
 
 void TaglineWindow::RandomTagline()
 {
-	int i = rand() / (RAND_MAX / NumOfTaglines);
+	int i = rand() / (RAND_MAX / NumOfActive);
 
 	Move(HOME);
 	for (int j = 1; j <= i; j++)
@@ -116,21 +172,21 @@ void TaglineWindow::EnterTagline(const char *tag)
 	int y;
 
 	Move(END);
-	if (NumOfTaglines >= list_max_y) {
+	if (NumOfActive >= list_max_y) {
 		y = list_max_y;
 		position++;
 	} else
-		y = NumOfTaglines + 1;
+		y = NumOfActive + 1;
 	active++;
 
 	if (!nodraw) {
-		NumOfTaglines++;
+		NumOfActive++;
 		Draw();
-		NumOfTaglines--;
+		NumOfActive--;
 	} else {
 		int xwidth = COLS - 2;
-		if (xwidth > 78)
-			xwidth = 78;
+		if (xwidth > (TAGLINE_LENGTH + 2))
+			xwidth = TAGLINE_LENGTH + 2;
 		list = new InfoWin(5, xwidth, (LINES - 5) >> 1, C_TBBACK);
 		list->attrib(C_TTEXT);
 		list->put(1, 1, "Enter new tagline:");
@@ -157,17 +213,17 @@ void TaglineWindow::EnterTagline(const char *tag)
 
 			if (!found) {
 				curr->next = new tagline(newtagline);
-				if ((fd = fopen(tagname, "at"))) {
+				fd = fopen(tagname, "at");
+				if (fd) {
 					fputs(newtagline, fd);
 					fputc('\n', fd);
 					fclose(fd);
 				}
 				NumOfTaglines++;
 
-				delete[] taglist;
 				MakeChain();
 			} else
-				interface->nonFatalError("Already in file");
+				ui->nonFatalError("Already in file");
 		}
 	}
 	Move(END);
@@ -188,7 +244,7 @@ void TaglineWindow::EditTagline()
 	    TAGLINE_LENGTH, C_TENTER, C_TENTERGET)) {
 		cropesp(newtagline);
 		if (newtagline[0])
-			strcpy(taglist[active]->text, newtagline);
+			strcpy(tagactive[active]->text, newtagline);
 	}
 	WriteFile(false);
 	Draw();
@@ -196,19 +252,12 @@ void TaglineWindow::EditTagline()
 
 void TaglineWindow::kill()
 {
-	if (interface->WarningWindow("Remove this tagline?")) {
-		if (active)
-			taglist[active - 1]->next = highlighted->next;
-		else
-			head.next = highlighted->next;
-
+	if (ui->WarningWindow("Remove this tagline?")) {
 		if (position)
 			position--;
 
+		highlighted->killed = true;
 		NumOfTaglines--;
-
-		delete highlighted;
-		delete[] taglist;
 
 		MakeChain();
 
@@ -222,7 +271,10 @@ bool TaglineWindow::ReadFile()
 {
 	FILE *fd;
 	char newtag[TAGLINE_LENGTH + 1];
-	bool flag = (fd = fopen(tagname, "rt"));
+	bool flag;
+
+	fd = fopen(tagname, "rt");
+	flag = !(!fd);
 
 	if (flag) {
 		char *end;
@@ -251,7 +303,8 @@ void TaglineWindow::WriteFile(bool message)
 	if (message)
 		printf("Creating %s...\n", tagname);
 
-	if ((tagx = fopen(tagname, "wt"))) {
+	tagx = fopen(tagname, "wt");
+	if (tagx) {
 		for (int x = 0; x < NumOfTaglines; x++) {
 			fputs(taglist[x]->text, tagx);
 			fputc('\n', tagx);
@@ -262,18 +315,32 @@ void TaglineWindow::WriteFile(bool message)
 
 void TaglineWindow::MakeChain()
 {
+	delete[] taglist;
 	taglist = new tagline *[NumOfTaglines + 1];
+
+	delete[] tagactive;
+	tagactive = new tagline *[NumOfTaglines + 1];
+
+	NumOfActive = 0;
 
 	if (NumOfTaglines) {
 		curr = head.next;
 		int c = 0;
 		while (curr) {
-			taglist[c++] = curr;
+			if (!curr->killed) {
+				taglist[c++] = curr;
+				if (!filter || searchstr(curr->text, filter))
+					tagactive[NumOfActive++] = curr;
+			}
 			curr = curr->next;
 		}
+
+		if (sorted && (NumOfActive > 1))
+			qsort(tagactive, NumOfActive, sizeof(tagline *),
+				tnamecmp);
 	}
 
-	taglist[NumOfTaglines] = 0;	// hack for EnterTagline
+	tagactive[NumOfTaglines] = 0;	// hack for EnterTagline
 }
 
 void TaglineWindow::DestroyChain()
@@ -281,30 +348,30 @@ void TaglineWindow::DestroyChain()
 	while (NumOfTaglines)
 		delete taglist[--NumOfTaglines];
 	delete[] taglist;
+	delete[] tagactive;
 }
 
 void TaglineWindow::oneLine(int i)
 {
 	int z = position + i;
-	curr = (z < NumOfTaglines) ? taglist[z] : 0;
+	curr = (z < NumOfActive) ? tagactive[z] : 0;
 
 	if (z == active)
 		highlighted = curr;
 
-	sprintf(list->lineBuf, "%-76.76s", curr ? curr->text : " ");
+	sprintf(list->lineBuf, format, curr ? curr->text : " ");
 
 	DrawOne(i, C_TLINES);
 }
 
-searchret TaglineWindow::oneSearch(int x, const char *item, int ignore)
+searchret TaglineWindow::oneSearch(int x, const char *item, int)
 {
-	ignore = ignore;
-	return searchstr(taglist[x]->text, item) ? True : False;
+	return searchstr(tagactive[x]->text, item) ? True : False;
 }
 
 int TaglineWindow::NumOfItems()
 {
-	return NumOfTaglines;
+	return NumOfActive;
 }
 
 // Create tagline file if it doesn't exist.
@@ -334,5 +401,5 @@ void TaglineWindow::Init()
 
 const char *TaglineWindow::getCurrent()
 {
-	return taglist[active]->text;
+	return tagactive[active]->text;
 }

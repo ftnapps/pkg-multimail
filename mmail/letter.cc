@@ -3,7 +3,7 @@
  * letter_header and letter_list
 
  Copyright (c) 1996 Toth Istvan <stoty@vma.bme.hu>
- Copyright (c) 1999 William McBrine <wmcbrine@clark.net>
+ Copyright (c) 2002 William McBrine <wmcbrine@users.sourceforge.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -14,40 +14,73 @@ int lsorttype;	// Outside the classes because it needs to be accessible
 		// by lettercomp(), which is outside because it needs to
 		// be for qsort(). :-/
 
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------
+// Letter body methods
+// -----------------------------------------------------------------
+
+letter_body::letter_body(char *textA, long lengthA, long offsetA,
+	bool hiddenA) :
+	text(textA), length(lengthA), offset(offsetA), hidden(hiddenA)
+{
+	next = 0;
+}
+
+letter_body::~letter_body()
+{
+	delete[] text;
+	delete next;
+}
+
+char *letter_body::getText()
+{
+	return text + offset;
+}
+
+long letter_body::getLength()
+{
+	return length - offset;
+}
+
+bool letter_body::isHidden()
+{
+	return hidden;
+}
+
+// -----------------------------------------------------------------
 // Letter header methods
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------
 
 letter_header::letter_header(mmail *mmA, const char *subjectA,
 		const char *toA, const char *fromA, const char *dateA,
-		const char *msgidA, int replyToA, int LetterIDA,
-		int msgNumA, int AreaIDA, bool privatA, int lengthA,
+		const char *msgidA, long replyToA, int LetterIDA,
+		long msgNumA, int AreaIDA, bool privatA, int lengthA,
 		specific_driver *driverA, net_address &netAddrA,
 		bool charsetA, const char *newsgrpsA, const char *followA,
-		const char *replyA)
+		const char *replyA, bool qpencA) :
+		driver(driverA), replyTo(replyToA), LetterID(LetterIDA),
+		AreaID(AreaIDA), privat(privatA), length(lengthA),
+		msgNum(msgNumA), netAddr(netAddrA), charset(charsetA),
+		qpenc(qpencA)
 {
 	dl = mmA->driverList;
-	driver = driverA;
 	readO = dl->getReadObject(driver);
 
-	subject = strdupplus(subjectA);
-	to = strdupplus(toA);
-	from = strdupplus(fromA);
+	const char *cset = mmA->resourceObject->get(outCharset);
+
+	subject = strdupblank(subjectA);
+	headdec(subjectA, cset, subject);
+
+	to = strdupblank(toA);
+	headdec(toA, cset, to);
+
+	from = strdupblank(fromA);
+	headdec(fromA, cset, from);
+
 	date = strdupplus(dateA);
 	msgid = strdupplus(msgidA);
 	newsgrps = strdupplus(newsgrpsA);
 	follow = strdupplus(followA);
 	reply = strdupplus(replyA);
-
-	replyTo = replyToA;
-	LetterID = LetterIDA;
-	AreaID = AreaIDA;
-	privat = privatA;
-	length = lengthA;
-	msgNum = msgNumA;
-
-	netAddr = netAddrA;
-	charset = charsetA;
 
 	const char *login = mmA->resourceObject->get(LoginName);
 	const char *alias = mmA->resourceObject->get(AliasName);
@@ -158,7 +191,7 @@ const char *letter_header::getReply() const
 	return reply;
 }
 
-int letter_header::getReplyTo() const
+long letter_header::getReplyTo() const
 {
 	return replyTo;
 }
@@ -178,7 +211,7 @@ bool letter_header::getPrivate() const
 	return privat;
 }
 
-const char *letter_header::getBody()
+letter_body *letter_header::getBody()
 {
 	return driver->getBody(*this);
 }
@@ -214,7 +247,7 @@ void letter_header::setStatus(int stat)
 	readO->setStatus(AreaID, LetterID, stat);
 }
 
-int letter_header::getMsgNum() const
+long letter_header::getMsgNum() const
 {
 	return msgNum;
 }
@@ -239,18 +272,28 @@ void letter_header::setLatin(bool charsetA)
 	charset = charsetA;
 }
 
-// ---------------------------------------------------------------------------
-// Letterlist methods
-// ---------------------------------------------------------------------------
-
-letter_list::letter_list(mmail *mmA, int areaNumberA, bool isCollA)
+bool letter_header::isQP() const
 {
-	dl = mmA->driverList;
-	areaNumber = areaNumberA;
+	return qpenc;
+}
+
+void letter_header::setQP(bool qpencA)
+{
+	qpenc = qpencA;
+}
+
+// -----------------------------------------------------------------
+// Letterlist methods
+// -----------------------------------------------------------------
+
+letter_list::letter_list(mmail *mmA, int areaNumberA, unsigned long typeA) :
+	mm(mmA), areaNumber(areaNumberA), type(typeA)
+{
+	dl = mm->driverList;
 	driver = dl->getDriver(areaNumber);
 	areaNumber -= dl->getOffset(driver);
 	readO = dl->getReadObject(driver);
-	isColl = isCollA;
+	isColl = (type & COLLECTION) && !(type & REPLYAREA);
 	init();
 }
 
@@ -264,14 +307,17 @@ void letter_list::init()
 	driver->selectArea(areaNumber);
 	noOfLetters = driver->getNoOfLetters();
 
+	filter = 0;
+
 	activeHeader = new int[noOfLetters];
 	letterHeader = new letter_header *[noOfLetters];
 
 	driver->resetLetters();
 	for (int c = 0; c < noOfLetters; c++)
 		letterHeader[c] = driver->getNextLetter();
+
 	currentLetter = 0;
-	shortlist = false;
+	llmode = mm->resourceObject->getInt(LetterMode) - 1;
 
 	sort();
 	relist();
@@ -283,15 +329,34 @@ void letter_list::relist()
 	noActive = 0;
 
 	while (noOfLetters && !noActive) {
-		shortlist = !shortlist;
+		switch (llmode) {
+		case 0:
+			llmode++;
+			break;
+		case 1:
+			if (readO->getNoOfMarked(areaNumber)) {
+				llmode++;
+				break;
+			}
+		default:
+			llmode = 0;
+		}
 		for (currentLetter = 0; currentLetter < noOfLetters;
-			currentLetter++) {
+		     currentLetter++)
+			if (!filter || filterCheck(filter)) {
+			    stat = getStatus();
 
-			stat = getStatus();
+			    if ((llmode == 0) ||
+				((llmode == 1) && !(stat & MS_READ)) ||
+				((llmode == 2) && (stat & MS_MARKED)))
+				    activeHeader[noActive++] = currentLetter;
+			}
 
-			if (!shortlist || (!(stat & MS_READ) ||
-			    (stat & MS_MARKED)))
-				activeHeader[noActive++] = currentLetter;
+		// If filter caught nothing, clear it and try again
+		if (filter && !noActive) {
+			llmode--;
+			delete[] filter;
+			filter = 0;
 		}
 	}
 
@@ -304,6 +369,7 @@ void letter_list::cleanup()
 		delete letterHeader[--noOfLetters];
 	delete[] letterHeader;
 	delete[] activeHeader;
+	delete[] filter;
 }
 
 int lmsgncomp(const void *a, const void *b)
@@ -361,12 +427,27 @@ void letter_list::resort()
 {
 	if (lsorttype == LS_TO)
 		lsorttype = LS_SUBJ;
-	else
+	else {
 		lsorttype++;
+
+		if ((lsorttype == LS_TO) && ((type & INTERNET) &&
+		    !(type & NETMAIL)))
+			lsorttype = LS_SUBJ;
+	}
 	sort();
 
-	shortlist = !shortlist;
+	llmode--;
 	relist();
+}
+
+int letter_list::getMode() const
+{
+	return llmode;
+}
+
+void letter_list::setMode(int newmode)
+{
+	llmode = newmode;
 }
 
 int letter_list::noOfLetter() const
@@ -389,7 +470,7 @@ const char *letter_list::getFrom() const
 	return letterHeader[currentLetter]->getFrom();
 }
 
-int letter_list::getMsgNum() const
+long letter_list::getMsgNum() const
 {
 	return letterHeader[currentLetter]->getMsgNum();
 }
@@ -424,7 +505,7 @@ const char *letter_list::getReply() const
 	return letterHeader[currentLetter]->getReply();
 }
 
-int letter_list::getReplyTo() const
+long letter_list::getReplyTo() const
 {
 	return letterHeader[currentLetter]->getReplyTo();
 }
@@ -439,7 +520,7 @@ bool letter_list::getPrivate() const
 	return letterHeader[currentLetter]->getPrivate();
 }
 
-const char *letter_list::getBody()
+letter_body *letter_list::getBody()
 {
 	return letterHeader[currentLetter]->getBody();
 }
@@ -462,6 +543,16 @@ bool letter_list::isPersonal() const
 bool letter_list::isLatin() const
 {
 	return letterHeader[currentLetter]->isLatin();
+}
+
+bool letter_list::isQP() const
+{
+	return letterHeader[currentLetter]->isQP();
+}
+
+void letter_list::setQP(bool qpencA)
+{
+	letterHeader[currentLetter]->setQP(qpencA);
 }
 
 bool letter_list::getRead()
@@ -511,7 +602,7 @@ int letter_list::getActive() const
 
 void letter_list::gotoLetter(int newLetter)
 {
-	if ((newLetter >= 0) && (newLetter < noOfLetters))
+	if (newLetter < noOfLetters)
 		currentLetter = newLetter;
 }
 
@@ -528,7 +619,21 @@ void letter_list::rrefresh()
 	gotoActive(noActive - 1);
 }
 
-bool letter_list::findReply(int area, int msgnum)
+bool letter_list::findMsgNum(long msgnum)
+{
+	bool found = false;
+
+	for (int x = 1; !found && (x <= noOfLetters); x++) {
+		int y = (currentLetter + x) % noOfLetters;
+		found = (letterHeader[y]->getMsgNum() == msgnum);
+		if (found)
+			currentLetter = y;
+	}
+
+	return found;
+}
+
+bool letter_list::findReply(int area, long msgnum)
 {
 	bool found = false;
 
@@ -540,4 +645,29 @@ bool letter_list::findReply(int area, int msgnum)
 	}
 
 	return found;
+}
+
+const char *letter_list::getFilter() const
+{
+        return filter;
+}
+
+void letter_list::setFilter(const char *newfilter)
+{
+        delete[] filter;
+        filter = (newfilter && *newfilter) ? strdupplus(newfilter) : 0;
+	llmode--;
+	relist();
+}
+
+const char *letter_list::filterCheck(const char *item)
+{
+	const char *s = searchstr(getFrom(), item);
+	if (!s) {
+		s = searchstr(getTo(), item);
+		if (!s)
+			s = searchstr(getSubject(), item);
+	}
+
+	return s;
 }

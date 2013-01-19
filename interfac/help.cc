@@ -3,7 +3,7 @@
  * help windows
 
  Copyright (c) 1996 Kolossvary Tamas <thomas@vma.bme.hu>
- Copyright (c) 1999 William McBrine <wmcbrine@clark.net>
+ Copyright (c) 2001 William McBrine <wmcbrine@users.sourceforge.net>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -17,51 +17,55 @@ HelpWindow::HelpWindow()
 
 void HelpWindow::newHelpMenu(const char **keys, const char **func, int it)
 {
-	int x, y, z, end;
-
-	items = it;
-
-	menu = new Win(3, COLS - 2, LINES - 4, C_HELP2);
-
-	midpos = (COLS / 2) - 6;
-	endpos = COLS - 21;
-
-	if (items < 10)
-		end = items;
+	if (mm.resourceObject->getInt(ExpertMode))
+		menu = 0;
 	else {
-		end = base + 8;
-		if (end > items)
+		int x, y, z, end;
+
+		items = it;
+
+		menu = new Win(3, COLS - 2, LINES - 4, C_HELP2);
+
+		midpos = (COLS / 2) - 6;
+		endpos = COLS - 21;
+
+		if (items < 10)
 			end = items;
-	}
-	for (z = base; z < end; z++) {
-		if (keys[z]) {
-			x = (z - base) / 3;
-			switch ((z - base) % 3) {
-			case 0:
-				y = 2;
-				break;
-			case 1:
-				y = midpos;
-				break;
-			default:
-				y = endpos;
-			}
-			menu->attrib(C_HELP1);
-			menu->put(x, y, ": ");
-			menu->put(x, y + 2, func[z]);
-
-			y -= strlen(keys[z]);
-
-			menu->attrib(C_HELP2);
-			menu->put(x, y, keys[z]);
+		else {
+			end = base + 8;
+			if (end > items)
+				end = items;
 		}
+		for (z = base; z < end; z++) {
+			if (keys[z]) {
+				x = (z - base) / 3;
+				switch ((z - base) % 3) {
+				case 0:
+					y = 2;
+					break;
+				case 1:
+					y = midpos;
+					break;
+				default:
+					y = endpos;
+				}
+				menu->attrib(C_HELP1);
+				menu->put(x, y, ": ");
+				menu->put(x, y + 2, func[z]);
+
+				y -= strlen(keys[z]);
+
+				menu->attrib(C_HELP2);
+				menu->put(x, y, keys[z]);
+			}
+		}
+		if (items > 9) {
+			menu->put(2, endpos - 1, "O");
+			menu->attrib(C_HELP1);
+			menu->put(2, endpos, ": Other functions");
+		}
+		menu->delay_update();
 	}
-	if (items > 9) {
-		menu->put(2, endpos - 1, "O");
-		menu->attrib(C_HELP1);
-		menu->put(2, endpos, ": Other functions");
-	}
-	menu->delay_update();
 }
 
 void HelpWindow::h_packetlist()
@@ -72,17 +76,19 @@ void HelpWindow::h_packetlist()
 		"U", "R",
 
 		"A", "^T", "^Z",
-		"B", "Space, F", "^X"
+		"B", "Space, F", "^X",
+		"T", "^"
 	}, *func[] = {
 		"Quit", "select packet", "change Sort type", 
 		"Kill packet", "search / next", "Go to directory",
 		"Update list", "Rename packet",
 
 		"Addressbook", "Tagline editor", "command shell",
-		"alias for PgUp", "aliases for PgDn", "eXit now"
+		"alias for PgUp", "aliases for PgDn", "eXit now",
+		"Touch file", "filter list"
 	};
 
-	newHelpMenu(keys, func, 14);
+	newHelpMenu(keys, func, 16);
 }
 
 void HelpWindow::h_arealist()
@@ -94,7 +100,7 @@ void HelpWindow::h_arealist()
 	}, *func[] = {
 		"back to packet list", "select area", "Make reply packet",
 		"Enter letter in area", "Subscribe", "Unsubscribe",
-		"Long/short area list", "prev non-empty", "next non-empty"
+		"all/subscribed/active", "prev non-empty", "next non-empty"
 	};
 
 	newHelpMenu(keys, func, 9);
@@ -108,14 +114,14 @@ void HelpWindow::h_letterlist()
 		"U", "M",
 
 		"A", "^T", "F2, !",
-		0, "-", "+"
+		"^E", "-", "+"
 	}, *func[] = {
-		"List all/unread", "read letter", "change sort type",
+		"List all/unread/marked", "read letter", "change sort type",
 		"Enter letter in area", "Forward letter", "Save (all/marked)",
 		"Unread/read toggle", "Mark/unmark",
 
-		"Addressbook", "Tagline editor", "Make reply packet",
-		0, "previous unread", "next unread"
+		"Addressbook", "Tagline editor", "make reply packet",
+		"Enter from addressbook", "previous unread", "next unread"
 	}, *repkeys[] = {
 		"K", "Enter", "$",
 		"E", "^F", "S",
@@ -139,7 +145,7 @@ void HelpWindow::h_letterlist()
 void HelpWindow::h_letter(bool isAnsi)
 {
 	enum {width = 60, citems = 18, regitems = 7, repitems = 3,
-		ansitems = 9};
+		ansitems = 10};
 
 	static const char *common[citems] = {
 		"S - Save letter",
@@ -181,6 +187,7 @@ void HelpWindow::h_letter(bool isAnsi)
 		"Space - page down/next",
 		"- - previous",
 		"+ - next",
+		"@ - toggle at-code parsing",
 		"Q - Quit ANSI viewer"
 	};
 
@@ -196,16 +203,16 @@ void HelpWindow::h_letter(bool isAnsi)
 	const char **basechar = isAnsi ? ansi :
 		((base == 7) ? regular : reply);
 
-	int line = 0;
+	int x, line = 0;
 
-	for (int x = 0; x < base; x++) {
+	for (x = 0; x < base; x++) {
 		if (!(x & 1))
 			line++;
 		menu->put(line, (x & 1) ? (width >> 1) + 2 : 2,
 			basechar[x]);
 	}
 
-	for (int x = base; x < usecommon + base; x++) {
+	for (x = base; x < usecommon + base; x++) {
 		if (!(x & 1))
 			line++;
 		menu->put(line, (x & 1) ? (width >> 1) + 2 : 2,
@@ -220,7 +227,7 @@ void HelpWindow::h_letter(bool isAnsi)
 
 void HelpWindow::MakeActive()
 {
-	switch (interface->active()) {
+	switch (ui->active()) {
 	case ansi_help:
 		h_letter(true);
 		break;
@@ -241,7 +248,7 @@ void HelpWindow::MakeActive()
 
 void HelpWindow::Delete()
 {
-	switch (interface->active()) {
+	switch (ui->active()) {
 	case ansi_help:
 	case letter_help:
 		delete (ShadowedWin *) menu;
