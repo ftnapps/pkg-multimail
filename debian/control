@@ -4,6 +4,8 @@ Priority: optional
 Maintainer: Robert James Clay <jame@rocasa.us>
 Standards-Version: 3.9.3
 Build-Depends: libncurses5-dev, debhelper (>= 8.0)
+Vcs-Git: git://github.com/jame/multimail.git
+Vcs-Browser: http://github.com/jame/multimail
 Homepage: http://multimail.sourceforge.net
 
 Package: multimail
