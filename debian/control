@@ -3,7 +3,7 @@ Section: mail
 Priority: optional
 Maintainer: Robert James Clay <jame@rocasa.us>
 Standards-Version: 3.9.3
-Build-Depends: libncurses5-dev, debhelper (>= 5.0)
+Build-Depends: libncurses5-dev, debhelper (>= 8.0)
 Homepage: http://multimail.sourceforge.net
 
 Package: multimail
