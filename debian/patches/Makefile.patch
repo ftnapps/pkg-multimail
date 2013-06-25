@@ -1,0 +1,67 @@
+Description: Changes to enable package build.
+ Changes to the upstream Makefile to enable package builds.
+Author: Peter Karlsson <peterk@debian.org>
+Reviewed-By: Robert James Clay <jame@rocasa.us>
+Origin: vendor
+Last-Update: 2013-06-25
+
+--- multimail-0.49.orig/Makefile
++++ multimail-0.49/Makefile
+@@ -10,12 +10,31 @@ include version
+ #OPTS = -g -Wall -Wextra -pedantic -Wno-deprecated -Wno-char-subscripts
+ 
+ # Optimized, no debug:
+-OPTS = -O2 -Wall -pedantic -Wno-deprecated -Wno-char-subscripts
++# OPTS = -O2 -Wall -pedantic -Wno-deprecated -Wno-char-subscripts
++
++# Edited for Debian - build with debugging symbols; make it possible to
++# build without optimization
++OPTS = -g -Wall -pedantic -Wno-deprecated -Wno-char-subscripts
++ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
++OPTS += -O0
++else
++OPTS += -O2
++endif
++
++# Edited for Debian - make it possible to install unstripped binaries
++ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
++INSTALL_OPTS = -s
++else
++INSTALL_OPTS =
++endif
++
++# Edited for Debian
++DESTDIR =
+ 
+ # PREFIX is the base directory under which to install the binary and man 
+ # page; generally either /usr/local or /usr (or perhaps /opt...):
+ 
+-PREFIX = /usr/local
++PREFIX = $(DESTDIR)/usr
+ 
+ # Delete command ("rm" or "del", as appropriate):
+ 
+@@ -63,7 +82,8 @@ LIBS = -lcurses
+ #--------------------------------------------------------------
+ #--------------------------------------------------------------
+ 
+-HELPDIR = $(PREFIX)/man/man1
++HELPDIR = $(PREFIX)/share/man/man1
++DOCDIR = $(PREFIX)/share/doc/multimail
+ 
+ all:	mm
+ 
+@@ -93,7 +113,11 @@ modclean:
+ 	cd mmail $(SEP) $(MAKE) RM="$(RM)" modclean $(SEP) cd ..
+ 
+ install::
+-	install -c -s mm $(PREFIX)/bin
++	install -d $(PREFIX)/bin $(HELPDIR) $(DOCDIR)
++	install -c $(INSTALL_OPTS) mm $(PREFIX)/bin
+ 	install -c -m 644 mm.1 $(HELPDIR)
+ 	$(RM) $(HELPDIR)/mmail.1
+-	ln $(HELPDIR)/mm.1 $(HELPDIR)/mmail.1
++#	ln $(HELPDIR)/mm.1 $(HELPDIR)/mmail.1
++	install -m 644 README $(DOCDIR)
++	install -d $(DOCDIR)/colors
++	cp -a colors/* $(DOCDIR)/colors
