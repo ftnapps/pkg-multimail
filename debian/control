@@ -3,7 +3,7 @@ Section: mail
 Priority: optional
 Maintainer: Robert James Clay <jame@rocasa.us>
 Standards-Version: 3.9.3
-Build-Depends: libncurses5-dev, debhelper (>= 8.0)
+Build-Depends: libncurses5-dev, debhelper (>= 9.0)
 Vcs-Git: git://github.com/ftnapps/multimail.git
 Vcs-Browser: http://github.com/ftnapps/multimail
 Homepage: http://multimail.sourceforge.net
