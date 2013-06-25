@@ -10,7 +10,7 @@ Homepage: http://multimail.sourceforge.net
 
 Package: multimail
 Architecture: any
-Depends: ${shlibs:Depends}, {misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}
 Suggests: uqwk, zip, unzip
 Description: Offline reader for Blue Wave, QWK, OMEN and SOUP
  MultiMail is an offline mail packet reader for Unix and
