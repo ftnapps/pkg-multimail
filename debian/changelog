@@ -1,16 +1,24 @@
-multimail (0.49-3~1) UNRELEASED; urgency=low
+multimail (0.49-3~2) UNRELEASED; urgency=low
 
   * New maintainer. (Closes: #693230)
+  * Add initial version of a debian/watch file.
+  * Set package source format explicitly as '3.0 (quilt)'.
   * Changes to debian/control:
     - Change the Maintainer entry to be jame@rocasa.us.
-    - Add {misc:Depends} to binary package Depends line 
+    - Add Vcs* entries for github.com/ftnapps repository.
+    - Update debhelper Build-Depends version to '>= 8.0'.
+    - Add ${misc:Depends} to binary package Depends line 
     - Add a Homepage entry to the source package stanza.
     - Set Standards-Version entry to 3.9.3, no changes required.
+  * Changes to debian/patches:
+    - Add initial version of debian/patches/Makefile.patch.
+    - Add initial version of debian/patches/ManPageFix.patch.
+    - Add initial version of debian/patches/BuildFailureBugFix.patch.
   * Changes to debian/rules:
     - Add the targets build-arch and build-indep.
     - Remove the '-' at the beginning of the 'make clean' line.
 
- -- Robert James Clay <jame@rocasa.us>  Sat, 19 Jan 2013 11:46:09 -0500
+ -- Robert James Clay <jame@rocasa.us>  Tue, 25 Jun 2013 12:39:11 -0400
 
 multimail (0.49-2) unstable; urgency=low
 
