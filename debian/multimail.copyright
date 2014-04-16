@@ -1,16 +1,36 @@
-Package: multimail
-Obtained from: http://multimail.sourceforge.net/
-Packaged for Debian by: Peter Karlsson <peterk@debian.org>
-Upstream author: William McBrine <wmcbrine@users.sourceforge.net>
+Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: MultiMail
+Source: http://multimail.sourceforge.net/
+Upstream-Contact: William McBrine <wmcbrine@users.sourceforge.net>
 
-MultiMail was originally developed under Linux by Kolossvary Tamas and Toth
-Istvan. John Zero was the maintainer for versions 0.2 through 0.6; since
-version 0.7, the maintainer is William McBrine
-<wmcbrine@users.sourceforge.net>.
+Files: *
+Copyright: 1997-2007, William McBrine <wmcbrine@users.sourceforge.net>
+ 1997, John Zero
+ 1996, Kolossvary Tamas
+ 1996, Toth Istvan
+Comment: MultiMail was originally developed under Linux by Kolossvary Tamas and
+ Toth Istvan. John Zero was the maintainer for versions 0.2 through 0.6; since
+ version 0.7, the maintainer is William McBrine <wmcbrine@users.sourceforge.net>.
+ Additional code has been contribued by Peter Karlsson, Mark D. Rejhon, Ingo
+ Brueckl, and Robert Vukovic.
+License: GPL-3
 
-Additional code has been contribued by Peter Karlsson, Mark D. Rejhon, Ingo
-Brueckl, and Robert Vukovic.
+Files: debian/*
+Comment: Copyright and License for the debian directory files.
+Copyright: 2014, Robert James Clay <jame@rocasa.us>
+ 2000-2010, Peter Karlsson <peterk@debian.org>
+ 1999-2000, Per Lundberg <plundis@debian.org>
 
-MultiMail is free, "open source" software, distributed under the GNU General
-Public License. On Debian systems, the complete text of the GNU General
-Public License can be found in the /usr/share/common-licenses/GPL-3 file.
+License: GPL-3
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+ .
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+ .
+ On Debian systems, the full text of the GPL can be found at
+ /usr/share/common-licenses/GPL-3.
