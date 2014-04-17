@@ -1,9 +1,11 @@
-multimail (0.49-3~2) UNRELEASED; urgency=low
+multimail (0.49-3~3) UNRELEASED; urgency=low
 
   * New maintainer. (Closes: #693230)
-  * Add initial version of a debian/watch file.
+  * Add debian/watch file for use by uscan.
+  * Rewrite debian/multimail.copyright in machine readable format.
   * Set package source format explicitly as '3.0 (quilt)'.
   * Changes to debian/control:
+    - Add multimail-dbg stanza.
     - Change the Maintainer entry to be jame@rocasa.us.
     - Add Vcs* entries for github.com/ftnapps repository.
     - Update debhelper Build-Depends version to '>= 8.0'.
@@ -14,11 +16,9 @@ multimail (0.49-3~2) UNRELEASED; urgency=low
     - Add initial version of debian/patches/Makefile.patch.
     - Add initial version of debian/patches/ManPageFix.patch.
     - Add initial version of debian/patches/BuildFailureBugFix.patch.
-  * Changes to debian/rules:
-    - Add the targets build-arch and build-indep.
-    - Remove the '-' at the beginning of the 'make clean' line.
+  * Rewrite debian/rules to be used for dh.
 
- -- Robert James Clay <jame@rocasa.us>  Tue, 25 Jun 2013 12:39:11 -0400
+ -- Robert James Clay <jame@rocasa.us>  Thu, 17 Apr 2014 12:28:39 -0400
 
 multimail (0.49-2) unstable; urgency=low
 
