@@ -17,9 +17,41 @@ License: GPL-3
 
 Files: debian/*
 Comment: Copyright and License for the debian directory files.
-Copyright: 2014, Robert James Clay <jame@rocasa.us>
+Copyright: 2013-2014, Robert James Clay <jame@rocasa.us>
  2000-2010, Peter Karlsson <peterk@debian.org>
  1999-2000, Per Lundberg <plundis@debian.org>
+License: GPL-3
+
+Files: mmail/bluewave.h
+License:
+ --- begin extract
+ The Blue  Wave Offline  Mail System  File  Structures  (hereafter
+ known as "structures" or "the structures") were created by George
+ Hatchew, and  are the  copyrighted property of George Hatchew and
+ Cutting Edge  Computing.  Permission is granted for third parties
+ to use  these structures  in  their  own  programs,  without  any
+ royalties or  licenses required.  Cutting Edge Computing reserves
+ the right  to make  any changes to these structures, at any time.
+ As such, third parties are requested not to make any unauthorized
+ changes to  these structures,  as Cutting  Edge Computing  is not
+ bound to  follow these  changes.   Any proposed changes should be
+ brought to  the attention  of Cutting  Edge Computing, where they
+ may be included in future revisions of the structures.
+ .
+ Authors that use these structures are allowed to claim that their
+ programs are  "Blue Wave compatible", provided that such programs
+ can process  mail and  reply packets  that can be handled without
+ problems or  difficulties by The Blue Wave Offline Mail Doors and
+ Readers from Cutting Edge Computing.  (Think of it as the "litmus
+ test" for Blue Wave compatibility.)
+ .
+ Finally, "Blue  Wave" is  a  trademarked  term  of  Cutting  Edge
+ Computing, and  cannot be  used by authors in the titles of their
+ applications.   This does  not, however,  restrict the ability to
+ describe the application as a "Blue Wave compatible" offline mail
+ application (i.e.  "FooBar: The Blue Wave-Compatible Offline Mail
+ Door for Widget BBS").
+ --- end extract
 
 License: GPL-3
  This program is free software: you can redistribute it and/or modify
