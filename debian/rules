@@ -1,54 +1,23 @@
 #!/usr/bin/make -f
-# Based on sample debian/rules that uses debhelper.
-# GNU copyright 1997 to 1999 by Joey Hess.
-# Copyright 1999-2006 Peter Karlsson <peterk@debian.org>
+# debian/rules for multimail
 
-# Uncomment this to turn on verbose mode.
-#export DH_VERBOSE=1
+DPKG_EXPORT_BUILDFLAGS = 1
+export DEB_BUILD_MAINT_OPTIONS=hardening=-format
+include /usr/share/dpkg/buildflags.mk
 
-build: build-arch build-indep
-build-arch: build-stamp
-build-indep: build-stamp
-build-stamp:
-	dh_testdir
-	$(MAKE)
-	touch build-stamp
+%:
+	dh $@
 
-clean:
-	dh_testdir
-	dh_testroot
-	rm -f build-stamp
-	$(MAKE) clean
-	dh_clean
+override_dh_auto_install:
+	dh_auto_install --destdir=debian/multimail
 
-install: build
-	dh_testdir
-	dh_testroot
-	dh_clean -k
-	dh_installdirs
-	$(MAKE) install DESTDIR=`pwd`/debian/multimail
+override_dh_installchangelogs:
+	dh_installchangelogs --keep HISTORY
 
-# Build architecture-independent files here.
-binary-indep: build install
-# We have nothing to do by default.
+override_dh_installdocs:
+	dh_installdocs --link-doc=multimail
 
-# Build architecture-dependent files here.
-binary-arch: build install
-	dh_testdir
-	dh_testroot
-	dh_installdocs
-	dh_installmenu
-	dh_installman
-	dh_installchangelogs -k HISTORY
-	dh_link
-	dh_strip
-	dh_compress
-	dh_fixperms
-	dh_installdeb
-	dh_shlibdeps
-	dh_gencontrol
-	dh_md5sums
-	dh_builddeb
+override_dh_strip:
+	dh_strip --dbg-package=multimail-dbg
 
-binary: binary-indep binary-arch
-.PHONY: build build-arch build-indep clean binary-indep binary-arch binary install
+.PHONY: override_dh_strip
