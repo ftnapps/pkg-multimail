@@ -21,6 +21,7 @@ Description: Offline reader for Blue Wave, QWK, OMEN and SOUP
 Package: multimail-dbg
 Architecture: any
 Section: debug
+Priority: optional
 Depends: multimail (= ${binary:Version}), ${misc:Depends}
 Description: debugging symbols for multimail
  MultiMail is an offline mail packet reader for Unix and
