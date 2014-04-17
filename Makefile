@@ -10,31 +10,12 @@ include version
 #OPTS = -g -Wall -Wextra -pedantic -Wno-deprecated -Wno-char-subscripts
 
 # Optimized, no debug:
-# OPTS = -O2 -Wall -pedantic -Wno-deprecated -Wno-char-subscripts
-
-# Edited for Debian - build with debugging symbols; make it possible to
-# build without optimization
-OPTS = -g -Wall -pedantic -Wno-deprecated -Wno-char-subscripts
-ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
-OPTS += -O0
-else
-OPTS += -O2
-endif
-
-# Edited for Debian - make it possible to install unstripped binaries
-ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
-INSTALL_OPTS = -s
-else
-INSTALL_OPTS =
-endif
-
-# Edited for Debian
-DESTDIR =
+OPTS = -O2 -Wall -pedantic -Wno-deprecated -Wno-char-subscripts
 
 # PREFIX is the base directory under which to install the binary and man 
 # page; generally either /usr/local or /usr (or perhaps /opt...):
 
-PREFIX = $(DESTDIR)/usr
+PREFIX = /usr/local
 
 # Delete command ("rm" or "del", as appropriate):
 
@@ -82,8 +63,7 @@ LIBS = -lcurses
 #--------------------------------------------------------------
 #--------------------------------------------------------------
 
-HELPDIR = $(PREFIX)/share/man/man1
-DOCDIR = $(PREFIX)/share/doc/multimail
+HELPDIR = $(PREFIX)/man/man1
 
 all:	mm
 
@@ -113,11 +93,7 @@ modclean:
 	cd mmail $(SEP) $(MAKE) RM="$(RM)" modclean $(SEP) cd ..
 
 install::
-	install -d $(PREFIX)/bin $(HELPDIR) $(DOCDIR)
-	install -c $(INSTALL_OPTS) mm $(PREFIX)/bin
+	install -c -s mm $(PREFIX)/bin
 	install -c -m 644 mm.1 $(HELPDIR)
 	$(RM) $(HELPDIR)/mmail.1
-#	ln $(HELPDIR)/mm.1 $(HELPDIR)/mmail.1
-	install -m 644 README $(DOCDIR)
-	install -d $(DOCDIR)/colors
-	cp -a colors/* $(DOCDIR)/colors
+	ln $(HELPDIR)/mm.1 $(HELPDIR)/mmail.1
