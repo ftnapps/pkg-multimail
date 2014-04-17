@@ -16,7 +16,6 @@ Comment: MultiMail was originally developed under Linux by Kolossvary Tamas and
 License: GPL-3
 
 Files: debian/*
-Comment: Copyright and License for the debian directory files.
 Copyright: 2013-2014, Robert James Clay <jame@rocasa.us>
  2000-2010, Peter Karlsson <peterk@debian.org>
  1999-2000, Per Lundberg <plundis@debian.org>
