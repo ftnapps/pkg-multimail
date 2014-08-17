@@ -3,7 +3,7 @@ Description: Changes to enable package build.
 Author: Peter Karlsson <peterk@debian.org>
 Reviewed-By: Robert James Clay <jame@rocasa.us>
 Origin: vendor
-Last-Update: 2013-06-25
+Last-Update: 2013-08-17
 
 --- multimail-0.49.orig/Makefile
 +++ multimail-0.49/Makefile
