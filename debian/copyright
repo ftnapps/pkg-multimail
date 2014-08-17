@@ -22,7 +22,8 @@ Copyright: 2013-2014, Robert James Clay <jame@rocasa.us>
 License: GPL-3
 
 Files: mmail/bluewave.h
-License:
+Copyright: Copyright 1990-1995 by Cutting Edge Computing
+License: Permissive
  --- begin extract
  The Blue  Wave Offline  Mail System  File  Structures  (hereafter
  known as "structures" or "the structures") were created by George
