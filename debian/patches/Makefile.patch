@@ -7,7 +7,7 @@ Last-Update: 2013-06-25
 
 --- multimail-0.49.orig/Makefile
 +++ multimail-0.49/Makefile
-@@ -10,12 +10,31 @@ include version
+@@ -10,12 +10,24 @@ include version
  #OPTS = -g -Wall -Wextra -pedantic -Wno-deprecated -Wno-char-subscripts
  
  # Optimized, no debug:
@@ -21,13 +21,6 @@ Last-Update: 2013-06-25
 +OPTS += -O0
 +else
 +OPTS += -O2
-+endif
-+
-+# Edited for Debian - make it possible to install unstripped binaries
-+ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
-+INSTALL_OPTS = -s
-+else
-+INSTALL_OPTS =
 +endif
 +
 +# Edited for Debian
