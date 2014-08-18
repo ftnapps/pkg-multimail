@@ -7,7 +7,7 @@ Last-Update: 2013-08-17
 
 --- multimail-0.49.orig/Makefile
 +++ multimail-0.49/Makefile
-@@ -10,12 +10,24 @@ include version
+@@ -10,12 +10,27 @@ include version
  #OPTS = -g -Wall -Wextra -pedantic -Wno-deprecated -Wno-char-subscripts
  
  # Optimized, no debug:
@@ -22,6 +22,9 @@ Last-Update: 2013-08-17
 +else
 +OPTS += -O2
 +endif
++
++# Edited for Debian - Include LDFLAGS in build.
++OPTS += $(LDFLAGS)
 +
 +# Edited for Debian
 +DESTDIR =
