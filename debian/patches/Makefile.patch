@@ -1,7 +1,7 @@
 Description: Changes to enable package build.
  Changes to the upstream Makefile to enable package builds.
 Author: Peter Karlsson <peterk@debian.org>
-Reviewed-By: Robert James Clay <jame@rocasa.us>
+Author: Robert James Clay <jame@rocasa.us>
 Origin: vendor
 Last-Update: 2013-08-17
 
