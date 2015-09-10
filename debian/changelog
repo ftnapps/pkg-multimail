@@ -1,4 +1,4 @@
-multimail (0.49-3~4) UNRELEASED; urgency=low
+multimail (0.49-3~5) UNRELEASED; urgency=low
 
   * New maintainer. (Closes: #693230)
   * Add debian/watch file for use by uscan.
@@ -11,14 +11,14 @@ multimail (0.49-3~4) UNRELEASED; urgency=low
     - Update debhelper Build-Depends version to '>= 9.0'.
     - Add ${misc:Depends} to binary package Depends line 
     - Add a Homepage entry to the source package stanza.
-    - Set Standards-Version entry to 3.9.5, no changes required.
+    - Set Standards-Version entry to 3.9.6, no changes required.
   * Changes to debian/patches:
     - Add initial version of debian/patches/Makefile.patch.
     - Add initial version of debian/patches/ManPageFix.patch.
     - Add initial version of debian/patches/BuildFailureBugFix.patch.
   * Rewrite debian/rules to be used for dh.
 
- -- Robert James Clay <jame@rocasa.us>  Sun, 17 Aug 2014 12:24:39 -0400
+ -- Robert James Clay <jame@rocasa.us>  Thu, 10 Sep 2015 13:04:24 -0400
 
 multimail (0.49-2) unstable; urgency=low
 
