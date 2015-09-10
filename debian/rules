@@ -1,10 +1,11 @@
 #!/usr/bin/make -f
 # debian/rules for multimail
 
-# To enable all, uncomment following line
-export DEB_BUILD_MAINT_OPTIONS = hardening=-format
-export DEB_CFLAGS_MAINT_APPEND  = -Wall -pedantic
-export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
+# Flag updates
+CPPFLAGS:=$(shell dpkg-buildflags --get CPPFLAGS)
+CFLAGS:=$(shell dpkg-buildflags --get CFLAGS)
+CXXFLAGS:=$(shell dpkg-buildflags --get CXXFLAGS)
+LDFLAGS:=$(shell dpkg-buildflags --get LDFLAGS)
 
 %:
 	dh $@
