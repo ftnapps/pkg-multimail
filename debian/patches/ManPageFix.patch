@@ -4,18 +4,21 @@ Description: Fix for an issue in the MultiMail man page.
  as being used to indicate a comment line in the description of the file
  used for the MultiMail configuration and it is a coincidence that it is at
  the beginning of the line. Patch to include coding for a zero width space.
+ A minus sign is by default considered as a hypen but with command line
+ parameters, it should be considered as a minus sing. Escape it at line 781
+ to ensure that it is treated as a minus sign.
 Author: Robert James Clay <jame@rocasa.us>
-Last-Update: <2013-05-04>
+Last-Update: <2015-09-10>
 
---- multimail-0.49.orig/mm.1
-+++ multimail-0.49/mm.1
+--- a/mm.1
++++ b/mm.1
 @@ -1,4 +1,4 @@
 -.TH MultiMail 1 "July 19, 2007"
-+.TH MultiMail 1 "May 4, 2013"
++.TH MultiMail 1 "September 5, 2015"
  .SH NAME
  mm - offline mail reader for Blue Wave, QWK, OMEN, SOUP and OPX packets
  .SH SYNOPSIS
-@@ -360,7 +360,7 @@ The default directory for saving message
+@@ -360,7 +360,7 @@
  The config file (see above) is a plain text file with a series of values,
  one per line, in the form "KeyWord: Value". The case of the keywords is
  not signifigant. Additional, comment lines may be present, starting with
@@ -24,3 +27,12 @@ Last-Update: <2013-05-04>
  replaced by the defaults when you upgrade to a new version.) If any of the
  keywords are missing, default values will be used.
  
+@@ -716,7 +716,7 @@
+ 
+ If you're using the XCurses (PDCurses) version, and your editor isn't an X
+ app, it will work better if you set MultiMail's "editor" keyword to
+-"xterm -e filename" (instead of just "filename"). I decided not to do
++"xterm \-e filename" (instead of just "filename"). I decided not to do
+ this automatically because someone might actually use it with an X editor.
+ 
+ Editing and deletion of old replies are available through the REPLY area,
