@@ -1,29 +1,79 @@
-Description: Fix for FTBFS with GCC 4.3 bug.
- Fix for Debian FTBFS bug # 461712, where it was failing to build because of
- pre-iso c++ headers that were still being used in the source.
-Bug-Debian: http://bugs.debian.org/461712
-Author: Peter Karlsson <peterk@debian.org>
-Reviewed-By: Robert James Clay <jame@rocasa.us>
-Origin: vendor
-Last-Update: 2013-06-25
+Description: Junk the new.h stuff -- incompatible with latest gcc, and
+ not otherwise useful, really. 
+ Commit d831f4ac72efb8c80861e8505a91c790f57e9b76 Mon Sep 17 00:00:00 2001
+Author: William McBrine <wmcbrine@users.sourceforge.net>
+Date: Mon, 11 Feb 2008 07:12:41 +0000
+Origin: upstream
+Reviewed: <2015-09-10>
 
---- multimail-0.49.orig/interfac/main.cc
-+++ multimail-0.49/interfac/main.cc
-@@ -12,7 +12,7 @@
+---
+ config.h           |  7 -------
+ interfac/main.cc   | 16 +---------------
+ interfac/packet.cc |  4 ++--
+ version            |  4 ++--
+ 4 files changed, 5 insertions(+), 26 deletions(-)
+
+diff --git a/config.h b/config.h
+index bed843b..d9146df 100644
+--- a/config.h
++++ b/config.h
+@@ -139,13 +139,6 @@
+ # define USE_SETFTIME
+ #endif
+ 
+-/* MSVC seems to have a nonstandard version of set_new_handler(). It's 
+-   not that useful anyway.
+-*/
+-#ifndef _MSC_VER
+-# define USE_NEWHANDLER
+-#endif
+-
+ /* Turbo C++ 3.0 lacks the "bool" and "off_t" types.*/
+ 
+ #ifndef TURBO16
+diff --git a/interfac/main.cc b/interfac/main.cc
+index 10484d5..8fc10c4 100644
+--- a/interfac/main.cc
++++ b/interfac/main.cc
+@@ -3,7 +3,7 @@
+  * main, error
+ 
+  Copyright (c) 1996 Kolossvary Tamas <thomas@vma.bme.hu>
+- Copyright (c) 2007 William McBrine <wmcbrine@users.sf.net>
++ Copyright (c) 2008 William McBrine <wmcbrine@users.sf.net>
+ 
+  Distributed under the GNU General Public License.
+  For details, see the file COPYING in the parent directory. */
+@@ -11,10 +11,6 @@
+ #include "error.h"
  #include "interfac.h"
  
- #ifdef USE_NEWHANDLER
+-#ifdef USE_NEWHANDLER
 -# include <new.h>
-+# include <new>
+-#endif
+-
+ #include <locale.h>
+ 
+ Interface *ui = 0;
+@@ -27,21 +23,11 @@ mmail mm;
+ MEVENT mm_mouse_event;
  #endif
  
- #include <locale.h>
-@@ -40,7 +40,7 @@ ErrorType::ErrorType()
+-#ifdef USE_NEWHANDLER
+-void memError()
+-{
+-	fatalError("Memory allocation error");
+-}
+-#endif
+-
+ ErrorType::ErrorType()
+ {
+ 	starttime = time(0);
  	srand((unsigned) starttime);
  
- #ifdef USE_NEWHANDLER
+-#ifdef USE_NEWHANDLER
 -	set_new_handler(memError);
-+	std::set_new_handler(memError);
- #endif
+-#endif
  	origdir = mygetcwd();
  }
+ 
