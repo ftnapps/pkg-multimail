@@ -9,6 +9,7 @@ Description: Fixes for issues in the MultiMail man page.
  to ensure that it is treated as a minus sign.
  Correct spelling error of the word 'Separated' at line 689.
 Author: Robert James Clay <jame@rocasa.us>
+Origin: vendor
 Last-Update: <2015-09-10>
 
 --- a/mm.1
