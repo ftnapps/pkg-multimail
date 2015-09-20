@@ -1,16 +1,16 @@
 Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: MultiMail
 Source: http://multimail.sourceforge.net/
-Upstream-Contact: William McBrine <wmcbrine@users.sourceforge.net>
+Upstream-Contact: William McBrine <wmcbrine@gmail.com>
 
 Files: *
-Copyright: 1997-2007, William McBrine <wmcbrine@users.sourceforge.net>
+Copyright: 1997-2015, William McBrine <wmcbrine@gmail.com>
  1997, John Zero
  1996, Kolossvary Tamas
  1996, Toth Istvan
 Comment: MultiMail was originally developed under Linux by Kolossvary Tamas and
  Toth Istvan. John Zero was the maintainer for versions 0.2 through 0.6; since
- version 0.7, the maintainer is William McBrine <wmcbrine@users.sourceforge.net>.
+ version 0.7, the maintainer is William McBrine <wmcbrine@gmail.com>.
  Additional code has been contribued by Peter Karlsson, Mark D. Rejhon, Ingo
  Brueckl, and Robert Vukovic.
 License: GPL-3
