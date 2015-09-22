@@ -1,5 +1,5 @@
 Description: Fixes for issues in the MultiMail man page.
- The "'#'" at the beginning of line 363 causes a Lintian warning about a
+ The "'#';" at the beginning of line 363 causes a Lintian warning about a
  macro not being defined but it is actually referring to the "#" character
  as being used to indicate a comment line in the description of the file
  used for the MultiMail configuration and it is a coincidence that it is at
@@ -7,24 +7,28 @@ Description: Fixes for issues in the MultiMail man page.
  A minus sign is by default considered as a hyphen but with command line
  parameters, it should be considered as a minus sign. Escape it at line 781
  to ensure that it is treated as a minus sign.
+ Correct spelling error of the word 'significant' at line 362
  Correct spelling error of the word 'Separated' at line 689.
+Bug: https://github.com/wmcbrine/MultiMail/issues/1
 Author: Robert James Clay <jame@rocasa.us>
 Origin: vendor
-Last-Update: <2015-09-10>
+Last-Update: <2015-09-22>
 
 --- a/mm.1
 +++ b/mm.1
 @@ -1,4 +1,4 @@
 -.TH MultiMail 1 "July 19, 2007"
-+.TH MultiMail 1 "September 5, 2015"
++.TH MultiMail 1 "September 22, 2015"
  .SH NAME
  mm - offline mail reader for Blue Wave, QWK, OMEN, SOUP and OPX packets
  .SH SYNOPSIS
-@@ -360,7 +360,7 @@
+@@ -359,8 +359,8 @@
+ .SH CONFIG FILE
  The config file (see above) is a plain text file with a series of values,
  one per line, in the form "KeyWord: Value". The case of the keywords is
- not signifigant. Additional, comment lines may be present, starting with
+-not signifigant. Additional, comment lines may be present, starting with
 -'#'; you can remove these or add your own. (But note that the comments are
++not significant. Additional, comment lines may be present, starting with
 +\&'#'; you can remove these or add your own. (But note that the comments are
  replaced by the defaults when you upgrade to a new version.) If any of the
  keywords are missing, default values will be used.
