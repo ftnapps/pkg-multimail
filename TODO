@@ -1,0 +1,9 @@
+MultiMail ToDo
+
+-------------------------------------------------------------------------------
+- Only on Ubuntu: https://bugs.launchpad.net/ubuntu/+source/multimail/+bug/1184226
+MultiMail fails to install if the MountManager package is already installed because
+MountManager uses the same '/usr/bin/mm' installation path that MultiMail has been
+using since 1999. Note that MountManager now only appears to be in Ubuntu v12.04,
+'Precise'.
+-------------------------------------------------------------------------------
