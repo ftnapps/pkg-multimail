@@ -15,7 +15,7 @@ Last-Update: 2015-09-20
 -#OPTS = -g -Wall -Wextra -pedantic -Wno-char-subscripts
 +# Edited for Debian - build with debugging symbols; make it possible to
 +# build without optimization
-+OPTS = -g -Wall -Wextra -pedantic -Wno-deprecated -Wno-char-subscripts
++OPTS = -g -Wall -Wextra -pedantic -fstack-protector-strong -Wformat -Werror=format-security  -Wno-char-subscripts
 +ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
 +OPTS += -O0
 +else
@@ -24,8 +24,8 @@ Last-Update: 2015-09-20
  
 -# Optimized, no debug:
 -OPTS = -O2 -Wall -pedantic -Wno-char-subscripts
-+# Edited for Debian - Include LDFLAGS in build.
-+OPTS += $(LDFLAGS)
++# Edited for Debian - Include CPPFLAGS in build.
++OPTS += $(CPPFLAGS)
 +
 +# Edited for Debian
 +DESTDIR =
@@ -48,6 +48,15 @@ Last-Update: 2015-09-20
  
  all:	mm
  
+@@ -77,7 +87,7 @@
+ 		CURS_DIR="$(CURS_DIR)" intrfc $(SEP) cd ..
+ 
+ mm:	mm-main intrfc
+-	$(CXX) -o mm mmail/*.o interfac/*.o -L$(CURS_LIB) $(LIBS)
++	$(CXX) $(OPTS) $(LDFLAGS) -o mm mmail/*.o interfac/*.o -L$(CURS_LIB) $(LIBS)
+ 	$(POST)
+ 
+ dep:
 @@ -93,7 +103,11 @@
  	cd mmail $(SEP) $(MAKE) RM="$(RM)" modclean $(SEP) cd ..
  
