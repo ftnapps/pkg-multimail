@@ -139,13 +139,6 @@
 # define USE_SETFTIME
 #endif
 
-/* MSVC seems to have a nonstandard version of set_new_handler(). It's 
-   not that useful anyway.
-*/
-#ifndef _MSC_VER
-# define USE_NEWHANDLER
-#endif
-
 /* Turbo C++ 3.0 lacks the "bool" and "off_t" types.*/
 
 #ifndef TURBO16
@@ -153,7 +146,7 @@
 # define HAS_OFFT
 #endif
 
-/* Some lines in the code serve no purpose but to supress the GCC warning
+/* Some lines in the code serve no purpose but to suppress the GCC warning
    "might be used uninitialized in this function". Borland C++ 5.5, on the
    other hand, complains "is assigned a value that is never used" if I
    leave these lines _in_.

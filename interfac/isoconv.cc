@@ -2,14 +2,14 @@
  * MultiMail offline mail reader
  * conversion tables ISO 8859-1 <-> IBM codepage 437
 
- Copyright (c) 1996 Peter Karlsson <peter@softwolves.pp.se>,
-                    Toth Istvan <stoty@vma.bme.hu>
- Copyright (c) 1999 William McBrine <wmcbrine@users.sourceforge.net>
+ Copyright 1997 Peter Karlsson <peter@softwolves.pp.se>,
+                Toth Istvan <stoty@vma.bme.hu>
+ Copyright 1998-2015 William McBrine <wmcbrine@gmail.com>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
 
-/* Original tables by Peter Karlsson, modified by William McBrine after 
+/* Original tables by Peter Karlsson, modified by William McBrine after
    DOSEmu's video/terminal.h, by Mark D. Rejhon. */
 
 #include "interfac.h"
@@ -36,46 +36,46 @@ const char *iso2dostab =
 
 char *charconv(char *buf, cdirtype cdir)
 {
-	const char *ct = (cdir == CC_ISOTO437) ? iso2dostab : dos2isotab;
+    const char *ct = (cdir == CC_ISOTO437) ? iso2dostab : dos2isotab;
 
-	for (char *p = buf; *p; p++) {
-		unsigned char c = *p;
-		if (c & 0x80)
-			*p = ct[c & 0x7f];
-	}
-	return buf;
+    for (char *p = buf; *p; p++) {
+        unsigned char c = *p;
+        if (c & 0x80)
+            *p = ct[c & 0x7f];
+    }
+    return buf;
 }
 
 char *charconv_in(char *buf)
 {
-	return (isoConsole ? charconv(buf, CC_437TOISO) : buf);
+    return (isoConsole ? charconv(buf, CC_437TOISO) : buf);
 }
 
 char *charconv_out(char *buf)
 {
-	return (isoConsole ? charconv(buf, CC_ISOTO437) : buf);
+    return (isoConsole ? charconv(buf, CC_ISOTO437) : buf);
 }
 
 char *letterconv_in(char *buf)
 {
-	return (mm.letterList->isLatin() ^ isoConsole) ?
-		charconv(buf, isoConsole ? CC_437TOISO : CC_ISOTO437) : buf;
+    return (mm.letterList->isLatin() ^ isoConsole) ?
+           charconv(buf, isoConsole ? CC_437TOISO : CC_ISOTO437) : buf;
 }
 
 char *letterconv_out(char *buf)
 {
-	return (mm.letterList->isLatin() ^ isoConsole) ?
-		charconv(buf, isoConsole ? CC_ISOTO437 : CC_437TOISO) : buf;
+    return (mm.letterList->isLatin() ^ isoConsole) ?
+           charconv(buf, isoConsole ? CC_ISOTO437 : CC_437TOISO) : buf;
 }
 
 char *areaconv_in(char *buf)
 {
-	return (mm.areaList->isLatin() ^ isoConsole) ?
-		charconv(buf, isoConsole ? CC_437TOISO : CC_ISOTO437) : buf;
+    return (mm.areaList->isLatin() ^ isoConsole) ?
+           charconv(buf, isoConsole ? CC_437TOISO : CC_ISOTO437) : buf;
 }
 
 char *areaconv_out(char *buf)
 {
-	return (mm.areaList->isLatin() ^ isoConsole) ?
-		charconv(buf, isoConsole ? CC_ISOTO437 : CC_437TOISO) : buf;
+    return (mm.areaList->isLatin() ^ isoConsole) ?
+           charconv(buf, isoConsole ? CC_ISOTO437 : CC_437TOISO) : buf;
 }

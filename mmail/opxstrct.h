@@ -1,5 +1,5 @@
 /* OPX packet structures, in C
-   Reverse engineered by William McBrine <wmcbrine@users.sourceforge.net>
+   Reverse engineered by William McBrine <wmcbrine@gmail.com>
    Placed in the Public Domain
 
    Version 1.2 of this document, Dec. 28, 2000
@@ -58,51 +58,49 @@ typedef unsigned char pbyte;
    "repHead" struct used in earlier versions of this document, and changes
    the "msgHead" struct.
 
-   Based on Fido packet specifications, this struct uses null-terminated 
+   Based on Fido packet specifications, this struct uses null-terminated
    (C-style) strings instead of the BP strings used elsewhere.
 */
 
 #define FIDO_HEAD_SIZE 190
 
 typedef struct {
-	char from[36];		/* From: (null-terminated string) */
-	char to[36];		/* To: */
-	char subject[72];	/* Subject: */
-	char date[20];		/* Date in ASCII (not authoritative) */
-	pshort dest_zone;	/* Fido zone number of destination -- in
-				   replies, set to 0 for non-netmail */
-	pshort dest_node;	/* Node of dest. */
-	pshort orig_node;	/* Node number of originating system */
-	pshort orig_zone;	/* Zone of orig. */
-	pshort orig_net;	/* Net of orig. */
-	pshort dest_net;	/* Net of dest. */
-	plong date_written;	/* Date in packed MS-DOS format */
-	plong date_arrived;	/* Date the message arrived on the BBS, in
-				   packed MS-DOS format (meaningless in
-				   replies) */
-	pshort reply;		/* Number of message that this replies to,
-				   if applicable */
-	pshort attr;		/* Attributes */
-	pshort up;		/* Number of message that replies to this
-				   one, if applicable (meaningless in
-				   replies) */
+    char from[36];          /* From: (null-terminated string) */
+    char to[36];            /* To: */
+    char subject[72];       /* Subject: */
+    char date[20];          /* Date in ASCII (not authoritative) */
+    pshort dest_zone;       /* Fido zone number of destination -- in
+                               replies, set to 0 for non-netmail */
+    pshort dest_node;       /* Node of dest. */
+    pshort orig_node;       /* Node number of originating system */
+    pshort orig_zone;       /* Zone of orig. */
+    pshort orig_net;        /* Net of orig. */
+    pshort dest_net;        /* Net of dest. */
+    plong date_written;     /* Date in packed MS-DOS format */
+    plong date_arrived;     /* Date the message arrived on the BBS, in packed
+                               MS-DOS format (meaningless in replies) */
+    pshort reply;           /* Number of message that this replies to,
+                               if applicable */
+    pshort attr;            /* Attributes */
+    pshort up;              /* Number of message that replies to this one,
+                               if applicable (meaningless in replies) */
 } fidoHead;
 
 /* "attr" is a bitfield with the following values: */
 
-#define OPX_PRIVATE	1	/* Private message */
-#define OPX_CRASH	2	/* Fido crashmail */
-#define OPX_RECEIVED	4	/* Read by addressee */
-#define OPX_SENT	8
-#define OPX_FATTACH	16
-#define OPX_ORPHAN	64
-#define OPX_KILL	128
-#define OPX_LOCAL	256	/* Some readers set this on every reply */
-#define OPX_HOLD	512
-#define OPX_FREQ	2048
-#define OPX_RREQ	4096
-#define OPX_RECEIPT	8192
-#define OPX_FUREQ	32768
+#define OPX_PRIVATE    1    /* Private message */
+#define OPX_CRASH      2    /* Fido crashmail */
+#define OPX_RECEIVED   4    /* Read by addressee */
+#define OPX_SENT       8
+#define OPX_FATTACH   16
+#define OPX_ORPHAN    64
+#define OPX_KILL     128
+#define OPX_LOCAL    256    /* Some readers set this on every reply */
+#define OPX_HOLD     512
+#define OPX_FREQ    2048
+#define OPX_RREQ    4096
+#define OPX_RECEIPT 8192
+#define OPX_FUREQ  32768
 
 /* "Packed MS-DOS format" dates are the format used by MS-DOS in some of
    its time/date routines, and in the FAT file system. They can cover
@@ -122,34 +120,34 @@ typedef struct {
 
 /* The Header */
 
-/* To ensure correct operation where alignment padding is used, when 
+/* To ensure correct operation where alignment padding is used, when
    reading from or writing to disk, use the _SIZE defines given here
    rather than "sizeof":
 */
 #define BRD_HEAD_SIZE 743
 
 typedef struct {
-	char unknown1[15];
-	pstring(doorid,20);	/* ID of the door that made this */
-	pstring(bbsid,8);	/* Like BBSID in QWK; used for replies */
-	pstring(bbsname,60);	/* BBS name */
-	pstring(sysopname,50);	/* Sysop's name */
-	char unknown2[81];
-	pstring(zone,6);	/* Fidonet zone number of BBS, in ASCII */
-	pstring(net,6);		/* Net number */
-	pstring(node,6);	/* Node number */
-	char unknown3[252];
-	pstring(doorver,10);	/* Version number of door */
-	char unknown4[2];
-	pstring(phoneno,26);	/* Phone number of BBS */
-	char unknown5[4];
-	pstring(bbstype,123);	/* BBS software name and version -- not
-				   the right length, I'm sure */
-	pstring(username,35);	/* User's name */
-	char unknown6[21];
-	pshort numofareas;	/* Number of conferences */
-	char unknown7[4];
-	pbyte readerfiles;	/* Number of readerfiles */
+    char unknown1[15];
+    pstring(doorid,20);     /* ID of the door that made this */
+    pstring(bbsid,8);       /* Like BBSID in QWK; used for replies */
+    pstring(bbsname,60);    /* BBS name */
+    pstring(sysopname,50);  /* Sysop's name */
+    char unknown2[81];
+    pstring(zone,6);        /* Fidonet zone number of BBS, in ASCII */
+    pstring(net,6);         /* Net number */
+    pstring(node,6);        /* Node number */
+    char unknown3[252];
+    pstring(doorver,10);    /* Version number of door */
+    char unknown4[2];
+    pstring(phoneno,26);    /* Phone number of BBS */
+    char unknown5[4];
+    pstring(bbstype,123);   /* BBS software name and version -- not
+                               the right length, I'm sure */
+    pstring(username,35);   /* User's name */
+    char unknown6[21];
+    pshort numofareas;      /* Number of conferences */
+    char unknown7[4];
+    pbyte readerfiles;      /* Number of readerfiles */
 } brdHeader;
 
 /* This is followed by a 13-byte record (a Pascal string[12]) for each
@@ -164,28 +162,28 @@ typedef struct {
 #define BRD_REC_SIZE 86
 
 typedef struct {
-	pshort acclevel;	/* Access level */
-	pbyte conflow;		/* Low byte of conf. number (obsolete) */
-	pstring(name,70);	/* Name of conference on BBS */
-	pshort confnum;		/* Number of conference on BBS */
-	char unknown2[3];
-	pshort attrib;		/* Area attributes (bitflags) */
-	char unknown3[2];
-	pbyte attrib2;		/* More area attributes */
-	pbyte scanned;		/* Subscribed flag -- not reliable */
-	pbyte oldattrib;	/* Low byte of attrib (obsolete) */
+    pshort acclevel;        /* Access level */
+    pbyte conflow;          /* Low byte of conf. number (obsolete) */
+    pstring(name,70);       /* Name of conference on BBS */
+    pshort confnum;         /* Number of conference on BBS */
+    char unknown2[3];
+    pshort attrib;          /* Area attributes (bitflags) */
+    char unknown3[2];
+    pbyte attrib2;          /* More area attributes */
+    pbyte scanned;          /* Subscribed flag -- not reliable */
+    pbyte oldattrib;        /* Low byte of attrib (obsolete) */
 } brdRec;
 
 /* Some of the flags in attrib appear to be: */
 
-#define OPX_NETMAIL	1
-#define OPX_PRIVONLY	4
-#define OPX_PUBONLY	8
+#define OPX_NETMAIL   1
+#define OPX_PRIVONLY  4
+#define OPX_PUBONLY   8
 
 /* And in attrib2: */
 
-#define OPX_INTERNET	64
-#define OPX_USENET	128
+#define OPX_INTERNET 64
+#define OPX_USENET  128
 
 /* After all the areas comes some extra data which I'm ignoring for now.
    It appears to be a list of the message number, conference number, and
@@ -194,8 +192,8 @@ typedef struct {
 
 /* ### EXTAREAS.DAT ### */
 
-/* Some packets have extra area data in the file EXTAREAS.DAT. This file 
-   consists entirely of brdRec records, as in BRDINFO.DAT. The procedure 
+/* Some packets have extra area data in the file EXTAREAS.DAT. This file
+   consists entirely of brdRec records, as in BRDINFO.DAT. The procedure
    for handing area data when this file is present should be as follows:
 
      X = brdHeader.numofareas
@@ -207,8 +205,8 @@ typedef struct {
 
 /* ### MAIL.DAT structures ### */
 
-/* Each message consists of the header, in a fixed format shown below, 
-   followed by the message text, whose length is specified in the header. 
+/* Each message consists of the header, in a fixed format shown below,
+   followed by the message text, whose length is specified in the header.
    Messages for all areas are concatenated.
 
    The first 14 bytes of the header are specific to OPX; the remainder is
@@ -216,9 +214,9 @@ typedef struct {
    length of the entire message, including the classic Fido header, but
    NOT including the OPX-specific part of the header (those first 14 bytes).
 
-   Since the header size is fixed (AFAIK), a more useful interpretation of 
-   the length field might be the length of the text plus 0xBE bytes. Also, 
-   because the field is only a 16-bit integer, it will be invalid if a 
+   Since the header size is fixed (AFAIK), a more useful interpretation of
+   the length field might be the length of the text plus 0xBE bytes. Also,
+   because the field is only a 16-bit integer, it will be invalid if a
    message longer than 64k is packed.
 */
 
@@ -227,15 +225,15 @@ typedef struct {
 #define MSG_HEAD_SIZE 204
 
 typedef struct {
-	pshort msgnum;		/* Message number on BBS */
-	pshort confnum;		/* Conference number */
-	pshort length;		/* Length of text + Fido header (0xBE) */
-	char unknown1;
-        char msgtype;           /* 'D' = Direct (personal),
-                                   'K' = Keyword, or ' ' */
-	char unknown2[6];
+    pshort msgnum;          /* Message number on BBS */
+    pshort confnum;         /* Conference number */
+    pshort length;          /* Length of text + Fido header (0xBE) */
+    char unknown1;
+    char msgtype;           /* 'D' = Direct (personal),
+                               'K' = Keyword, or ' ' */
+    char unknown2[6];
 
-	fidoHead f;		/* Classic Fido header */
+    fidoHead f;             /* Classic Fido header */
 } msgHead;
 
 /* The message text consists of lines delimited by LF, CRLF, CR, or even a
@@ -256,15 +254,15 @@ typedef struct {
 #define FDX_HEAD_SIZE 25
 
 typedef struct {
-	pshort RowsInPage;	/* Normally the total number of messages */
-	pshort ColsInPage;	/* Always 1, in MAIL.FDX */
-	pshort PagesDown;
-	pshort PagesAcross; 
-	pshort ElSize;		/* Size of element; i.e., sizeof(fdxRec) */
-	pshort PageSize;	/* RowsInPage * ColsInPage * ElSize */
-	pshort PageCount;	/* Normally 1, but see below */
-	plong NextAvail;	/* Next "page" = Total file size, here */
-	char ID[7];		/* Always "\006VARRAY" */
+    pshort RowsInPage;      /* Normally the total number of messages */
+    pshort ColsInPage;      /* Always 1, in MAIL.FDX */
+    pshort PagesDown;
+    pshort PagesAcross;
+    pshort ElSize;          /* Size of element; i.e., sizeof(fdxRec) */
+    pshort PageSize;        /* RowsInPage * ColsInPage * ElSize */
+    pshort PageCount;       /* Normally 1, but see below */
+    plong NextAvail;        /* Next "page" = Total file size, here */
+    char ID[7];             /* Always "\006VARRAY" */
 } fdxHeader;
 
 /* This is followed by a table of pointers to pages; each is a plong.
@@ -290,41 +288,41 @@ typedef struct {
 #define FDX_REC_SIZE 11
 
 typedef struct {
-	pshort confnum;		/* Area number */
-	pshort msgnum;		/* Message number */
-	char msgtype;		/* 'D' = Direct (personal),
-				   'K' = Keyword, or ' ' */
-	pbyte flags;		/* Read, replied, etc. */
-	pbyte marks;		/* Marked, etc. */
-	plong offset;		/* Start of message in MAIL.DAT */
+    pshort confnum;         /* Area number */
+    pshort msgnum;          /* Message number */
+    char msgtype;           /* 'D' = Direct (personal),
+                               'K' = Keyword, or ' ' */
+    pbyte flags;            /* Read, replied, etc. */
+    pbyte marks;            /* Marked, etc. */
+    plong offset;           /* Start of message in MAIL.DAT */
 } fdxRec;
 
 /* Although these records contain the conference and message numbers
    themselves, they should be stored in the same order as the messages in
-   MAIL.DAT. Message lengths can be calculated by subtracting the offset 
+   MAIL.DAT. Message lengths can be calculated by subtracting the offset
    field of an fdxRec from that of the next one.
 */
 
 /* "flags" is a bitfield with the following values: */
 
-#define FDX_READ	0x01  /* Set when read by reader */
-#define FDX_REPLIED	0x02  /* Set if a reply exists for this message */
-#define FDX_SEARCH	0x04  /* Set if message is a search hit */
+#define FDX_READ      0x01  /* Set when read by reader */
+#define FDX_REPLIED   0x02  /* Set if a reply exists for this message */
+#define FDX_SEARCH    0x04  /* Set if message is a search hit */
 
 /* "marks" is a bitfield with the following values: */
 
-#define FDX_KILL	0x01
-#define FDX_FILE	0x02
-#define FDX_PRINT	0x04
-#define FDX_READ2	0x08
-#define FDX_URGENT	0x10
-#define FDX_TAGGED	0x20
-#define FDX_DOS		0x40
+#define FDX_KILL      0x01
+#define FDX_FILE      0x02
+#define FDX_PRINT     0x04
+#define FDX_READ2     0x08
+#define FDX_URGENT    0x10
+#define FDX_TAGGED    0x20
+#define FDX_DOS       0x40
 
 /* ### DUSRCFG.DAT structures ### */
 
 /* Only some packets have this. It indicates which areas are subscribed
-   to, and enables offline config. There's one header record, followed by 
+   to, and enables offline config. There's one header record, followed by
    one record for each area.
 */
 
@@ -333,54 +331,54 @@ typedef struct {
 #define OCFG_HEAD_SIZE 120
 
 typedef struct {
-	plong unknown1;
-	pbyte flags1, flags2, flags3, flags4;	/* Bit-mapped options */
-	pshort numofareas;	/* Total number of areas */
-	pbyte helplevel;	/* Door Menu Help Level:
-				   0 = NOVICE, 1 = EXPERT, 2 = GXPRESS */
-	pbyte flags5;
-	char unknown2[108];
+    plong unknown1;
+    pbyte flags1, flags2, flags3, flags4;  /* Bit-mapped options */
+    pshort numofareas;      /* Total number of areas */
+    pbyte helplevel;        /* Door Menu Help Level:
+                               0 = NOVICE, 1 = EXPERT, 2 = GXPRESS */
+    pbyte flags5;
+    char unknown2[108];
 } ocfgHeader;
 
 /* Values for the flags are as follows: */
 
 /* Bit-masks for flags1 */
-#define OCFG_GRAPHICS		1	/* Use Door Ansi Graphics */
-#define OCFG_HOTKEYS		2	/* Use Door Menu Hot Keys */
-#define OCFG_GROUPMAIL		4	/* Accept Group Mail */
-#define OCFG_MY_MAIL		8	/* Scan Your Own Mail */
+#define OCFG_GRAPHICS            1  /* Use Door Ansi Graphics */
+#define OCFG_HOTKEYS             2  /* Use Door Menu Hot Keys */
+#define OCFG_GROUPMAIL           4  /* Accept Group Mail */
+#define OCFG_MY_MAIL             8  /* Scan Your Own Mail */
 
 /* Bit-masks for flags2 */
-#define OCFG_NEWFILES		4	/* Scan for New Files */
-#define OCFG_MAIL_ONLY		64	/* Show Areas with Mail Only */
+#define OCFG_NEWFILES            4  /* Scan for New Files */
+#define OCFG_MAIL_ONLY          64  /* Show Areas with Mail Only */
 
 /* Bit-masks for flags3 */
-#define OCFG_VACATION		4	/* Use Vacation Saver Mail */
-#define OCFG_BULLETIN		8	/* Scan For News Bulletins */
-#define OCFG_IBM_CHAR		16	/* Use IBM Characters */
-#define OCFG_REP_RECPT		32	/* Send REPLY Receipt */
-#define OCFG_SEND_QWK_NDX	64	/* QWK: Send NDX index files */
-#define OCFG_STRIP_QWK_KLUDGE	128	/* QWK: Strip Kludges Lines */
+#define OCFG_VACATION            4  /* Use Vacation Saver Mail */
+#define OCFG_BULLETIN            8  /* Scan For News Bulletins */
+#define OCFG_IBM_CHAR           16  /* Use IBM Characters */
+#define OCFG_REP_RECPT          32  /* Send REPLY Receipt */
+#define OCFG_SEND_QWK_NDX       64  /* QWK: Send NDX index files */
+#define OCFG_STRIP_QWK_KLUDGE  128  /* QWK: Strip Kludges Lines */
 
 /* Bit-masks for flags4 */
-#define OCFG_AUTO_XPRESS	1	/* Use Auto Xpress Starter */
-#define OCFG_SEL_AREAS_ONLY	8	/* Send Selected Areas Only */
-#define OCFG_PACKET_EXT		64	/* Use Packet Extension */
-#define OCFG_USE_FLEX		128	/* Use Flex Assistant */
+#define OCFG_AUTO_XPRESS         1  /* Use Auto Xpress Starter */
+#define OCFG_SEL_AREAS_ONLY      8  /* Send Selected Areas Only */
+#define OCFG_PACKET_EXT         64  /* Use Packet Extension */
+#define OCFG_USE_FLEX          128  /* Use Flex Assistant */
 
 /* Bit-masks for flags5 */
-#define OCFG_QWK_WRAP		1	/* QWK: Perform Word Wrapping */
-#define OCFG_SKIP_RIP		2	/* Skip RIP Graphics */
-#define OCFG_SEARCH_MSG		4	/* Search Message Body */
-#define OCFG_COLORED_NEW_FILES	8	/* Colorized New Files List */
+#define OCFG_QWK_WRAP            1  /* QWK: Perform Word Wrapping */
+#define OCFG_SKIP_RIP            2  /* Skip RIP Graphics */
+#define OCFG_SEARCH_MSG          4  /* Search Message Body */
+#define OCFG_COLORED_NEW_FILES   8  /* Colorized New Files List */
 
 /* Each Area */
 
 #define OCFG_REC_SIZE 3
 
 typedef struct {
-	pshort confnum;
-	pbyte scanned;		/* 1 = Scan, 0 = Don't scan */
+    pshort confnum;
+    pbyte scanned;          /* 1 = Scan, 0 = Don't scan */
 } ocfgRec;
 
 /* After all the specified area records, some extra records sometimes
@@ -438,7 +436,7 @@ typedef struct {
    intended for security/validation purposes, mainly indicating the
    registration status of the reader.
 
-   Line 1: A textual representation of a boolean, either "TRUE" or 
+   Line 1: A textual representation of a boolean, either "TRUE" or
            "FALSE". It's "TRUE" only if the packet comes from a registered
            reader AND the user name matches the registered user.
    Line 2: Blank, in replies where line 1 is "FALSE"; otherwise, a

@@ -2,8 +2,8 @@
  * MultiMail offline mail reader
  * miscellaneous routines (global)
 
- Copyright (c) 1996 Toth Istvan <stoty@vma.bme.hu>
- Copyright (c) 2000 William McBrine <wmcbrine@users.sourceforge.net>
+ Copyright 1996-1997 Toth Istvan <stoty@vma.bme.hu>
+ Copyright 1997-2015 William McBrine <wmcbrine@gmail.com>
 
  Distributed under the GNU General Public License.
  For details, see the file COPYING in the parent directory. */
@@ -47,7 +47,7 @@ unsigned char *qpdecode(unsigned char *);
 long qpdecode(FILE *, FILE *);
 void qpencode(FILE *, FILE *);
 
-void fatalError(const char *);	// actually in ../interfac/main.cc!
-void pauseError(const char *);	// actually in ../interfac/main.cc!
+void fatalError(const char *);  // actually in ../interfac/main.cc!
+void pauseError(const char *);  // actually in ../interfac/main.cc!
 
 #endif
