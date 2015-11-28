@@ -1,21 +1,22 @@
-multimail (0.50~20150922-1~1) UNRELEASED; urgency=low
+multimail (0.50~20150922-1) unstable; urgency=low
 
   * New maintainer. (Closes: #693230)
+  * Add current debian/TODO file.
   * Add debian/watch file for use by uscan.
-  * Rewrite debian/multimail.copyright in machine readable format.
+  * Rewrite debian/copyright in machine readable format.
   * Set package source format explicitly as '3.0 (quilt)'.
   * Changes to debian/control:
-    - Add multimail-dbg stanza.
-    - Change the Maintainer entry to be jame@rocasa.us.
-    - Add Vcs* entries for github.com/ftnapps repository.
-    - Update debhelper Build-Depends version to '>= 9.0'.
-    - Add ${misc:Depends} to binary package Depends line 
+    - Add a multimail-dbg stanza.
     - Add a Homepage entry to the source package stanza.
+    - Update debhelper Build-Depends version to '>= 9.0'.
+    - Add '${misc:Depends}' to the binary package Depends line.
     - Set Standards-Version entry to 3.9.6, no changes required.
+    - Change the Maintainer entry to be 'Robert James Clay <jame@rocasa.us'.
+    - Add Vcs* entries for the 'collab-maint' repository at anonscm.debian.org.
   * Add initial version of debian/patches/Makefile.patch.
   * Rewrite debian/rules to be used for dh.
 
- -- Robert James Clay <jame@rocasa.us>  Wed, 23 Sep 2015 15:47:04 -0400
+ -- Robert James Clay <jame@rocasa.us>  Sun, 29 Nov 2015 01:14:55 -0500
 
 multimail (0.49-2) unstable; urgency=low
 
