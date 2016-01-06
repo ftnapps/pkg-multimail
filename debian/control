@@ -17,15 +17,3 @@ Description: Offline reader for Blue Wave, QWK, OMEN and SOUP
  other systems. It currently supports the Blue Wave, QWK,
  OMEN and SOUP formats. It has a full screen, color user
  interface, built with the curses library.
-
-Package: multimail-dbg
-Architecture: any
-Section: debug
-Depends: multimail (= ${binary:Version}), ${misc:Depends}
-Description: debugging symbols for multimail
- MultiMail is an offline mail packet reader for Unix and
- other systems. It currently supports the Blue Wave, QWK,
- OMEN and SOUP formats. It has a full screen, color user
- interface, built with the curses library.
- .
- This package contains the debugging symbols for crashmail.
