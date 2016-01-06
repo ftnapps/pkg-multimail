@@ -3,7 +3,7 @@ Section: mail
 Priority: extra
 Maintainer: Robert James Clay <jame@rocasa.us>
 Standards-Version: 3.9.6
-Build-Depends: libncurses5-dev, debhelper (>= 9.0)
+Build-Depends: libncurses5-dev, debhelper (>= 9)
 Vcs-Git: git://anonscm.debian.org/collab-maint/pkg-multimail.git
 Vcs-Browser: http://anonscm.debian.org/gitweb/?p=collab-maint/pkg-multimail.git
 Homepage: http://multimail.sourceforge.net
