@@ -1,4 +1,4 @@
-multimail (0.50~20150922-1~2) UNRELEASED; urgency=low
+multimail (0.50~20150922-1) unstable; urgency=low
 
   * New snapshot from upstream.
   * New maintainer. (Closes: #693230)
@@ -17,7 +17,7 @@ multimail (0.50~20150922-1~2) UNRELEASED; urgency=low
   * Add initial version of debian/patches/Makefile.patch.
   * Rewrite debian/rules to be used for dh.
 
- -- Robert James Clay <jame@rocasa.us>  Wed,  6 Jan 2016 11:16:14 -0500
+ -- Robert James Clay <jame@rocasa.us>  Wed, 06 Jan 2016 21:19:26 -0500
 
 multimail (0.49-2) unstable; urgency=low
 
