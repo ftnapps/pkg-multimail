@@ -1,4 +1,4 @@
-multimail (0.50~20150922-1) unstable; urgency=low
+multimail (0.50~20150922-1~3) UNRELEASED; urgency=low
 
   * New snapshot from upstream.
   * New maintainer. (Closes: #693230)
@@ -13,11 +13,10 @@ multimail (0.50~20150922-1) unstable; urgency=low
     - Set Standards-Version entry to 3.9.6, no changes required.
     - Change the Maintainer entry to be 'Robert James Clay <jame@rocasa.us'.
     - Add Vcs* entries for the 'collab-maint' repository at anonscm.debian.org.
-  * Remove unnecessary comments from the debian/watch file
   * Add initial version of debian/patches/Makefile.patch.
   * Rewrite debian/rules to be used for dh.
 
- -- Robert James Clay <jame@rocasa.us>  Wed, 06 Jan 2016 21:19:26 -0500
+ -- Robert James Clay <jame@rocasa.us>  Sat, 09 Jan 2016 10:59:19 -0500
 
 multimail (0.49-2) unstable; urgency=low
 
