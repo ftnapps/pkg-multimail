@@ -6,7 +6,7 @@ Upstream-Contact: William McBrine <wmcbrine@gmail.com>
 Files: *
 Copyright: 1997-2015, William McBrine <wmcbrine@gmail.com>
  1997, John Zero
- 1996, Kolossvary Tamas
+ 1996-1997, Kolossvary Tamas <thomas@vma.bme.hu>
  1996, Toth Istvan
 Comment: MultiMail was originally developed under Linux by Kolossvary Tamas and
  Toth Istvan. John Zero was the maintainer for versions 0.2 through 0.6; since
