@@ -13,13 +13,13 @@ Comment: MultiMail was originally developed under Linux by Kolossvary Tamas and
  version 0.7, the maintainer is William McBrine <wmcbrine@gmail.com>.
  Additional code has been contribued by Peter Karlsson, Mark D. Rejhon, Ingo
  Brueckl, and Robert Vukovic.
-License: GPL-3
+License: GPL-3+
 
 Files: debian/*
 Copyright: 2013-2016, Robert James Clay <jame@rocasa.us>
  2000-2010, Peter Karlsson <peterk@debian.org>
  1999-2000, Per Lundberg <plundis@debian.org>
-License: GPL-3
+License: GPL-3+
 
 Files: mmail/bluewave.h
 Copyright: Copyright 1990-1995 by Cutting Edge Computing
@@ -53,7 +53,7 @@ License: Permissive
  Door for Widget BBS").
  --- end extract
 
-License: GPL-3
+License: GPL-3+
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
  the Free Software Foundation, either version 3 of the License, or
