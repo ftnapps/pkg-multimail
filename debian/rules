@@ -10,8 +10,5 @@ LDFLAGS:=$(shell dpkg-buildflags --get LDFLAGS)
 %:
 	dh $@
 
-override_dh_auto_install:
-	dh_auto_install --destdir=debian/multimail
-
 override_dh_installchangelogs:
 	dh_installchangelogs --keep HISTORY.md
