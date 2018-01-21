@@ -1,6 +1,6 @@
 Source: multimail
 Section: mail
-Priority: extra
+Priority: optional
 Maintainer: Robert James Clay <jame@rocasa.us>
 Standards-Version: 3.9.6
 Build-Depends: libncurses5-dev, debhelper (>= 9)
