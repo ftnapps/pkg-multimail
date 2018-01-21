@@ -2,10 +2,8 @@
  * MultiMail offline mail reader
  * ANSI image/text viewer
 
- Copyright 1998-2015 William McBrine <wmcbrine@gmail.com>
-
- Distributed under the GNU General Public License.
- For details, see the file COPYING in the parent directory. */
+ Copyright 1998-2017 William McBrine <wmcbrine@gmail.com>
+ Distributed under the GNU General Public License, version 3 or later. */
 
 #include "interfac.h"
 
@@ -42,12 +40,12 @@ AnsiWindow::AnsiLine *AnsiWindow::AnsiLine::getprev()
     return prev;
 }
 
-int AnsiWindow::AnsiLine::unpack(chtype *tmp)
+size_t AnsiWindow::AnsiLine::unpack(chtype *tmp)
 {
-    int i;
+    size_t i;
 
     if (isasc)
-        for (i = 0; i < (int) length; i++)
+        for (i = 0; i < length; i++)
             tmp[i] = att | atext[i];
     else
         if (length)
@@ -59,9 +57,9 @@ int AnsiWindow::AnsiLine::unpack(chtype *tmp)
     return length;
 }
 
-void AnsiWindow::AnsiLine::pack(chtype *tmp, int newlen)
+void AnsiWindow::AnsiLine::pack(chtype *tmp, size_t newlen)
 {
-    int i;
+    size_t i;
 
     if (isasc)
         delete[] atext;
