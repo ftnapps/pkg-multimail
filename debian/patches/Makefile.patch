@@ -3,7 +3,7 @@ Description: Changes to enable package build.
 Author: Peter Karlsson <peterk@debian.org>
 Author: Robert James Clay <jame@rocasa.us>
 Origin: vendor
-Last-Update: 2015-09-20
+Last-Update: 2015-09-21
 
 --- a/Makefile
 +++ b/Makefile
@@ -68,6 +68,6 @@ Last-Update: 2015-09-20
  	$(RM) $(HELPDIR)/mmail.1
 -	ln $(HELPDIR)/mm.1 $(HELPDIR)/mmail.1
 +#	ln $(HELPDIR)/mm.1 $(HELPDIR)/mmail.1
-+	install -m 644 README $(DOCDIR)
++	install -m 644 README.md $(DOCDIR)
 +	install -d $(DOCDIR)/colors
 +	cp -a colors/* $(DOCDIR)/colors
