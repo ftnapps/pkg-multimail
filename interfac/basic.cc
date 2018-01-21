@@ -4,10 +4,8 @@
 
  Copyright 1996 Kolossvary Tamas <thomas@tvnet.hu>
  Copyright 1997 John Zero <john@graphisoft.hu>
- Copyright 1997-2015 William McBrine <wmcbrine@gmail.com>
-
- Distributed under the GNU General Public License.
- For details, see the file COPYING in the parent directory. */
+ Copyright 1997-2017 William McBrine <wmcbrine@gmail.com>
+ Distributed under the GNU General Public License, version 3 or later. */
 
 #include "interfac.h"
 
@@ -242,7 +240,7 @@ void Win::boxtitle(coltype backg, const char *title, chtype titleAttrib)
 void Win::clreol(int y, int x)
 {
     for (int i = x; i < COLS; i++)
-        put(y, i, (chtype) ' ' | curratt);
+        put(y, i, (chtype) (' ' | curratt));
 }
 
 #ifdef USE_MOUSE
@@ -453,7 +451,7 @@ int ShadowedWin::getstring(int y, int x, char *string, int maxlen,
             offset++;
 
         for (j = offset; j < dwidth + offset; j++)
-            put(y, x + j - offset, (tmp[j] ? (unsigned char) tmp[j] :
+            put(y, x + j - offset, (chtype) (tmp[j] ? (unsigned char) tmp[j] :
                 ACS_BOARD));
         wmove(win, y, x + i - offset);
         update();
